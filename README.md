@@ -14,7 +14,7 @@
   <img src="resources/screenshots/01-picker.png" alt="OpenCode Go models in the Copilot Chat model picker" width="800">
 </p>
 
-Love the open coding models on [OpenCode Go](https://opencode.ai/docs/go/) but don't want to give up GitHub Copilot's agent mode, tool calling, and polished UI? This extension drops **GLM-5.2, Kimi K2.7 Code, DeepSeek V4, MiMo, MiniMax, and Qwen** straight into the Copilot Chat model selector — with **vision**, **thinking mode**, and your own OpenCode Go API key.
+Love the open coding models on [OpenCode Go](https://opencode.ai/docs/go/) but don't want to give up GitHub Copilot's agent mode, tool calling, and polished UI? This extension drops **GLM-5.2, Kimi K2.7 Code, DeepSeek V4, MiMo, MiniMax, and Qwen** straight into the Copilot Chat model selector — with **vision**, **thinking mode**, and your own OpenCode Go API key. just need a small purchase to use it
 
 ## Why this extension?
 
