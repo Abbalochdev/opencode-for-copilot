@@ -1,0 +1,370 @@
+{
+  "name": "opencode-for-copilot",
+  "displayName": "OpenCode for Copilot",
+  "description": "Use OpenCode Go open coding models (GLM-5.2, Kimi K2.7, DeepSeek V4, MiMo, MiniMax, Qwen) in the Copilot Chat model picker. Vision, thinking mode, agent tools — zero config, BYOK.",
+  "icon": "resources/icon.png",
+  "version": "0.3.2",
+  "packageManager": "pnpm@11.7.0",
+  "publisher": "abbalochdev",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/abbalochdev/opencode-for-copilot.git"
+  },
+  "engines": {
+    "vscode": "^1.116.0",
+    "node": ">=24.11.0"
+  },
+  "categories": [
+    "AI",
+    "Chat",
+    "Programming Languages"
+  ],
+  "keywords": [
+    "opencode",
+    "opencode go",
+    "glm",
+    "glm 5",
+    "glm-5",
+    "kimi",
+    "deepseek",
+    "qwen",
+    "minimax",
+    "mimo",
+    "copilot",
+    "github copilot",
+    "copilot chat",
+    "vision",
+    "byok",
+    "language model",
+    "thinking",
+    "reasoning",
+    "ai",
+    "chat"
+  ],
+  "activationEvents": [
+    "onUri",
+    "onStartupFinished"
+  ],
+  "enabledApiProposals": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languageModelChatProviders": [
+      {
+        "vendor": "glm",
+        "displayName": "OpenCode"
+      }
+    ],
+    "commands": [
+      {
+        "command": "glm-copilot.setApiKey",
+        "title": "%glm-copilot.command.setApiKey%"
+      },
+      {
+        "command": "glm-copilot.getApiKey",
+        "title": "%glm-copilot.command.getApiKey%"
+      },
+      {
+        "command": "glm-copilot.queryUsage",
+        "title": "%glm-copilot.command.queryUsage%"
+      },
+      {
+        "command": "glm-copilot.clearApiKey",
+        "title": "%glm-copilot.command.clearApiKey%"
+      },
+      {
+        "command": "glm-copilot.setVisionModel",
+        "title": "%glm-copilot.command.setVisionModel%"
+      },
+      {
+        "command": "glm-copilot.openSettings",
+        "title": "%glm-copilot.command.openSettings%"
+      },
+      {
+        "command": "glm-copilot.showLogs",
+        "title": "%glm-copilot.command.showLogs%"
+      },
+      {
+        "command": "glm-copilot.openRequestDumpsFolder",
+        "title": "%glm-copilot.command.openRequestDumpsFolder%"
+      }
+    ],
+    "walkthroughs": [
+      {
+        "id": "glmGettingStarted",
+        "title": "%glm-copilot.walkthrough.title%",
+        "description": "%glm-copilot.walkthrough.description%",
+        "steps": [
+          {
+            "id": "setApiKey",
+            "title": "%glm-copilot.walkthrough.setApiKey.title%",
+            "description": "%glm-copilot.walkthrough.setApiKey.description%",
+            "media": {
+              "markdown": "resources/walkthrough/set-api-key.md"
+            },
+            "completionEvents": [
+              "onCommand:glm-copilot.setApiKey"
+            ]
+          },
+          {
+            "id": "showModels",
+            "title": "%glm-copilot.walkthrough.showModels.title%",
+            "description": "%glm-copilot.walkthrough.showModels.description%",
+            "media": {
+              "markdown": "resources/walkthrough/show-models.md"
+            }
+          },
+          {
+            "id": "advancedSettings",
+            "title": "%glm-copilot.walkthrough.advancedSettings.title%",
+            "description": "%glm-copilot.walkthrough.advancedSettings.description%",
+            "media": {
+              "markdown": "resources/walkthrough/advanced-settings.md"
+            }
+          }
+        ]
+      }
+    ],
+    "configuration": {
+      "title": "%glm-copilot.config.title%",
+      "properties": {
+        "glm-copilot.baseUrl": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "%glm-copilot.config.baseUrl.description%"
+        },
+        "glm-copilot.endpoint": {
+          "type": "string",
+          "default": "opencode-go",
+          "enum": [
+            "opencode-go",
+            "opencode-go-anthropic",
+            "china-coding",
+            "china-standard",
+            "china-anthropic",
+            "international-coding",
+            "international-standard",
+            "international-anthropic"
+          ],
+          "enumItemLabels": [
+            "%glm-copilot.config.endpoint.opencodeGo.label%",
+            "%glm-copilot.config.endpoint.opencodeGoAnthropic.label%",
+            "%glm-copilot.config.endpoint.chinaCoding.label%",
+            "%glm-copilot.config.endpoint.chinaStandard.label%",
+            "%glm-copilot.config.endpoint.chinaAnthropic.label%",
+            "%glm-copilot.config.endpoint.internationalCoding.label%",
+            "%glm-copilot.config.endpoint.internationalStandard.label%",
+            "%glm-copilot.config.endpoint.internationalAnthropic.label%"
+          ],
+          "markdownEnumDescriptions": [
+            "%glm-copilot.config.endpoint.opencodeGo.description%",
+            "%glm-copilot.config.endpoint.opencodeGoAnthropic.description%",
+            "%glm-copilot.config.endpoint.chinaCoding.description%",
+            "%glm-copilot.config.endpoint.chinaStandard.description%",
+            "%glm-copilot.config.endpoint.chinaAnthropic.description%",
+            "%glm-copilot.config.endpoint.internationalCoding.description%",
+            "%glm-copilot.config.endpoint.internationalStandard.description%",
+            "%glm-copilot.config.endpoint.internationalAnthropic.description%"
+          ],
+          "markdownDescription": "%glm-copilot.config.endpoint.description%"
+        },
+        "glm-copilot.maxTokens": {
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "description": "%glm-copilot.config.maxTokens.description%"
+        },
+        "glm-copilot.experimental.stabilizeToolList": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "%glm-copilot.config.experimental.stabilizeToolList.description%",
+          "tags": [
+            "experimental"
+          ]
+        },
+        "glm-copilot.modelIdOverrides": {
+          "type": "object",
+          "default": {
+            "glm-5.2": "glm-5.2",
+            "glm-5.1": "glm-5.1",
+            "kimi-k2.7-code": "kimi-k2.7-code",
+            "kimi-k2.6": "kimi-k2.6",
+            "deepseek-v4-pro": "deepseek-v4-pro",
+            "deepseek-v4-flash": "deepseek-v4-flash",
+            "mimo-v2.5": "mimo-v2.5",
+            "mimo-v2.5-pro": "mimo-v2.5-pro",
+            "minimax-m3": "minimax-m3",
+            "minimax-m2.7": "minimax-m2.7",
+            "minimax-m2.5": "minimax-m2.5",
+            "qwen3.7-max": "qwen3.7-max",
+            "qwen3.7-plus": "qwen3.7-plus",
+            "qwen3.6-plus": "qwen3.6-plus"
+          },
+          "markdownDescription": "%glm-copilot.config.modelIdOverrides.description%",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "properties": {
+            "glm-5.2": {
+              "type": "string",
+              "description": "%glm-copilot.config.modelIdOverrides.glm-5.2.description%"
+            },
+            "glm-5.1": {
+              "type": "string",
+              "description": "API model ID for GLM-5.1 (OpenCode Go)."
+            },
+            "kimi-k2.7-code": {
+              "type": "string",
+              "description": "API model ID for Kimi K2.7 Code (OpenCode Go)."
+            },
+            "kimi-k2.6": {
+              "type": "string",
+              "description": "API model ID for Kimi K2.6 (OpenCode Go)."
+            },
+            "deepseek-v4-pro": {
+              "type": "string",
+              "description": "API model ID for DeepSeek V4 Pro (OpenCode Go)."
+            },
+            "deepseek-v4-flash": {
+              "type": "string",
+              "description": "API model ID for DeepSeek V4 Flash (OpenCode Go)."
+            },
+            "mimo-v2.5": {
+              "type": "string",
+              "description": "API model ID for MiMo V2.5 (OpenCode Go)."
+            },
+            "mimo-v2.5-pro": {
+              "type": "string",
+              "description": "API model ID for MiMo V2.5 Pro (OpenCode Go)."
+            },
+            "minimax-m3": {
+              "type": "string",
+              "description": "API model ID for MiniMax M3 (OpenCode Go, Anthropic protocol)."
+            },
+            "minimax-m2.7": {
+              "type": "string",
+              "description": "API model ID for MiniMax M2.7 (OpenCode Go, Anthropic protocol)."
+            },
+            "minimax-m2.5": {
+              "type": "string",
+              "description": "API model ID for MiniMax M2.5 (OpenCode Go, Anthropic protocol)."
+            },
+            "qwen3.7-max": {
+              "type": "string",
+              "description": "API model ID for Qwen3.7 Max (OpenCode Go, Anthropic protocol)."
+            },
+            "qwen3.7-plus": {
+              "type": "string",
+              "description": "API model ID for Qwen3.7 Plus (OpenCode Go, Anthropic protocol)."
+            },
+            "qwen3.6-plus": {
+              "type": "string",
+              "description": "API model ID for Qwen3.6 Plus (OpenCode Go, Anthropic protocol)."
+            }
+          }
+        },
+        "glm-copilot.customModels": {
+          "type": "array",
+          "default": [],
+          "markdownDescription": "%glm-copilot.config.customModels.description%",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "%glm-copilot.config.customModels.string.description%"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "%glm-copilot.config.customModels.id.description%"
+                  },
+                  "name": {
+                    "type": "string",
+                    "description": "%glm-copilot.config.customModels.name.description%"
+                  },
+                  "maxInputTokens": {
+                    "type": "number",
+                    "minimum": 1,
+                    "description": "%glm-copilot.config.customModels.maxInputTokens.description%"
+                  },
+                  "maxOutputTokens": {
+                    "type": "number",
+                    "minimum": 1,
+                    "description": "%glm-copilot.config.customModels.maxOutputTokens.description%"
+                  },
+                  "toolCalling": {
+                    "type": "boolean",
+                    "description": "%glm-copilot.config.customModels.toolCalling.description%"
+                  },
+                  "thinking": {
+                    "type": "boolean",
+                    "description": "%glm-copilot.config.customModels.thinking.description%"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "glm-copilot.visionModel": {
+          "type": "string",
+          "default": "",
+          "tags": [
+            "advanced"
+          ],
+          "markdownDescription": "%glm-copilot.config.visionModel.description%"
+        },
+        "glm-copilot.visionPrompt": {
+          "type": "string",
+          "editPresentation": "multilineText",
+          "default": "Describe all image attachments in this message.\n\nIf there is one image, describe it directly.\nIf there are multiple images:\n1. Describe each image separately, preserving their order.\n2. Then provide a combined description explaining the overall context and relationships across the images.\n\nReturn one concise factual description suitable for inserting into a text-only chat prompt. Include visible text, objects, UI elements, people, and relevant context. Do not invent details.",
+          "markdownDescription": "%glm-copilot.config.visionPrompt.description%"
+        },
+        "glm-copilot.debugMode": {
+          "type": "string",
+          "default": "minimal",
+          "enum": [
+            "minimal",
+            "metadata",
+            "verbose"
+          ],
+          "enumItemLabels": [
+            "%glm-copilot.config.debugMode.minimal.label%",
+            "%glm-copilot.config.debugMode.metadata.label%",
+            "%glm-copilot.config.debugMode.verbose.label%"
+          ],
+          "markdownEnumDescriptions": [
+            "%glm-copilot.config.debugMode.minimal.description%",
+            "%glm-copilot.config.debugMode.metadata.description%",
+            "%glm-copilot.config.debugMode.verbose.description%"
+          ],
+          "markdownDescription": "%glm-copilot.config.debugMode.description%"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "vp pack",
+    "watch": "vp pack --watch",
+    "test": "vp test run",
+    "test:watch": "vp test",
+    "lint": "vp lint",
+    "format": "vp fmt --write src/ test/ vite.config.mts",
+    "format:check": "vp fmt --check src/ test/ vite.config.mts",
+    "package": "vp run vsix"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "@types/vscode": "^1.116.0",
+    "@vscode/vsce": "^3.9.2",
+    "ovsx": "1.0.2",
+    "typescript": "^6.0.3",
+    "vite-plus": "^0.2.1",
+    "vitest": "4.1.9"
+  }
+}
