@@ -3,7 +3,7 @@
   "displayName": "OpenCode for Copilot",
   "description": "Use OpenCode Go open coding models (GLM-5.2, Kimi K2.7, DeepSeek V4, MiMo, MiniMax, Qwen) in the Copilot Chat model picker. Vision, thinking mode, agent tools — zero config, BYOK.",
   "icon": "resources/icon.png",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "packageManager": "pnpm@11.7.0",
   "publisher": "abbalochdev",
   "license": "MIT",
@@ -185,6 +185,8 @@
         "glm-copilot.modelIdOverrides": {
           "type": "object",
           "default": {
+            "copilot-utility": "deepseek-v4-flash",
+            "copilot-utility-small": "deepseek-v4-flash",
             "glm-5.2": "glm-5.2",
             "glm-5.1": "glm-5.1",
             "kimi-k2.7-code": "kimi-k2.7-code",
@@ -205,6 +207,14 @@
             "type": "string"
           },
           "properties": {
+            "copilot-utility": {
+              "type": "string",
+              "description": "API model ID for Copilot Chat utility model (quick inline tasks)."
+            },
+            "copilot-utility-small": {
+              "type": "string",
+              "description": "API model ID for Copilot Chat small utility model."
+            },
             "glm-5.2": {
               "type": "string",
               "description": "%glm-copilot.config.modelIdOverrides.glm-5.2.description%"

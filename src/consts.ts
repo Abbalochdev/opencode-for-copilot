@@ -51,7 +51,7 @@ export const WELCOME_SHOWN_KEY = 'glm-copilot.welcomeShown';
 // ---- Walkthrough ----
 
 /** Walkthrough contribution ID. */
-export const WALKTHROUGH_ID = 'umbrella22.glm-for-copilot#glmGettingStarted';
+export const WALKTHROUGH_ID = 'abbalochdev.opencode-for-copilot#glmGettingStarted';
 
 // ---- Model registry ----
 
@@ -320,5 +320,52 @@ export const MODELS: ModelDefinition[] = [
 			},
 		},
 		priceCategory: 'medium',
+	},
+
+	// ---- Copilot Chat utility models ----
+	//
+	// VS Code's Copilot Chat expects BYOK providers to expose two utility
+	// model IDs for quick/small chat tasks (inline suggestions, simple
+	// completions, etc.). These alias the cheapest available model so
+	// utility requests don't waste the user's quota on a premium model.
+	//
+	// If you need different utility models, add overrides in the
+	// `glm-copilot.modelIdOverrides` setting, for example:
+	//   "glm-copilot.modelIdOverrides": {
+	//     "copilot-utility": "mimo-v2.5",
+	//     "copilot-utility-small": "mimo-v2.5"
+	//   }
+
+	{
+		id: 'copilot-utility',
+		name: 'OpenCode Utility',
+		family: 'glm',
+		version: '1',
+		detail: 'Utility model for quick chat tasks',
+		maxInputTokens: 128_000,
+		maxOutputTokens: 4096,
+		capabilities: { toolCalling: false, imageInput: false, thinking: false },
+		requiresThinkingParam: false,
+		endpointPreset: 'opencode-go',
+		pricing: {
+			USD: { cacheHitInput: 0.0028, cacheMissInput: 0.14, output: 0.28 },
+		},
+		priceCategory: 'low',
+	},
+	{
+		id: 'copilot-utility-small',
+		name: 'OpenCode Utility Small',
+		family: 'glm',
+		version: '1',
+		detail: 'Small utility model for quick chat tasks',
+		maxInputTokens: 128_000,
+		maxOutputTokens: 2048,
+		capabilities: { toolCalling: false, imageInput: false, thinking: false },
+		requiresThinkingParam: false,
+		endpointPreset: 'opencode-go',
+		pricing: {
+			USD: { cacheHitInput: 0.0028, cacheMissInput: 0.14, output: 0.28 },
+		},
+		priceCategory: 'low',
 	},
 ];

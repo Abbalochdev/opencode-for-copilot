@@ -53,7 +53,7 @@ export function toChatInfo(
 		maxInputTokens: m.maxInputTokens,
 		maxOutputTokens: m.maxOutputTokens,
 		isBYOK: true,
-		isUserSelectable: true,
+		isUserSelectable: isUserSelectableModel(m.id),
 		capabilities: {
 			toolCalling: m.capabilities.toolCalling,
 			imageInput: m.capabilities.imageInput,
@@ -61,6 +61,11 @@ export function toChatInfo(
 		...toModelCostInfo(m, pricingCurrency),
 		...(m.capabilities.thinking ? { configurationSchema: buildThinkingEffortSchema() } : {}),
 	};
+}
+
+/** @returns `false` for internal utility models so they stay out of the picker. */
+function isUserSelectableModel(modelId: string): boolean {
+	return modelId !== 'copilot-utility' && modelId !== 'copilot-utility-small';
 }
 
 export function getConfiguredThinkingEffort(options: ModelConfigurationOptions): ThinkingEffort {
