@@ -1,6 +1,11 @@
 import vscode from 'vscode';
 import { AuthManager } from '../auth';
-import { getBaseUrl, getStabilizeToolListEnabled, listProviderModels } from '../config';
+import {
+	getBaseUrl,
+	getPonytailMode,
+	getStabilizeToolListEnabled,
+	listProviderModels,
+} from '../config';
 import { API_KEY_SECRET, CONFIG_SECTION } from '../consts';
 import { isOpencodeBaseUrl, OPENCODE_GO_USAGE_CONSOLE_URL } from '../endpoint';
 import { t } from '../i18n';
@@ -43,6 +48,8 @@ export class GLMChatProvider implements vscode.LanguageModelChatProvider {
 	 */
 	private charsPerToken = 4.0;
 
+	private ponytailMode = getPonytailMode();
+
 	constructor(context: vscode.ExtensionContext) {
 		this.authManager = new AuthManager(context);
 		this.globalStorageUri = context.globalStorageUri;
@@ -61,6 +68,9 @@ export class GLMChatProvider implements vscode.LanguageModelChatProvider {
 					e.affectsConfiguration(`${CONFIG_SECTION}.modelIdOverrides`)
 				) {
 					this.refreshModelPicker();
+				}
+				if (e.affectsConfiguration(`${CONFIG_SECTION}.ponytailMode`)) {
+					this.ponytailMode = getPonytailMode();
 				}
 			}),
 			// Multi-window: SecretStorage changes don't fire onDidChangeConfiguration.

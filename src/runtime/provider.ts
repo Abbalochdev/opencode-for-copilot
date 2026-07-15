@@ -1,6 +1,8 @@
 import vscode from 'vscode';
+import { CONFIG_SECTION } from '../consts';
 import { logger } from '../logger';
 import { GLMChatProvider } from '../provider';
+import type { PonytailMode } from '../provider/ponytail';
 
 export async function registerProvider(context: vscode.ExtensionContext): Promise<GLMChatProvider> {
 	const provider = new GLMChatProvider(context);
@@ -10,6 +12,7 @@ export async function registerProvider(context: vscode.ExtensionContext): Promis
 		vscode.commands.registerCommand('glm-copilot.queryUsage', () => provider.queryUsage()),
 		vscode.commands.registerCommand('glm-copilot.clearApiKey', () => provider.clearApiKey()),
 		vscode.commands.registerCommand('glm-copilot.setVisionModel', () => provider.setVisionModel()),
+		vscode.commands.registerCommand('glm-copilot.setPonytailMode', () => setPonytailModeCommand()),
 		vscode.lm.registerLanguageModelChatProvider('glm', provider),
 	);
 
@@ -25,6 +28,32 @@ export async function registerProvider(context: vscode.ExtensionContext): Promis
 	}
 
 	return provider;
+}
+
+async function setPonytailModeCommand(): Promise<void> {
+	const modes: { label: string; mode: PonytailMode; description: string }[] = [
+		{ label: 'Off', mode: 'off', description: 'No extra instruction' },
+		{ label: 'Lite', mode: 'lite', description: 'Gentle reuse reminder' },
+		{ label: 'Full', mode: 'full', description: 'Full Ponytail ladder (default)' },
+		{ label: 'Ultra', mode: 'ultra', description: 'Aggressive minimalism' },
+	];
+
+	const current = vscode.workspace.getConfiguration(CONFIG_SECTION).get<string>('ponytailMode');
+	const picked = await vscode.window.showQuickPick(
+		modes.map((m) => ({
+			...m,
+			picked: m.mode === current,
+		})),
+		{ placeHolder: 'Select Ponytail verification intensity' },
+	);
+	if (!picked) {
+		return;
+	}
+
+	await vscode.workspace
+		.getConfiguration(CONFIG_SECTION)
+		.update('ponytailMode', picked.mode, vscode.ConfigurationTarget.Global);
+	void vscode.window.showInformationMessage(`Ponytail mode set to ${picked.label}.`);
 }
 
 async function activateCopilotChat(): Promise<void> {

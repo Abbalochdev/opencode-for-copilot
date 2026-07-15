@@ -2,23 +2,21 @@ import vscode from 'vscode';
 import { AuthManager } from '../auth';
 import { GLMClient } from '../client';
 import {
-	findModelDefinition,
-	getApiModelId,
-	getApiProtocol,
-	getBaseUrl,
-	getBaseUrlOverride,
-	getMaxTokens,
+    findModelDefinition,
+    getApiModelId,
+    getApiProtocol,
+    getBaseUrl,
+    getBaseUrlOverride,
+    getMaxTokens,
+    getPonytailMode,
 } from '../config';
-import {
-	isOfficialGLMBaseUrl,
-	resolveEndpointBaseUrl,
-	resolveEndpointProtocol,
-} from '../endpoint';
+import { isOfficialGLMBaseUrl, resolveEndpointBaseUrl, resolveEndpointProtocol } from '../endpoint';
 import { t } from '../i18n';
 import type { ApiProtocol, GLMRequest, ModelDefinition, PricingCurrency } from '../types';
 import { convertMessages, countMessageChars } from './convert';
 import { dumpGLMRequest, type CacheDiagnosticsRecorder, type CacheDiagnosticsRun } from './debug';
 import { getConfiguredThinkingEffort, type ModelConfigurationOptions } from './models';
+import { injectPonytailSystemMessage } from './ponytail';
 import { getPricingCurrencyForBaseUrl } from './pricing/currency';
 import type { ReplayMarkerMetadata } from './replay';
 import { classifyGLMRequest, shouldForceThinkingNone, type RequestKind } from './routing';
@@ -102,10 +100,13 @@ export async function prepareChatRequest({
 	const glmMessages = convertMessages(resolvedMessages, isThinkingModel);
 	const tools = prepareRequestTools(modelDef?.capabilities.toolCalling, options);
 
-	const totalRequestChars = countMessageChars(glmMessages);
+	const ponytailMode = getPonytailMode();
+	const glmMessagesWithPonytail = injectPonytailSystemMessage(glmMessages, ponytailMode);
+
+	const totalRequestChars = countMessageChars(glmMessagesWithPonytail);
 	const baseRequest: GLMRequest = {
 		model: apiModelId,
-		messages: glmMessages,
+		messages: glmMessagesWithPonytail,
 		stream: true,
 		stream_options: { include_usage: true },
 		tools,
@@ -170,6 +171,7 @@ export async function prepareChatRequest({
 		visionModelId: visionResolution.visionModelId,
 		visionProxySource: visionResolution.visionProxySource,
 		visionStats: visionResolution.stats,
+		ponytailMode,
 	});
 
 	return {
@@ -177,7 +179,7 @@ export async function prepareChatRequest({
 		request,
 		isThinkingModel,
 		totalRequestChars,
-		trailingToolResultIds: collectTrailingToolResultIds(glmMessages),
+		trailingToolResultIds: collectTrailingToolResultIds(glmMessagesWithPonytail),
 		cacheDiagnostics: diagnosticsRun,
 		requestKind,
 		segment,

@@ -1,14 +1,14 @@
-import * as vscode from 'vscode';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import * as vscode from 'vscode';
 import type { AuthManager } from '../../src/auth';
 import { createCacheDiagnosticsRecorder } from '../../src/provider/debug';
 import { prepareChatRequest } from '../../src/provider/request';
+import type { ConversationSegment } from '../../src/provider/segment';
 import type { VisionDescriber } from '../../src/provider/vision';
 import {
 	IMAGE_DESCRIPTION_PREFIX,
 	IMAGE_DESCRIPTION_SUFFIX,
 } from '../../src/provider/vision/consts';
-import type { ConversationSegment } from '../../src/provider/segment';
 import { __clearConfigurationValues, __setConfigurationValue } from '../support/vscode.mock';
 
 const token = {
@@ -93,10 +93,13 @@ describe('request preparation', () => {
 			},
 		});
 		expect(describe).toHaveBeenCalledOnce();
-		expect(prepared.request.messages[0]?.content).toContain('Look');
-		expect(prepared.request.messages[0]?.content).toContain(IMAGE_DESCRIPTION_PREFIX);
-		expect(prepared.request.messages[0]?.content).toContain('a screenshot description');
-		expect(prepared.request.messages[0]?.content).toContain(IMAGE_DESCRIPTION_SUFFIX);
+		const preparedUserMessage = prepared.request.messages.find((m) => m.role === 'user');
+		expect(preparedUserMessage?.content).toContain('Look');
+		expect(preparedUserMessage?.content).toContain(IMAGE_DESCRIPTION_PREFIX);
+		expect(preparedUserMessage?.content).toContain('a screenshot description');
+		expect(preparedUserMessage?.content).toContain(IMAGE_DESCRIPTION_SUFFIX);
+		expect(prepared.request.messages[0]?.role).toBe('system');
+		expect(prepared.request.messages[0]?.content).toContain('lazy senior developer');
 		expect(prepared.visionMarkerTextChars).toBeGreaterThan(0);
 	});
 });

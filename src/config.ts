@@ -1,20 +1,20 @@
 import vscode from 'vscode';
 import { CONFIG_SECTION, MODELS } from './consts';
 import {
-	deriveEndpointPreset,
-	normalizeBaseUrl,
-	resolveApiKeyUrl,
-	resolveEndpointApiKeyUrl,
-	resolveEndpointBaseUrl,
-	resolveEndpointProtocol,
+    deriveEndpointPreset,
+    normalizeBaseUrl,
+    resolveApiKeyUrl,
+    resolveEndpointApiKeyUrl,
+    resolveEndpointBaseUrl,
+    resolveEndpointProtocol,
 } from './endpoint';
 import type {
-	ApiMode,
-	ApiProtocol,
-	ApiRegion,
-	CustomModelConfig,
-	EndpointPreset,
-	ModelDefinition,
+    ApiMode,
+    ApiProtocol,
+    ApiRegion,
+    CustomModelConfig,
+    EndpointPreset,
+    ModelDefinition,
 } from './types';
 
 export type DebugMode = 'minimal' | 'metadata' | 'verbose';
@@ -240,6 +240,23 @@ export function getRequestDumpEnabled(): boolean {
 export function getStabilizeToolListEnabled(): boolean {
 	const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
 	return config.get<boolean>('experimental.stabilizeToolList', false);
+}
+
+export type PonytailMode = 'off' | 'lite' | 'full' | 'ultra';
+
+const DEFAULT_PONYTAIL_MODE: PonytailMode = 'full';
+
+export function getPonytailMode(): PonytailMode {
+	const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
+	const value = config.get<string>('ponytailMode');
+	return normalizePonytailMode(value) ?? DEFAULT_PONYTAIL_MODE;
+}
+
+function normalizePonytailMode(value: unknown): PonytailMode | undefined {
+	if (value === 'off' || value === 'lite' || value === 'full' || value === 'ultra') {
+		return value;
+	}
+	return undefined;
 }
 
 /**

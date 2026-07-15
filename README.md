@@ -67,6 +67,22 @@ API key lives in VS Code's `SecretStorage` (OS keychain on macOS / Windows / Lin
 
 After each completed GLM response, the extension reports usage to Copilot metadata and writes it to logs. The status bar shows the latest turn and session total. Estimates use the official GLM list prices for the current endpoint currency: CNY for domestic BigModel endpoints and USD for Z.ai endpoints. Coding Plan requests also show an approximate list-price equivalent when token usage is returned.
 
+### Ponytail Coding Discipline ("Lazy Senior Dev" Verification)
+
+Every request is prefixed with a **Ponytail-style system instruction** that makes the model think like a lazy senior developer — efficient, not careless. It climbs a 7-rung ladder before writing any code:
+
+1. **Does this need to be built at all?** (YAGNI)
+2. **Does it already exist in the codebase?** Reuse it.
+3. **Does the standard library do this?** Use it.
+4. **Does a native platform feature cover it?** Use it.
+5. **Does an already-installed dependency solve it?** Use it.
+6. **Can this be one line?** Make it one line.
+7. **Only then:** write the minimum code that works.
+
+Three intensity modes — `lite` (brief reminder), `full` (complete ladder with all rules, default), and `ultra` (strict, with edge-case prioritization) — plus `off` to disable. Switch modes on the fly from the Command Palette: **OpenCode: Set Ponytail Mode**.
+
+> **Effect on plugin behaviour:** The model generates fewer unnecessary abstractions, avoids reinventing wheels that already exist in your project, prefers stdlib over new dependencies, and writes shorter, more maintainable diffs. This means cleaner PRs, less code to review, and fewer dependencies to manage — without sacrificing correctness, security, or error handling.
+
 ### Zero Runtime Dependencies
 
 Pure VS Code API + Node.js built-ins. No Python, no Docker, no local proxy server to babysit.
@@ -136,6 +152,7 @@ All models support tool calling. GLM-5.2 and GLM-5.1 support thinking mode with 
 | `glm-copilot.debugMode`                      | `minimal`                 | Diagnostic mode: `minimal` for token usage only, `metadata` for privacy-preserving logs, or `verbose` for full request dumps and pipeline snapshots under extension global storage. Full dumps may include sensitive prompt text, tool schemas, file snippets, and image descriptions. Use `OpenCode: Open Request Dumps Folder` to open the dump location                                                                                                                                                                         |
 | `glm-copilot.visionModel`                    | _(auto)_                  | VS Code vision model used as fallback when automatic vision is unavailable. Configure from `OpenCode: Configure Vision Proxy`; new saves use `vendor/id`, while legacy bare model IDs are still read                                                                                                                                                                                                                                                                                                                |
 | `glm-copilot.visionPrompt`                   | _(built-in)_              | Prompt used to describe image attachments                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `glm-copilot.ponytailMode`                   | `full`                    | Ponytail coding-discipline system instruction level. `off` = no instruction; `lite` = brief reminder; `full` = complete 7-rung ladder with all rules; `ultra` = strict mode prioritizing edge-case correctness. Use `OpenCode: Set Ponytail Mode` to switch at runtime                                                                                                                                                                                                                                                         |
 | `glm-copilot.experimental.stabilizeToolList` | `false`                   | Experimental. Tries to pre-activate VS Code/Copilot virtual tools so the API `tools` parameter is more complete and stable across turns. May improve context-cache hit rate when enabled tools change between turns. Can increase input tokens because more function definitions may be included; cache-hit input tokens are cheaper but still count toward usage. Usually leave it off with 64 or fewer enabled tools unless the tool list still changes across turns; do not enable it with more than 128 enabled tools |
 
 Thinking Effort is configured from Copilot Chat's model picker for each thinking-capable GLM model.

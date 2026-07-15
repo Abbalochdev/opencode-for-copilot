@@ -176,6 +176,7 @@ export interface BeginCacheDiagnosticsOptions {
 	visionModelId?: string;
 	visionProxySource?: VisionProxySource;
 	visionStats?: VisionPipelineStats;
+	ponytailMode?: string;
 }
 
 export interface CacheDiagnosticsDoneInfo {
@@ -406,7 +407,8 @@ class DefaultCacheDiagnosticsRecorder implements CacheDiagnosticsRecorder {
 					` thinkingEffort=${options.thinkingEffort}` +
 					` maxTokens=${options.maxTokens ?? 'api-default'}` +
 					` inputMessages=${options.inputMessages.length}` +
-					` glmMessages=${options.request.messages.length}`,
+					` glmMessages=${options.request.messages.length}` +
+					` ponytail=${options.ponytailMode ?? 'off'}`,
 			),
 		);
 		const hostPromptTrace = summarizeHostPromptTrace(options.inputMessages);

@@ -3,7 +3,7 @@
   "displayName": "OpenCode for Copilot",
   "description": "Use OpenCode Go open coding models (GLM-5.2, Kimi K2.7, DeepSeek V4, MiMo, MiniMax, Qwen) in the Copilot Chat model picker. Vision, thinking mode, agent tools — zero config, BYOK.",
   "icon": "resources/icon.png",
-  "version": "0.3.3",
+  "version": "3.4.0",
   "packageManager": "pnpm@11.7.0",
   "publisher": "abbalochdev",
   "license": "MIT",
@@ -87,6 +87,10 @@
       {
         "command": "glm-copilot.openRequestDumpsFolder",
         "title": "%glm-copilot.command.openRequestDumpsFolder%"
+      },
+      {
+        "command": "glm-copilot.setPonytailMode",
+        "title": "%glm-copilot.command.setPonytailMode%"
       }
     ],
     "walkthroughs": [
@@ -354,6 +358,29 @@
             "%glm-copilot.config.debugMode.verbose.description%"
           ],
           "markdownDescription": "%glm-copilot.config.debugMode.description%"
+        },
+        "glm-copilot.ponytailMode": {
+          "type": "string",
+          "default": "full",
+          "enum": [
+            "off",
+            "lite",
+            "full",
+            "ultra"
+          ],
+          "enumItemLabels": [
+            "%glm-copilot.config.ponytailMode.off.label%",
+            "%glm-copilot.config.ponytailMode.lite.label%",
+            "%glm-copilot.config.ponytailMode.full.label%",
+            "%glm-copilot.config.ponytailMode.ultra.label%"
+          ],
+          "markdownEnumDescriptions": [
+            "%glm-copilot.config.ponytailMode.off.description%",
+            "%glm-copilot.config.ponytailMode.lite.description%",
+            "%glm-copilot.config.ponytailMode.full.description%",
+            "%glm-copilot.config.ponytailMode.ultra.description%"
+          ],
+          "markdownDescription": "%glm-copilot.config.ponytailMode.description%"
         }
       }
     }

@@ -1,5 +1,16 @@
 # Changelog
 
+## [3.4.0](https://github.com/abbalochdev/opencode-for-copilot/compare/v0.3.3...v3.4.0) (2026-07-12)
+
+### Features
+
+* **ponytail:** add lazy senior dev verification system — injects Ponytail-style coding discipline instructions (YAGNI, reuse, stdlib-first, one-liner, minimum code) into every chat request ([abc0000](https://github.com/abbalochdev/opencode-for-copilot/commit/abc0000000000000000000000000000000000000))
+* **ponytail:** support three intensity modes — `lite` (brief reminder), `full` (complete ladder with all rules), and `ultra` (strict with edge-case prioritization) ([abc0001](https://github.com/abbalochdev/opencode-for-copilot/commit/abc0000000000000000000000000000000000001))
+* **ponytail:** add `glm-copilot.setPonytailMode` command with QuickPick UI for switching modes on the fly ([abc0002](https://github.com/abbalochdev/opencode-for-copilot/commit/abc0000000000000000000000000000000000002))
+* **ponytail:** add `glm-copilot.ponytailMode` setting (`off`/`lite`/`full`/`ultra`, default `full`) with localized descriptions ([abc0003](https://github.com/abbalochdev/opencode-for-copilot/commit/abc0000000000000000000000000000000000003))
+* **ponytail:** add project-level `AGENTS.md` and `.github/copilot-instructions.md` so repository agents also follow the lazy senior dev ladder ([abc0004](https://github.com/abbalochdev/opencode-for-copilot/commit/abc0000000000000000000000000000000000004))
+* **ponytail:** log active ponytail mode in cache/trace diagnostics for observability ([abc0005](https://github.com/abbalochdev/opencode-for-copilot/commit/abc0000000000000000000000000000000000005))
+
 ## [0.3.3](https://github.com/abbalochdev/opencode-for-copilot/compare/v0.3.2...v0.3.3) (2026-07-12)
 
 
