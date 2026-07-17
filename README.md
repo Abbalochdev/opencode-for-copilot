@@ -118,8 +118,10 @@ All 14 OpenCode Go models are available. The extension automatically routes each
 
 | Model                | Best For                                   |
 | -------------------- | ------------------------------------------ |
+| **Grok 4.5**         | Frontier reasoning (xAI)                    |
 | **GLM-5.2**          | Flagship coding & reasoning, 1M context     |
 | **GLM-5.1**          | High-quality coding & reasoning             |
+| **Kimi K3**          | Frontier reasoning model                    |
 | **Kimi K2.7 Code**   | Coding-tuned reasoning model                |
 | **Kimi K2.6**        | General coding & reasoning                  |
 | **DeepSeek V4 Pro**  | High-quality reasoning                      |
