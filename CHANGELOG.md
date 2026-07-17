@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.5.0](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.4.0...v3.5.0) (2026-07-17)
+
+### Features
+
+* **models:** add Grok 4.5 — frontier reasoning model from xAI with 256K context, tool calling, and image input
+* **models:** add Kimi K3 — frontier reasoning model with 200K context, tool calling, and image input
+* **models:** extend model catalogue to 16 OpenCode Go models
+
 ## [3.4.0](https://github.com/abbalochdev/opencode-for-copilot/compare/v0.3.3...v3.4.0) (2026-07-12)
 
 ### Features
