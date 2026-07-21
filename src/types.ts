@@ -120,7 +120,9 @@ export type EndpointPreset =
 	| 'international-standard'
 	| 'international-anthropic'
 	| 'opencode-go'
-	| 'opencode-go-anthropic';
+	| 'opencode-go-anthropic'
+	| 'opencode-zen'
+	| 'opencode-zen-anthropic';
 
 export type CustomModelConfigEntry = string | CustomModelConfig;
 

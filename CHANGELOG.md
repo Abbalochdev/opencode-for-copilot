@@ -1,5 +1,15 @@
 # Changelog
 
+## [3.6.0](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.5.0...v3.6.0) (2026-07-21)
+
+### Features
+
+* **zen:** add OpenCode Zen pay-as-you-go endpoint presets — `opencode-zen` (OpenAI `/v1/chat/completions`) and `opencode-zen-anthropic` (Anthropic `/v1/messages`) ([zen docs](https://opencode.ai/docs/zen))
+* **zen:** add 5 free models — Big Pickle, DeepSeek V4 Flash Free, MiMo V2.5 Free, North Mini Code Free, Nemotron 3 Ultra Free
+* **zen:** add 12 paid Zen models — Grok Build 0.1 (OpenAI protocol); Claude Fable 5, Opus 4.5-4.8, Sonnet 4.5-5, Haiku 4.5, Qwen3.5 Plus (Anthropic protocol)
+* **zen:** Claude thinking models exposed with reasoning effort control (`none` / `high` / `max`)
+* **code-simplifier:** add Code Simplifier autonomous refinement agent — proactively reviews modified code and simplifies for clarity, consistency, and maintainability (enabled by default). When active, Ponytail auto-downgrades to Lite for compatibility
+
 ## [3.5.0](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.4.0...v3.5.0) (2026-07-17)
 
 ### Features

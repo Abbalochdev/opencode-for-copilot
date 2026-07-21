@@ -27,6 +27,17 @@ export const OPENCODE_GO_API_KEY_URL = 'https://opencode.ai/auth';
 /** OpenCode Go usage console (where subscribers track their Go quota). */
 export const OPENCODE_GO_USAGE_CONSOLE_URL = 'https://opencode.ai/auth';
 
+// ---- OpenCode Zen (https://opencode.ai/docs/zen) ----
+//
+// OpenCode Zen is a pay-as-you-go AI gateway that serves a curated set of
+// coding models. The OpenAI-compatible endpoint is at `…/v1/chat/completions`
+// and the Anthropic-compatible endpoint at `…/v1/messages`. Because the client
+// appends `/chat/completions` (OpenAI) or `/v1/messages` (Anthropic), the two
+// presets need different base URLs so the final request URLs line up exactly.
+export const OPENCODE_ZEN_OPENAI_BASE_URL = `https://${OPENCODE_GO_API_HOST}/zen/v1`;
+export const OPENCODE_ZEN_ANTHROPIC_BASE_URL = `https://${OPENCODE_GO_API_HOST}/zen`;
+export const OPENCODE_ZEN_API_KEY_URL = 'https://opencode.ai/auth';
+
 /**
  * Default endpoint preset — domestic Coding Plan over the OpenAI protocol.
  *
@@ -84,6 +95,10 @@ export function resolveEndpointBaseUrl(preset: EndpointPreset): string {
 			return OPENCODE_GO_OPENAI_BASE_URL;
 		case 'opencode-go-anthropic':
 			return OPENCODE_GO_ANTHROPIC_BASE_URL;
+		case 'opencode-zen':
+			return OPENCODE_ZEN_OPENAI_BASE_URL;
+		case 'opencode-zen-anthropic':
+			return OPENCODE_ZEN_ANTHROPIC_BASE_URL;
 	}
 }
 
@@ -107,6 +122,9 @@ export function resolveEndpointApiKeyUrl(preset: EndpointPreset): string {
 		case 'opencode-go':
 		case 'opencode-go-anthropic':
 			return OPENCODE_GO_API_KEY_URL;
+		case 'opencode-zen':
+		case 'opencode-zen-anthropic':
+			return OPENCODE_ZEN_API_KEY_URL;
 	}
 }
 
@@ -116,7 +134,8 @@ export function resolveEndpointApiKeyUrl(preset: EndpointPreset): string {
 export function resolveEndpointProtocol(preset: EndpointPreset): 'openai' | 'anthropic' {
 	return preset === 'china-anthropic' ||
 		preset === 'international-anthropic' ||
-		preset === 'opencode-go-anthropic'
+		preset === 'opencode-go-anthropic' ||
+		preset === 'opencode-zen-anthropic'
 		? 'anthropic'
 		: 'openai';
 }

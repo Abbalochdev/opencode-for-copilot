@@ -8,27 +8,27 @@
   <!-- marketplace-readme:remove-end -->
 </p>
 
-**Use OpenCode Go open coding models in the Copilot Chat model picker — and keep everything else Copilot already gives you.**
+**Use OpenCode Go & Zen coding models in the Copilot Chat model picker — and keep everything else Copilot already gives you.**
 
 <p align="center">
-  <img src="resources/screenshots/01-picker.png" alt="OpenCode Go models in the Copilot Chat model picker" width="800">
+  <img src="resources/screenshots/01-picker.png" alt="OpenCode Go & Zen models in the Copilot Chat model picker" width="800">
 </p>
 
-Love the open coding models on [OpenCode Go](https://opencode.ai/docs/go/) but don't want to give up GitHub Copilot's agent mode, tool calling, and polished UI? This extension drops **GLM-5.2, Kimi K2.7 Code, DeepSeek V4, MiMo, MiniMax, and Qwen** straight into the Copilot Chat model selector — with **vision**, **thinking mode**, and your own OpenCode Go API key. just need a small purchase to use it
+Love the open coding models on [OpenCode Go](https://opencode.ai/docs/go/) and [OpenCode Zen](https://opencode.ai/docs/zen) but don't want to give up GitHub Copilot's agent mode, tool calling, and polished UI? This extension drops **GLM, Kimi, DeepSeek, Claude, Grok, Qwen, MiMo, MiniMax, and 5 free models** straight into the Copilot Chat model selector — with **vision**, **thinking mode**, and your own OpenCode API key.
 
 ## Why this extension?
 
 - **Don't replace Copilot — power it up.** No new sidebar, no new chat UI to learn. Just a new model in the picker you already use.
-- **All 14 OpenCode Go models.** GLM-5.2/5.1, Kimi K2.7 Code/K2.6, DeepSeek V4 Pro/Flash, MiMo V2.5/V2.5 Pro, MiniMax M3/M2.7/M2.5, and Qwen3.7 Max/Plus/3.6 Plus — one API key, one extension.
-- **Mixed protocols handled automatically.** GLM/Kimi/DeepSeek/MiMo run on the OpenAI `/chat/completions` endpoint; MiniMax/Qwen run on the Anthropic `/v1/messages` endpoint. The extension routes each model to the right endpoint automatically.
-- **Agent mode, tool calling, instructions, MCP, skills — all of it still works.** Copilot's entire stack, now running on your OpenCode Go subscription.
+- **All OpenCode Go & Zen models.** 14 Go models plus 17 Zen models (including 5 free) — one API key, one extension. GLM, Kimi, DeepSeek, Claude, Grok, Qwen, MiMo, MiniMax, and free models (Big Pickle, DeepSeek V4 Flash Free, MiMo V2.5 Free, North Mini Code Free, Nemotron 3 Ultra Free).
+- **Mixed protocols handled automatically.** GLM/Kimi/DeepSeek/Grok/MiMo run on the OpenAI `/chat/completions` endpoint; Claude/MiniMax/Qwen run on the Anthropic `/v1/messages` endpoint. The extension routes each model to the right endpoint automatically.
+- **Agent mode, tool calling, instructions, MCP, skills — all of it still works.** Copilot's entire stack, now running on your OpenCode Go or Zen subscription.
 - **Vision where each model needs it.** Images are transparently described by the vision proxy first, then passed along as text. If no vision model is configured, the extension falls back to another Copilot/VS Code vision model.
 - **Estimated per-turn cost.** When the API returns usage, the extension estimates the list-price cost in USD, reports it to Copilot usage metadata, writes it to logs, and shows the latest turn in the status bar.
-- **BYOK, pay OpenCode directly.** Your OpenCode Go API key, your $5/month subscription, your rate limits. Stored in the OS keychain, never on disk.
+- **BYOK, pay OpenCode directly.** Your OpenCode API key, your Go subscription or Zen credits, your rate limits. Stored in the OS keychain, never on disk.
 
 ## Features
 
-### GLM-5.2/5.1, Kimi K2.7 Code/K2.6, DeepSeek V4 Pro/Flash, MiMo V2.5/V2.5 Pro, MiniMax M3/M2.7/M2.5, and Qwen3.7 Max/Plus/3.6 Plus in the model picker
+### GLM-5.2/5.1, Kimi K2.7 Code/K2.6, DeepSeek V4 Pro/Flash, MiMo V2.5/V2.5 Pro, MiniMax M3/M2.7/M2.5, Qwen3.7 Max/Plus/3.6 Plus, Claude (Opus/Sonnet/Haiku), Grok Build 0.1, and 5 free models in the model picker
 
 All three models show up alongside GPT-4o, Claude, and friends in Copilot Chat's model selector. Switch models mid-chat without losing history.
 
@@ -83,6 +83,21 @@ Three intensity modes — `lite` (brief reminder), `full` (complete ladder with 
 
 > **Effect on plugin behaviour:** The model generates fewer unnecessary abstractions, avoids reinventing wheels that already exist in your project, prefers stdlib over new dependencies, and writes shorter, more maintainable diffs. This means cleaner PRs, less code to review, and fewer dependencies to manage — without sacrificing correctness, security, or error handling.
 
+### Code Simplifier (Autonomous Code Refinement)
+
+Enabled by default, the **Code Simplifier** is an autonomous refinement agent — inspired by the [Claude Code Simplifier plugin](https://claude.com/plugins/code-simplifier). It proactively reviews recently modified code and simplifies it for clarity, consistency, and maintainability while preserving all original behaviour.
+
+**What it does:**
+- Reduces nesting depth with early returns, guard clauses, and well-named helpers
+- Eliminates redundant code — merges duplicate blocks, extracts repeated expressions, removes dead branches
+- Improves naming — replaces vague identifiers (`data`, `tmp`, `val`) with intent-revealing names
+- Simplifies boolean expressions and replaces chained ternaries with readable structures
+- Extracts magic numbers and strings into well-named constants
+
+**What it doesn't do:** change behaviour or exported API signatures, remove error handling or safety checks, introduce new dependencies, or rewrite entire files.
+
+When enabled, Ponytail is automatically lowered to **Lite** for compatibility — Ponytail keeps responses concise and reuse-focused, while Code Simplifier ensures what *is* written stays clean and readable. Disable it from the Command Palette: **OpenCode: Toggle Code Simplifier**, or set `glm-copilot.codeSimplifier` to `false`.
+
 ### Zero Runtime Dependencies
 
 Pure VS Code API + Node.js built-ins. No Python, no Docker, no local proxy server to babysit.
@@ -93,7 +108,7 @@ Pure VS Code API + Node.js built-ins. No Python, no Docker, no local proxy serve
 
 - VS Code 1.116 or later. This extension relies on non-public Copilot Chat APIs that may break on newer VS Code versions — [report an issue](https://github.com/abbalochdev/opencode-for-copilot/issues) if you hit one.
 - GitHub Copilot subscription (Free / Pro / Enterprise — the free tier works)
-- **OpenCode Go subscription** ($5 for your first month, then $10/month). Subscribe at [opencode.ai/auth](https://opencode.ai/auth) and copy your API key. The GLM Coding Plan and Z.ai endpoints are also supported via the `endpoint` setting.
+- **OpenCode account** — [Go subscription](https://opencode.ai/docs/go/) ($5 for your first month, then $10/month) or [Zen pay-as-you-go](https://opencode.ai/docs/zen). Subscribe at [opencode.ai/auth](https://opencode.ai/auth) and copy your API key. The GLM Coding Plan and Z.ai endpoints are also supported via the `endpoint` setting.
 
 ### Installation
 
@@ -104,57 +119,81 @@ Install from the registry used by your editor:
 
 ### Usage
 
-1. Subscribe to [OpenCode Go](https://opencode.ai/docs/go/) and copy your API key from [opencode.ai/auth](https://opencode.ai/auth)
+1. Subscribe to [OpenCode](https://opencode.ai/docs/) and copy your API key from [opencode.ai/auth](https://opencode.ai/auth)
 2. Run **OpenCode: Set API Key** from the Command Palette (`Cmd+Shift+P` / `Ctrl+Shift+P`)
-3. Paste your OpenCode Go API key — it's stored in VS Code's secure SecretStorage (OS keychain)
-4. Open Copilot Chat, click the model picker, pick any OpenCode Go model (GLM-5.2, Kimi K2.7 Code, DeepSeek V4 Flash, etc.)
+3. Paste your OpenCode API key — it's stored in VS Code's secure SecretStorage (OS keychain)
+4. Open Copilot Chat, click the model picker, pick any OpenCode model (GLM-5.2, Kimi K2.7 Code, DeepSeek V4 Flash, Claude Sonnet 5, etc.)
 5. That's it — chat away!
 
 ## Models
 
-All 14 OpenCode Go models are available. The extension automatically routes each model to the correct endpoint protocol:
+All OpenCode Go & Zen models are available. The extension automatically routes each model to the correct endpoint protocol:
 
-### OpenAI endpoint (OpenCode Go)
+### OpenAI endpoint (OpenCode Go / Zen)
 
-| Model                | Best For                                   |
-| -------------------- | ------------------------------------------ |
-| **Grok 4.5**         | Frontier reasoning (xAI)                    |
-| **GLM-5.2**          | Flagship coding & reasoning, 1M context     |
-| **GLM-5.1**          | High-quality coding & reasoning             |
-| **Kimi K3**          | Frontier reasoning model                    |
-| **Kimi K2.7 Code**   | Coding-tuned reasoning model                |
-| **Kimi K2.6**        | General coding & reasoning                  |
-| **DeepSeek V4 Pro**  | High-quality reasoning                      |
-| **DeepSeek V4 Flash**| Fast and economical coding                  |
-| **MiMo V2.5**       | Fast and economical coding                  |
-| **MiMo V2.5 Pro**    | High-quality reasoning                      |
+| Model                | Best For                                   | Source    |
+| -------------------- | ------------------------------------------ | --------- |
+| **GLM-5.2**          | Flagship coding & reasoning, 1M context     | Go        |
+| **GLM-5.1**          | High-quality coding & reasoning             | Go        |
+| **Grok 4.5**         | Frontier reasoning (xAI)                    | Go        |
+| **Grok Build 0.1**   | Coding-tuned reasoning (xAI)                | Zen       |
+| **Kimi K3**          | Frontier reasoning model                    | Go        |
+| **Kimi K2.7 Code**   | Coding-tuned reasoning model                | Go        |
+| **Kimi K2.6**        | General coding & reasoning                  | Go        |
+| **DeepSeek V4 Pro**  | High-quality reasoning                      | Go        |
+| **DeepSeek V4 Flash**| Fast and economical coding                  | Go        |
+| **MiMo V2.5**        | Fast and economical coding                  | Go        |
+| **MiMo V2.5 Pro**    | High-quality reasoning                      | Go        |
 
-### Anthropic endpoint (OpenCode Go)
+### Anthropic endpoint (OpenCode Go / Zen)
 
-| Model               | Best For                                   |
-| ------------------- | ------------------------------------------ |
-| **MiniMax M3**      | Coding agent work                          |
-| **MiniMax M2.7**    | Coding agent work                          |
-| **MiniMax M2.5**    | Coding agent work                          |
-| **Qwen3.7 Max**     | Top-tier reasoning (256K context)          |
-| **Qwen3.7 Plus**    | Cost-effective reasoning (1M context)      |
-| **Qwen3.6 Plus**    | Cost-effective reasoning (256K context)    |
+| Model               | Best For                                   | Source    |
+| ------------------- | ------------------------------------------ | --------- |
+| **Claude Fable 5**   | Frontier reasoning (Anthropic)             | Zen       |
+| **Claude Opus 4.8**  | High-quality reasoning                     | Zen       |
+| **Claude Opus 4.7**  | High-quality reasoning                     | Zen       |
+| **Claude Opus 4.6**  | High-quality reasoning                     | Zen       |
+| **Claude Opus 4.5**  | High-quality reasoning                     | Zen       |
+| **Claude Sonnet 5**  | Balanced reasoning                         | Zen       |
+| **Claude Sonnet 4.6**| Balanced reasoning                         | Zen       |
+| **Claude Sonnet 4.5**| Balanced reasoning                         | Zen       |
+| **Claude Haiku 4.5** | Fast economical model                      | Zen       |
+| **MiniMax M3**       | Coding agent work                          | Go        |
+| **MiniMax M2.7**     | Coding agent work                          | Go        |
+| **MiniMax M2.5**     | Coding agent work                          | Go        |
+| **Qwen3.7 Max**      | Top-tier reasoning (256K context)          | Go        |
+| **Qwen3.7 Plus**     | Cost-effective reasoning (1M context)      | Go        |
+| **Qwen3.6 Plus**     | Cost-effective reasoning (256K context)    | Go        |
+| **Qwen3.5 Plus**     | Cost-effective reasoning (Anthropic)       | Zen       |
 
-All models support tool calling. GLM-5.2 and GLM-5.1 support thinking mode with reasoning effort control (`none` / `high` / `max`). Image attachments go through the Vision Proxy.
+### Free models (OpenCode Zen — OpenAI endpoint)
+
+| Model                     | Notes                                       |
+| ------------------------- | ------------------------------------------- |
+| **Big Pickle**            | Free stealth coding model (limited time)     |
+| **DeepSeek V4 Flash Free**| Free fast coding model (limited time)        |
+| **MiMo V2.5 Free**        | Free fast coding model (limited time)        |
+| **North Mini Code Free**  | Free coding model (limited time)             |
+| **Nemotron 3 Ultra Free** | Free NVIDIA trial model (limited time)       |
+
+> Free models are available for a limited time and **may collect data** to improve the model. See [Zen privacy docs](https://opencode.ai/docs/zen#privacy) for details.
+
+All models support tool calling. GLM-5.2, GLM-5.1, and Claude (Fable 5, Opus, Sonnet) support thinking mode with reasoning effort control (`none` / `high` / `max`). Image attachments go through the Vision Proxy.
 
 ## Settings
 
 | Setting                                      | Default                   | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | -------------------------------------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `glm-copilot.endpoint`                       | `opencode-go`             | Single-value endpoint selector. `opencode-go` (OpenAI protocol) serves GLM, Kimi, DeepSeek, MiMo; `opencode-go-anthropic` (Anthropic protocol) serves MiniMax, Qwen. Also supports Zhipu/Z.ai GLM endpoints: `china-coding`, `china-standard`, `china-anthropic`, `international-coding`, `international-standard`, `international-anthropic` |
-| `glm-copilot.baseUrl`                        | empty                     | Optional API endpoint override. When non-empty, overrides the `endpoint` preset. Default resolved endpoint is OpenCode Go: `https://opencode.ai/zen/go/v1`                                                                                                                                                                                                                                                                                                       |
+| `glm-copilot.endpoint`                       | `opencode-go`             | Single-value endpoint selector. `opencode-go` / `opencode-go-anthropic` serve OpenCode Go subscription models; `opencode-zen` / `opencode-zen-anthropic` serve OpenCode Zen pay-as-you-go models (including Claude and free models). Also supports Zhipu/Z.ai GLM endpoints: `china-coding`, `china-standard`, `china-anthropic`, `international-coding`, `international-standard`, `international-anthropic` |
+| `glm-copilot.baseUrl`                        | empty                     | Optional API endpoint override. When non-empty, overrides the `endpoint` preset. |
 | `glm-copilot.maxTokens`                      | `0`                       | Max output tokens (`0` = no limit). Useful for cost control                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| `glm-copilot.modelIdOverrides`               | prefilled OpenCode Go IDs | API model IDs to send for built-in or custom models. Change only for compatible endpoints with different model names                                                                                                                                                                                                                                                                                                                                 |
+| `glm-copilot.modelIdOverrides`               | prefilled OpenCode IDs   | API model IDs to send for built-in or custom models. Change only for compatible endpoints with different model names                                                                                                                                                                                                                                                                                                                                 |
 | `glm-copilot.customModels`                   | `[]`                      | Extra GLM-compatible models for the picker. Accepts string IDs or objects with `id`, optional `name`, token limits, `toolCalling`, and `thinking`. Custom IDs override built-ins. Images still go through the current Vision Proxy; custom models do not bypass it for native vision                                                                                                                                                                                                                                          |
 | `glm-copilot.debugMode`                      | `minimal`                 | Diagnostic mode: `minimal` for token usage only, `metadata` for privacy-preserving logs, or `verbose` for full request dumps and pipeline snapshots under extension global storage. Full dumps may include sensitive prompt text, tool schemas, file snippets, and image descriptions. Use `OpenCode: Open Request Dumps Folder` to open the dump location                                                                                                                                                                         |
 | `glm-copilot.visionModel`                    | _(auto)_                  | VS Code vision model used as fallback when automatic vision is unavailable. Configure from `OpenCode: Configure Vision Proxy`; new saves use `vendor/id`, while legacy bare model IDs are still read                                                                                                                                                                                                                                                                                                                |
 | `glm-copilot.visionPrompt`                   | _(built-in)_              | Prompt used to describe image attachments                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | `glm-copilot.ponytailMode`                   | `full`                    | Ponytail coding-discipline system instruction level. `off` = no instruction; `lite` = brief reminder; `full` = complete 7-rung ladder with all rules; `ultra` = strict mode prioritizing edge-case correctness. Use `OpenCode: Set Ponytail Mode` to switch at runtime                                                                                                                                                                                                                                                         |
+| `glm-copilot.codeSimplifier`                 | `true`                    | Autonomous code refinement agent (on by default). Proactively reviews modified code and simplifies for clarity, consistency, and maintainability. When enabled, Ponytail auto-downgrades to Lite. Toggle with `OpenCode: Toggle Code Simplifier`                                                                                                                                                                                                                                                                               |
 | `glm-copilot.experimental.stabilizeToolList` | `false`                   | Experimental. Tries to pre-activate VS Code/Copilot virtual tools so the API `tools` parameter is more complete and stable across turns. May improve context-cache hit rate when enabled tools change between turns. Can increase input tokens because more function definitions may be included; cache-hit input tokens are cheaper but still count toward usage. Usually leave it off with 64 or fewer enabled tools unless the tool list still changes across turns; do not enable it with more than 128 enabled tools |
 
 Thinking Effort is configured from Copilot Chat's model picker for each thinking-capable GLM model.
@@ -196,11 +235,11 @@ Recent VS Code versions gate custom providers from the background agent and the 
 }
 ```
 
-If the agent still refuses to start with `No utility model is configured for 'copilot-utility-small' while the selected main model is BYOK`, that is a known VS Code Copilot regression — see [microsoft/vscode#324007](https://github.com/microsoft/vscode/issues/324007). Switching the editor chat to GLM usually works while the upstream issue is open.
+If the agent still refuses to start with `No utility model is configured for 'copilot-utility-small' while the selected main model is BYOK`, that is a known VS Code Copilot regression — see [microsoft/vscode#324007](https://github.com/microsoft/vscode/issues/324007). Switching the editor chat to an OpenCode model usually works while the upstream issue is open.
 
 ### HTTP 400 `Invalid schema for function '...'` from a proxy or relay
 
-This extension targets the OpenCode Go endpoints and the official GLM endpoints (BigModel Coding Plan, Z.ai, and the documented BigModel/Z.ai standard API). VS Code/Copilot generates the tool schemas verbatim from its own tool definitions and forwards them as-is. Third-party relays or proxies (e.g. New API, OneAPI) often enforce stricter OpenAI-schema validation than the official endpoint and reject schemas that contain `default: null`, certain `anyOf`/`oneOf` shapes, or other minor deviations — the most common symptom is `Invalid schema for function 'get_errors': null is not of type "array"`.
+This extension targets the OpenCode (Go & Zen) endpoints and the official GLM endpoints (BigModel Coding Plan, Z.ai, and the documented BigModel/Z.ai standard API). VS Code/Copilot generates the tool schemas verbatim from its own tool definitions and forwards them as-is. Third-party relays or proxies (e.g. New API, OneAPI) often enforce stricter OpenAI-schema validation than the official endpoint and reject schemas that contain `default: null`, certain `anyOf`/`oneOf` shapes, or other minor deviations — the most common symptom is `Invalid schema for function 'get_errors': null is not of type "array"`.
 
 This is **not** something this extension sanitizes, by design:
 
@@ -209,7 +248,7 @@ This is **not** something this extension sanitizes, by design:
 
 If you hit this on a relay, the supported options are:
 
-- Switch `glm-copilot.baseUrl` back to the OpenCode Go or official GLM endpoint (leave empty and use `endpoint`).
+- Switch `glm-copilot.baseUrl` back to the OpenCode or official GLM endpoint (leave empty and use `endpoint`).
 - Open a request dump with **OpenCode: Open Request Dumps Folder** and inspect the offending tool schema, then report the strict-validation bug to your relay.
 - The error is also written to the OpenCode output channel — you can copy the full server response from there.
 
@@ -226,7 +265,7 @@ If you hit this on a relay, the supported options are:
 
 ## Acknowledgements
 
-This extension is a **fork and rebrand** of [**GLM for VS Code Copilot**](https://marketplace.visualstudio.com/items?itemName=ikaros.glm-for-vscode-copilot) by [ikaros](https://github.com/umbrella22/glm-for-copilot), published under the MIT License. We thank the original author for the high-quality BYOK Copilot Chat provider implementation, vision proxy, and cost estimation infrastructure that make this OpenCode Go extension possible.
+This extension is a **fork and rebrand** of [**GLM for VS Code Copilot**](https://marketplace.visualstudio.com/items?itemName=ikaros.glm-for-vscode-copilot) by [ikaros](https://github.com/umbrella22/glm-for-copilot), published under the MIT License. We thank the original author for the high-quality BYOK Copilot Chat provider implementation, vision proxy, and cost estimation infrastructure that make this OpenCode extension possible.
 
 This project also references ideas and implementation patterns from [Vizards/deepseek-v4-for-copilot](https://github.com/Vizards/deepseek-v4-for-copilot), [KiwiGaze/glm-for-copilot](https://github.com/KiwiGaze/glm-for-copilot), and [selfagency/z-models-vscode](https://github.com/selfagency/z-models-vscode). Thanks to the original authors. Where applicable, redistribution and derivative work should preserve the original MIT License notices.
 

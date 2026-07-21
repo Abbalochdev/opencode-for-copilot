@@ -1,9 +1,9 @@
 {
   "name": "opencode-for-copilot",
   "displayName": "OpenCode for Copilot",
-  "description": "Use OpenCode Go open coding models (GLM-5.2, Kimi K2.7, DeepSeek V4, MiMo, MiniMax, Qwen) in the Copilot Chat model picker. Vision, thinking mode, agent tools — zero config, BYOK.",
+  "description": "Use OpenCode Go & Zen coding models (GLM, Kimi, DeepSeek, Claude, Grok, Qwen, free models) in the Copilot Chat model picker. Vision, thinking mode, agent tools — zero config, BYOK.",
   "icon": "resources/icon.png",
-  "version": "3.5.0",
+  "version": "3.6.0",
   "packageManager": "pnpm@11.7.0",
   "publisher": "abbalochdev",
   "license": "MIT",
@@ -91,6 +91,10 @@
       {
         "command": "glm-copilot.setPonytailMode",
         "title": "%glm-copilot.command.setPonytailMode%"
+      },
+      {
+        "command": "glm-copilot.toggleCodeSimplifier",
+        "title": "%glm-copilot.command.toggleCodeSimplifier%"
       }
     ],
     "walkthroughs": [
@@ -143,6 +147,8 @@
           "enum": [
             "opencode-go",
             "opencode-go-anthropic",
+            "opencode-zen",
+            "opencode-zen-anthropic",
             "china-coding",
             "china-standard",
             "china-anthropic",
@@ -153,6 +159,8 @@
           "enumItemLabels": [
             "%glm-copilot.config.endpoint.opencodeGo.label%",
             "%glm-copilot.config.endpoint.opencodeGoAnthropic.label%",
+            "%glm-copilot.config.endpoint.opencodeZen.label%",
+            "%glm-copilot.config.endpoint.opencodeZenAnthropic.label%",
             "%glm-copilot.config.endpoint.chinaCoding.label%",
             "%glm-copilot.config.endpoint.chinaStandard.label%",
             "%glm-copilot.config.endpoint.chinaAnthropic.label%",
@@ -163,6 +171,8 @@
           "markdownEnumDescriptions": [
             "%glm-copilot.config.endpoint.opencodeGo.description%",
             "%glm-copilot.config.endpoint.opencodeGoAnthropic.description%",
+            "%glm-copilot.config.endpoint.opencodeZen.description%",
+            "%glm-copilot.config.endpoint.opencodeZenAnthropic.description%",
             "%glm-copilot.config.endpoint.chinaCoding.description%",
             "%glm-copilot.config.endpoint.chinaStandard.description%",
             "%glm-copilot.config.endpoint.chinaAnthropic.description%",
@@ -389,6 +399,11 @@
             "%glm-copilot.config.ponytailMode.ultra.description%"
           ],
           "markdownDescription": "%glm-copilot.config.ponytailMode.description%"
+        },
+        "glm-copilot.codeSimplifier": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "%glm-copilot.config.codeSimplifier.description%"
         }
       }
     }

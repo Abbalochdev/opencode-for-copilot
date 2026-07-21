@@ -1,33 +1,36 @@
 import { describe, expect, it } from 'vitest';
 import {
-	GLM_CN_ANTHROPIC_BASE_URL,
-	GLM_CN_API_HOST,
-	GLM_CN_CODING_API_KEY_URL,
-	GLM_CN_CODING_BASE_URL,
-	GLM_CN_GENERAL_API_KEY_URL,
-	GLM_CN_GENERAL_BASE_URL,
-	GLM_CN_LEGACY_API_HOST,
-	GLM_INTERNATIONAL_ANTHROPIC_BASE_URL,
-	GLM_INTERNATIONAL_API_HOST,
-	GLM_INTERNATIONAL_CODING_API_KEY_URL,
-	GLM_INTERNATIONAL_CODING_BASE_URL,
-	GLM_INTERNATIONAL_GENERAL_API_KEY_URL,
-	GLM_INTERNATIONAL_GENERAL_BASE_URL,
-	OPENCODE_GO_ANTHROPIC_BASE_URL,
-	OPENCODE_GO_API_HOST,
-	OPENCODE_GO_API_KEY_URL,
-	OPENCODE_GO_OPENAI_BASE_URL,
-	deriveEndpointPreset,
-	identifyOfficialGLMPlatform,
-	isOfficialGLMBaseUrl,
-	isOpencodeBaseUrl,
-	normalizeBaseUrl,
-	resolveAnthropicBaseUrl,
-	resolveApiKeyUrl,
-	resolveEndpointApiKeyUrl,
-	resolveEndpointBaseUrl,
-	resolveEndpointProtocol,
-	resolvePresetBaseUrl,
+    GLM_CN_ANTHROPIC_BASE_URL,
+    GLM_CN_API_HOST,
+    GLM_CN_CODING_API_KEY_URL,
+    GLM_CN_CODING_BASE_URL,
+    GLM_CN_GENERAL_API_KEY_URL,
+    GLM_CN_GENERAL_BASE_URL,
+    GLM_CN_LEGACY_API_HOST,
+    GLM_INTERNATIONAL_ANTHROPIC_BASE_URL,
+    GLM_INTERNATIONAL_API_HOST,
+    GLM_INTERNATIONAL_CODING_API_KEY_URL,
+    GLM_INTERNATIONAL_CODING_BASE_URL,
+    GLM_INTERNATIONAL_GENERAL_API_KEY_URL,
+    GLM_INTERNATIONAL_GENERAL_BASE_URL,
+    OPENCODE_GO_ANTHROPIC_BASE_URL,
+    OPENCODE_GO_API_HOST,
+    OPENCODE_GO_API_KEY_URL,
+    OPENCODE_GO_OPENAI_BASE_URL,
+    OPENCODE_ZEN_ANTHROPIC_BASE_URL,
+    OPENCODE_ZEN_API_KEY_URL,
+    OPENCODE_ZEN_OPENAI_BASE_URL,
+    deriveEndpointPreset,
+    identifyOfficialGLMPlatform,
+    isOfficialGLMBaseUrl,
+    isOpencodeBaseUrl,
+    normalizeBaseUrl,
+    resolveAnthropicBaseUrl,
+    resolveApiKeyUrl,
+    resolveEndpointApiKeyUrl,
+    resolveEndpointBaseUrl,
+    resolveEndpointProtocol,
+    resolvePresetBaseUrl,
 } from '../src/endpoint';
 
 describe('endpoint helpers', () => {
@@ -75,9 +78,11 @@ describe('endpoint helpers', () => {
 		expect(isOfficialGLMBaseUrl('https://proxy.example.com/v1')).toBe(false);
 	});
 
-	it('identifies OpenCode Go URLs without treating them as official GLM', () => {
+	it('identifies OpenCode URLs without treating them as official GLM', () => {
 		expect(isOpencodeBaseUrl(OPENCODE_GO_OPENAI_BASE_URL)).toBe(true);
 		expect(isOpencodeBaseUrl(OPENCODE_GO_ANTHROPIC_BASE_URL)).toBe(true);
+		expect(isOpencodeBaseUrl(OPENCODE_ZEN_OPENAI_BASE_URL)).toBe(true);
+		expect(isOpencodeBaseUrl(OPENCODE_ZEN_ANTHROPIC_BASE_URL)).toBe(true);
 		expect(isOpencodeBaseUrl(`https://${OPENCODE_GO_API_HOST}/zen/go/v1/chat/completions`)).toBe(
 			true,
 		);
@@ -85,6 +90,8 @@ describe('endpoint helpers', () => {
 		// GLM (no tool_stream, no GLM business error codes, no Zhipu/Z.ai links).
 		expect(identifyOfficialGLMPlatform(OPENCODE_GO_OPENAI_BASE_URL)).toBeUndefined();
 		expect(isOfficialGLMBaseUrl(OPENCODE_GO_OPENAI_BASE_URL)).toBe(false);
+		expect(identifyOfficialGLMPlatform(OPENCODE_ZEN_OPENAI_BASE_URL)).toBeUndefined();
+		expect(isOfficialGLMBaseUrl(OPENCODE_ZEN_OPENAI_BASE_URL)).toBe(false);
 		expect(isOpencodeBaseUrl('https://api.z.ai/api/paas/v4')).toBe(false);
 		expect(isOpencodeBaseUrl('not a url')).toBe(false);
 	});
@@ -109,6 +116,8 @@ describe('endpoint preset resolver', () => {
 		);
 		expect(resolveEndpointBaseUrl('opencode-go')).toBe(OPENCODE_GO_OPENAI_BASE_URL);
 		expect(resolveEndpointBaseUrl('opencode-go-anthropic')).toBe(OPENCODE_GO_ANTHROPIC_BASE_URL);
+		expect(resolveEndpointBaseUrl('opencode-zen')).toBe(OPENCODE_ZEN_OPENAI_BASE_URL);
+		expect(resolveEndpointBaseUrl('opencode-zen-anthropic')).toBe(OPENCODE_ZEN_ANTHROPIC_BASE_URL);
 	});
 
 	it('resolves every preset to its API key management page', () => {
@@ -126,6 +135,8 @@ describe('endpoint preset resolver', () => {
 		);
 		expect(resolveEndpointApiKeyUrl('opencode-go')).toBe(OPENCODE_GO_API_KEY_URL);
 		expect(resolveEndpointApiKeyUrl('opencode-go-anthropic')).toBe(OPENCODE_GO_API_KEY_URL);
+		expect(resolveEndpointApiKeyUrl('opencode-zen')).toBe(OPENCODE_ZEN_API_KEY_URL);
+		expect(resolveEndpointApiKeyUrl('opencode-zen-anthropic')).toBe(OPENCODE_ZEN_API_KEY_URL);
 	});
 
 	it('maps each preset to its implied wire protocol', () => {
@@ -137,6 +148,8 @@ describe('endpoint preset resolver', () => {
 		expect(resolveEndpointProtocol('international-anthropic')).toBe('anthropic');
 		expect(resolveEndpointProtocol('opencode-go')).toBe('openai');
 		expect(resolveEndpointProtocol('opencode-go-anthropic')).toBe('anthropic');
+		expect(resolveEndpointProtocol('opencode-zen')).toBe('openai');
+		expect(resolveEndpointProtocol('opencode-zen-anthropic')).toBe('anthropic');
 	});
 });
 

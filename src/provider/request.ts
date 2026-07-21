@@ -7,12 +7,14 @@ import {
     getApiProtocol,
     getBaseUrl,
     getBaseUrlOverride,
+    getCodeSimplifierEnabled,
     getMaxTokens,
     getPonytailMode,
 } from '../config';
 import { isOfficialGLMBaseUrl, resolveEndpointBaseUrl, resolveEndpointProtocol } from '../endpoint';
 import { t } from '../i18n';
 import type { ApiProtocol, GLMRequest, ModelDefinition, PricingCurrency } from '../types';
+import { injectCodeSimplifierSystemMessage } from './code-simplifier';
 import { convertMessages, countMessageChars } from './convert';
 import { dumpGLMRequest, type CacheDiagnosticsRecorder, type CacheDiagnosticsRun } from './debug';
 import { getConfiguredThinkingEffort, type ModelConfigurationOptions } from './models';
@@ -101,7 +103,12 @@ export async function prepareChatRequest({
 	const tools = prepareRequestTools(modelDef?.capabilities.toolCalling, options);
 
 	const ponytailMode = getPonytailMode();
-	const glmMessagesWithPonytail = injectPonytailSystemMessage(glmMessages, ponytailMode);
+	let glmMessagesWithPonytail = injectPonytailSystemMessage(glmMessages, ponytailMode);
+
+	// Code Simplifier runs on top of (downgraded) Ponytail for clean, refined output.
+	if (getCodeSimplifierEnabled()) {
+		glmMessagesWithPonytail = injectCodeSimplifierSystemMessage(glmMessagesWithPonytail);
+	}
 
 	const totalRequestChars = countMessageChars(glmMessagesWithPonytail);
 	const baseRequest: GLMRequest = {

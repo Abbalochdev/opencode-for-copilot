@@ -135,7 +135,9 @@ function normalizeEndpointPreset(value: unknown): EndpointPreset | undefined {
 		value === 'international-standard' ||
 		value === 'international-anthropic' ||
 		value === 'opencode-go' ||
-		value === 'opencode-go-anthropic'
+		value === 'opencode-go-anthropic' ||
+		value === 'opencode-zen' ||
+		value === 'opencode-zen-anthropic'
 	) {
 		return value;
 	}
@@ -249,7 +251,13 @@ const DEFAULT_PONYTAIL_MODE: PonytailMode = 'full';
 export function getPonytailMode(): PonytailMode {
 	const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
 	const value = config.get<string>('ponytailMode');
-	return normalizePonytailMode(value) ?? DEFAULT_PONYTAIL_MODE;
+	const raw = normalizePonytailMode(value) ?? DEFAULT_PONYTAIL_MODE;
+	// Code Simplifier's proactive review conflicts with Ponytail full/ultra's
+	// "be brief, never volunteer." Downgrade to lite so both coexist cleanly.
+	if (getCodeSimplifierEnabled() && (raw === 'full' || raw === 'ultra')) {
+		return 'lite';
+	}
+	return raw;
 }
 
 function normalizePonytailMode(value: unknown): PonytailMode | undefined {
@@ -257,6 +265,12 @@ function normalizePonytailMode(value: unknown): PonytailMode | undefined {
 		return value;
 	}
 	return undefined;
+}
+
+/** Whether the Code Simplifier autonomous refinement agent is enabled. */
+export function getCodeSimplifierEnabled(): boolean {
+	const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
+	return config.get<boolean>('codeSimplifier', false);
 }
 
 /**
