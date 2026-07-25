@@ -2,18 +2,18 @@ import { isOfficialGLMBaseUrl } from '../../endpoint';
 import { t } from '../../i18n';
 import { safeStringify } from '../../json';
 import {
-	API_PROVIDER_HTTP_ERROR_LINKS,
-	GLM_BUSINESS_ERROR_CODES,
-	MAX_DIAGNOSTIC_FIELD_LENGTH,
+    API_PROVIDER_HTTP_ERROR_LINKS,
+    GLM_BUSINESS_ERROR_CODES,
+    MAX_DIAGNOSTIC_FIELD_LENGTH,
 } from '../consts';
 import type {
-	ApiProviderId,
-	ErrorActionLink,
-	ErrorActionUrls,
-	GLMRequestErrorKind,
-	HttpErrorLinkDefinition,
-	HttpErrorLinkStatusKey,
-	RequestErrorContext,
+    ApiProviderId,
+    ErrorActionLink,
+    ErrorActionUrls,
+    GLMRequestErrorKind,
+    HttpErrorLinkDefinition,
+    HttpErrorLinkStatusKey,
+    RequestErrorContext,
 } from '../types';
 import { getNetworkErrorCauseInfo, getNetworkErrorCode, getNetworkErrorMessage } from './network';
 export type { ErrorActionUrls, GLMRequestErrorKind } from '../types';
@@ -82,6 +82,7 @@ export async function createHttpError(
 		baseUrl,
 		businessCode,
 		serverMessage,
+		toolCount: context.request.tools?.length,
 	});
 
 	return new GLMRequestError({
@@ -179,8 +180,9 @@ function getHttpErrorMessage(params: {
 	baseUrl: string;
 	businessCode?: string;
 	serverMessage?: string;
+	toolCount?: number;
 }): string {
-	const { status, baseUrl, businessCode, serverMessage } = params;
+	const { status, baseUrl, businessCode, serverMessage, toolCount } = params;
 	const isOfficialGlm = isOfficialGLMBaseUrl(baseUrl);
 
 	// 1) 已知业务错误码 → 使用官方错误表对应的精确文案。GLM 的服务端消息通常
@@ -209,7 +211,12 @@ function getHttpErrorMessage(params: {
 	}
 
 	// 4) 兜底：仅有 HTTP 状态码时，使用原有的状态码泛化文案。
-	return getHttpStatusMessage(status, baseUrl);
+	//    For 500 errors with many tools, suggest the payload may be too large.
+	const baseMessage = getHttpStatusMessage(status, baseUrl);
+	if (status === 500 && toolCount !== undefined && toolCount > 8) {
+		return `${baseMessage} — the request included ${toolCount} tools, which may exceed this model's limit`;
+	}
+	return baseMessage;
 }
 
 /**

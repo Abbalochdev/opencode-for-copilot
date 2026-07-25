@@ -1,20 +1,23 @@
 import vscode from 'vscode';
 import { CONFIG_SECTION, MODELS } from './consts';
 import {
-    deriveEndpointPreset,
-    normalizeBaseUrl,
-    resolveApiKeyUrl,
-    resolveEndpointApiKeyUrl,
-    resolveEndpointBaseUrl,
-    resolveEndpointProtocol,
+	deriveEndpointPreset,
+	normalizeBaseUrl,
+	resolveApiKeyUrl,
+	resolveEndpointApiKeyUrl,
+	resolveEndpointBaseUrl,
+	resolveEndpointProtocol,
 } from './endpoint';
+import {
+	getDynamicModels
+} from './provider/opencode-models';
 import type {
-    ApiMode,
-    ApiProtocol,
-    ApiRegion,
-    CustomModelConfig,
-    EndpointPreset,
-    ModelDefinition,
+	ApiMode,
+	ApiProtocol,
+	ApiRegion,
+	CustomModelConfig,
+	EndpointPreset,
+	ModelDefinition,
 } from './types';
 
 export type DebugMode = 'minimal' | 'metadata' | 'verbose';
@@ -187,12 +190,37 @@ export function getCustomModels(): ModelDefinition[] {
 	return [...byId.values()];
 }
 
+/**
+ * Dynamic model list override. When set by `refreshDynamicModels()`, this is
+ * used instead of the static `MODELS` array. This lets us serve live model
+ * lists from the OpenCode API while keeping the static array as a fallback.
+ */
+let dynamicModelsOverride: readonly ModelDefinition[] | undefined;
+
+/**
+ * Synchronous model list — used by the model picker, request handler, and tests.
+ * Returns dynamic models if available, otherwise falls back to static MODELS.
+ */
 export function listProviderModels(): ModelDefinition[] {
-	const byId = new Map(MODELS.map((model) => [model.id, model]));
+	const source = dynamicModelsOverride ?? MODELS;
+	const byId = new Map(source.map((model) => [model.id, model]));
 	for (const model of getCustomModels()) {
 		byId.set(model.id, model);
 	}
 	return [...byId.values()];
+}
+
+/**
+ * Asynchronously refresh the model list from the OpenCode API.
+ * Updates `dynamicModelsOverride` and invalidates the cache so the next call
+ * to `listProviderModels()` returns fresh data.
+ *
+ * On network failure the existing list (or static fallback) stays in place.
+ */
+export async function refreshDynamicModels(): Promise<void> {
+	const customModels = getCustomModels();
+	const fallback = dynamicModelsOverride ?? MODELS;
+	dynamicModelsOverride = await getDynamicModels(customModels, fallback);
 }
 
 export function findModelDefinition(modelId: string): ModelDefinition | undefined {

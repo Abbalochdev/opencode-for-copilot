@@ -167,6 +167,10 @@ export interface ModelDefinition {
 	maxOutputTokens: number;
 	capabilities: {
 		toolCalling: boolean | number;
+		/** Soft tool-count cap: tools are stably trimmed to this limit before
+		 *  the hard `toolCalling` cap is enforced. Only applied for request
+		 *  kinds in `REQUEST_KINDS_ELIGIBLE_FOR_TOOL_TRIMMING`. */
+		preferredToolLimit?: number;
 		imageInput: boolean;
 		thinking: boolean;
 	};

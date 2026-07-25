@@ -10,7 +10,7 @@ import type {
 	StreamCallbacks,
 } from '../types';
 import { convertToAnthropicRequest, parseAnthropicStream } from './anthropic';
-import { createHttpError, formatRequestError, normalizeRequestError } from './error';
+import { createHttpError, formatRequestError, GLMRequestError, normalizeRequestError } from './error';
 
 /**
  * Lightweight SSE-streaming GLM API client.
@@ -29,16 +29,59 @@ export class GLMClient {
 	/**
 	 * Stream a chat completion from the GLM API.
 	 * Parses SSE chunks and dispatches callbacks for content, thinking, and tool calls.
+	 *
+	 * Tier 3 (reactive retry): if the first attempt fails with HTTP 500 and the
+	 * request carries more than 8 tools, retry once with half the tools — mirroring
+	 * Claude Code's `hasAttemptedReactiveCompact` pattern.  This covers the case
+	 * where a free-tier model's actual tool limit is lower than advertised.
 	 */
 	async streamChatCompletion(
 		request: GLMRequest,
 		callbacks: StreamCallbacks,
 		cancellationToken?: CancellationToken,
 	): Promise<void> {
-		if (this.protocol === 'anthropic') {
-			return this.streamAnthropicCompletion(request, callbacks, cancellationToken);
+		const dispatch = (req: GLMRequest) =>
+			this.protocol === 'anthropic'
+				? this.streamAnthropicCompletion(req, callbacks, cancellationToken)
+				: this.streamOpenAIChatCompletion(req, callbacks, cancellationToken);
+
+		try {
+			await dispatch(request);
+		} catch (error) {
+			if (isAbortError(error) && cancellationToken?.isCancellationRequested) {
+				return;
+			}
+			if (
+				error instanceof GLMRequestError
+				&& error.status === 500
+				&& (request.tools?.length ?? 0) > 8
+			) {
+				const halvedTools = request.tools!.slice(0, Math.ceil(request.tools!.length / 2));
+				logger.warn(
+					`Reactive retry: HTTP 500 with ${request.tools!.length} tools, retrying with ${halvedTools.length} tools`,
+				);
+				const retriedRequest = { ...request, tools: halvedTools };
+				try {
+					await dispatch(retriedRequest);
+				} catch (retryError) {
+					// Retry exhausted — propagate the retry error, not the original.
+					const normalizedRetry = normalizeRequestError(retryError, {
+						baseUrl: this.baseUrl,
+						request: retriedRequest,
+					});
+					logger.error('GLM reactive retry failed:', formatRequestError(normalizedRetry));
+					callbacks.onError(normalizedRetry);
+				}
+				return;
+			}
+			// Not retryable — propagate as before.
+			const normalizedError = normalizeRequestError(error, {
+				baseUrl: this.baseUrl,
+				request,
+			});
+			logger.error('GLM request failed:', formatRequestError(normalizedError));
+			callbacks.onError(normalizedError);
 		}
-		return this.streamOpenAIChatCompletion(request, callbacks, cancellationToken);
 	}
 
 	/**
@@ -232,16 +275,6 @@ export class GLMClient {
 			pendingToolCalls.clear();
 			reportFinalUsage(callbacks, latestUsage);
 			callbacks.onDone();
-		} catch (error) {
-			if (isAbortError(error) && cancellationToken?.isCancellationRequested) {
-				return;
-			}
-			const normalizedError = normalizeRequestError(error, {
-				baseUrl: this.baseUrl,
-				request,
-			});
-			logger.error('GLM request failed:', formatRequestError(normalizedError));
-			callbacks.onError(normalizedError);
 		} finally {
 			// Release the response stream lock on every exit path (`[DONE]`
 			// early-return, cancellation, normal completion and errors). On the
@@ -313,16 +346,6 @@ export class GLMClient {
 					}
 				});
 			}
-		} catch (error) {
-			if (isAbortError(error) && cancellationToken?.isCancellationRequested) {
-				return;
-			}
-			const normalizedError = normalizeRequestError(error, {
-				baseUrl: this.baseUrl,
-				request,
-			});
-			logger.error('GLM Anthropic request failed:', formatRequestError(normalizedError));
-			callbacks.onError(normalizedError);
 		} finally {
 			cancelListener?.dispose();
 			controller.abort();

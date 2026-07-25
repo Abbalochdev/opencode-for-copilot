@@ -5,6 +5,7 @@ import {
 	getPonytailMode,
 	getStabilizeToolListEnabled,
 	listProviderModels,
+	refreshDynamicModels,
 } from '../config';
 import { API_KEY_SECRET, CONFIG_SECTION } from '../consts';
 import { isOpencodeBaseUrl, OPENCODE_GO_USAGE_CONSOLE_URL } from '../endpoint';
@@ -55,6 +56,10 @@ export class GLMChatProvider implements vscode.LanguageModelChatProvider {
 		this.globalStorageUri = context.globalStorageUri;
 		this.vision = createVisionService(context, this.authManager);
 
+		// Fetch live model list from OpenCode API on startup.
+		// Fire-and-forget: static MODELS array is used until this completes.
+		void refreshDynamicModels().then(() => this.refreshModelPicker());
+
 		context.subscriptions.push(
 			this.onDidChangeLanguageModelChatInformationEmitter,
 			this.usageCostStatus,
@@ -67,7 +72,8 @@ export class GLMChatProvider implements vscode.LanguageModelChatProvider {
 					e.affectsConfiguration(`${CONFIG_SECTION}.customModels`) ||
 					e.affectsConfiguration(`${CONFIG_SECTION}.modelIdOverrides`)
 				) {
-					this.refreshModelPicker();
+					// Re-fetch dynamic models when endpoint or custom models change.
+					void refreshDynamicModels().then(() => this.refreshModelPicker());
 				}
 				if (e.affectsConfiguration(`${CONFIG_SECTION}.ponytailMode`)) {
 					this.ponytailMode = getPonytailMode();
@@ -219,6 +225,7 @@ export class GLMChatProvider implements vscode.LanguageModelChatProvider {
 			token,
 			cacheDiagnostics: this.cacheDiagnostics,
 			getVisionDescriber: () => this.vision.get(),
+			requestKind,
 		});
 
 		return streamChatCompletion({

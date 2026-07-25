@@ -1,5 +1,14 @@
 # Changelog
 
+## [3.7.0](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.6.0...v3.7.0) (2026-07-26)
+
+### Features
+
+* **models:** dynamic model fetching — model catalogue extracted from `consts.ts` into `provider/opencode-models.ts` (METADATA_OVERLAY as single source of truth); models are fetched asynchronously from the OpenCode Go/Zen APIs with a 5-minute cache and static fallback on network failure; unknown model IDs from the API get auto-generated defaults so they appear in the picker before a new extension release
+* **tools:** implement tiered tool-payload reduction for free-tier models (ADR-001) — deterministic stable sort + soft-cap trimming (`preferredToolLimit: 32`) for eligible request kinds (`main-agent`, `background`), preventing HTTP 500 errors when free models receive more tools than their server-side limit
+* **tools:** add reactive retry on HTTP 500 — when a request with >8 tools fails, retry once with half the tools before propagating the error (mirrors Claude Code's `hasAttemptedReactiveCompact` pattern)
+* **error:** improve HTTP 500 error message to include tool count when the request carried many tools, helping users diagnose payload-size issues
+
 ## [3.6.0](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.5.0...v3.6.0) (2026-07-21)
 
 ### Features

@@ -2,14 +2,14 @@ import vscode from 'vscode';
 import { AuthManager } from '../auth';
 import { GLMClient } from '../client';
 import {
-    findModelDefinition,
-    getApiModelId,
-    getApiProtocol,
-    getBaseUrl,
-    getBaseUrlOverride,
-    getCodeSimplifierEnabled,
-    getMaxTokens,
-    getPonytailMode,
+	findModelDefinition,
+	getApiModelId,
+	getApiProtocol,
+	getBaseUrl,
+	getBaseUrlOverride,
+	getCodeSimplifierEnabled,
+	getMaxTokens,
+	getPonytailMode,
 } from '../config';
 import { isOfficialGLMBaseUrl, resolveEndpointBaseUrl, resolveEndpointProtocol } from '../endpoint';
 import { t } from '../i18n';
@@ -21,7 +21,7 @@ import { getConfiguredThinkingEffort, type ModelConfigurationOptions } from './m
 import { injectPonytailSystemMessage } from './ponytail';
 import { getPricingCurrencyForBaseUrl } from './pricing/currency';
 import type { ReplayMarkerMetadata } from './replay';
-import { classifyGLMRequest, shouldForceThinkingNone, type RequestKind } from './routing';
+import { shouldForceThinkingNone, type RequestKind } from './routing';
 import type { ConversationSegment } from './segment';
 import { collectTrailingToolResultIds, prepareRequestTools } from './tools/request';
 import { resolveImageMessages, type VisionDescriber } from './vision';
@@ -52,6 +52,7 @@ export interface PrepareChatRequestOptions {
 	token: vscode.CancellationToken;
 	cacheDiagnostics: CacheDiagnosticsRecorder;
 	getVisionDescriber: () => Promise<VisionDescriber | undefined>;
+	requestKind: RequestKind;
 }
 
 export async function prepareChatRequest({
@@ -64,6 +65,7 @@ export async function prepareChatRequest({
 	token,
 	cacheDiagnostics,
 	getVisionDescriber,
+	requestKind,
 }: PrepareChatRequestOptions): Promise<PreparedChatRequest> {
 	const apiKey = await authManager.getApiKey();
 	if (!apiKey) {
@@ -100,7 +102,12 @@ export async function prepareChatRequest({
 	const visionResolution = await resolveImageMessages(messages, token, getVisionDescriber);
 	const resolvedMessages = visionResolution.messages;
 	const glmMessages = convertMessages(resolvedMessages, isThinkingModel);
-	const tools = prepareRequestTools(modelDef?.capabilities.toolCalling, options);
+	const tools = prepareRequestTools(
+		modelDef?.capabilities.toolCalling,
+		options,
+		modelDef?.capabilities.preferredToolLimit,
+		requestKind,
+	);
 
 	const ponytailMode = getPonytailMode();
 	let glmMessagesWithPonytail = injectPonytailSystemMessage(glmMessages, ponytailMode);
@@ -123,10 +130,6 @@ export async function prepareChatRequest({
 
 		max_tokens: maxTokens,
 	};
-	const requestKind = classifyGLMRequest({
-		request: baseRequest,
-		inputMessages: messages,
-	});
 	const configuredThinkingEffort = getConfiguredThinkingEffort(
 		options as ModelConfigurationOptions,
 	);
