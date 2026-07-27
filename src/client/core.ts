@@ -85,38 +85,38 @@ export class GLMClient {
 			}
 		}
 
-		// Phase 2: reactive tool-halving retry for HTTP 500.
+		// Phase 2: reactive tool-halving retry.
+		// Triggers on HTTP 500 (any tool count >8), or 429 server-overload with
+		// a large tool list (provider can't handle the payload, not a quota issue).
 		const error = lastError;
-		if (
+		const toolCount = request.tools?.length ?? 0;
+		const shouldHalveTools =
 			error instanceof GLMRequestError
-			&& error.status === 500
-			&& (request.tools?.length ?? 0) > 8
-		) {
-			const halvedTools = request.tools!.slice(0, Math.ceil(request.tools!.length / 2));
+			&& (error.status === 500 || (error.status === 429 && toolCount > 16))
+			&& toolCount > 8;
+
+		if (shouldHalveTools) {
+			const halvedTools = request.tools!.slice(0, Math.ceil(toolCount / 2));
 			logger.warn(
-				`Reactive retry: HTTP 500 with ${request.tools!.length} tools, retrying with ${halvedTools.length} tools`,
+				`Reactive retry: HTTP ${error.status} with ${toolCount} tools, retrying with ${halvedTools.length} tools`,
 			);
 			const retriedRequest = { ...request, tools: halvedTools };
 			try {
 				await dispatch(retriedRequest);
+				return; // success with fewer tools
 			} catch (retryError) {
-				const normalizedRetry = normalizeRequestError(retryError, {
-					baseUrl: this.baseUrl,
-					request: retriedRequest,
-				});
-				logger.error('GLM reactive retry failed:', formatRequestError(normalizedRetry));
-				callbacks.onError(normalizedRetry);
+				logger.warn('Reactive tool-halving retry also failed, continuing to failover');
 			}
-			return;
+			// Fall through to failover — don't swallow the error here.
 		}
-		// Not retryable — propagate as before.
-		const normalizedError = normalizeRequestError(error, {
-			baseUrl: this.baseUrl,
-			request,
-		});
-		logger.error('GLM request failed:', formatRequestError(normalizedError));
 
 		// Phase 3: try failover endpoint if available.
+		const normalizedError = normalizeRequestError(
+			shouldHalveTools ? error! : error,
+			{ baseUrl: this.baseUrl, request },
+		);
+		logger.error('GLM request failed:', formatRequestError(normalizedError));
+
 		const failoverUrl = resolveFailoverBaseUrl(this.baseUrl);
 		if (failoverUrl) {
 			logger.warn(`[failover] Primary ${this.baseUrl} failed, trying ${failoverUrl}`);

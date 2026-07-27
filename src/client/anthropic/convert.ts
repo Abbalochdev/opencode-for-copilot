@@ -2,6 +2,10 @@ import type { GLMMessage, GLMRequest, GLMTool } from '../../types';
 
 // ---- Anthropic Messages API types ----
 
+interface AnthropicCacheControl {
+	type: 'ephemeral';
+}
+
 interface AnthropicContentBlock {
 	type: 'text' | 'tool_use' | 'tool_result';
 	text?: string;
@@ -10,6 +14,7 @@ interface AnthropicContentBlock {
 	input?: Record<string, unknown>;
 	tool_use_id?: string;
 	content?: string;
+	cache_control?: AnthropicCacheControl;
 }
 
 interface AnthropicMessage {
