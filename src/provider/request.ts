@@ -32,9 +32,8 @@ import { resolveImageMessages, type VisionDescriber } from './vision';
 const clientCache = new Map<string, GLMClient>();
 
 function getCachedClient(baseUrl: string, apiKey: string, protocol: ApiProtocol): GLMClient {
-	const key = `${baseUrl}:${protocol}`;
+	const key = `${baseUrl}:${apiKey}:${protocol}`;
 	let client = clientCache.get(key);
-	// Invalidate if apiKey changed (rare but possible on config update).
 	if (client) {
 		return client;
 	}

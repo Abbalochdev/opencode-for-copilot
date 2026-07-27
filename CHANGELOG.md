@@ -1,5 +1,14 @@
 # Changelog
 
+## [3.8.1](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.8.0...v3.8.1) (2026-07-27)
+
+### Fixes
+
+* **fix:** extend reactive tool-halving to HTTP 429 — when a 429 response arrives with a large tool payload (>16 tools), the retry logic now halves tools (previously only triggered on 500), preventing unnecessary retry exhaustion
+* **fix:** prevent failover bypass after reactive tool-halving failure — Phase 2 (tool-halving) no longer returns early on failure, allowing Phase 3 (platform failover) to execute as intended
+* **fix:** add missing `cache_control` field to `AnthropicContentBlock` TypeScript interface, resolving a compile-time type error introduced in v3.8.0
+* **fix:** include API key in `GLMClient` cache key so clients are properly invalidated when credentials change, and call `clearClientCache()` on config change to discard stale instances
+
 ## [3.8.0](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.7.0...v3.8.0) (2026-07-27)
 
 ### Features

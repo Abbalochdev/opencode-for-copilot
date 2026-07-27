@@ -2,11 +2,11 @@ import { createHash } from 'crypto';
 import vscode from 'vscode';
 import { AuthManager } from '../auth';
 import {
-    getBaseUrl,
-    getPonytailMode,
-    getStabilizeToolListEnabled,
-    listProviderModels,
-    refreshDynamicModels,
+	getBaseUrl,
+	getPonytailMode,
+	getStabilizeToolListEnabled,
+	listProviderModels,
+	refreshDynamicModels,
 } from '../config';
 import { API_KEY_SECRET, CONFIG_SECTION } from '../consts';
 import { isOpencodeBaseUrl, OPENCODE_GO_USAGE_CONSOLE_URL } from '../endpoint';
@@ -16,7 +16,7 @@ import { createCacheDiagnosticsRecorder, dumpProviderInput } from './debug';
 import { toChatInfo } from './models';
 import { getPricingCurrencyForBaseUrl } from './pricing/currency';
 import { UsageCostStatus } from './pricing/status';
-import { prepareChatRequest } from './request';
+import { clearClientCache, prepareChatRequest } from './request';
 import { classifyProviderRequest, type RequestKind } from './routing';
 import { resolveConversationSegment } from './segment';
 import { streamChatCompletion } from './stream';
@@ -123,6 +123,8 @@ export class GLMChatProvider implements vscode.LanguageModelChatProvider {
 					e.affectsConfiguration(`${CONFIG_SECTION}.customModels`) ||
 					e.affectsConfiguration(`${CONFIG_SECTION}.modelIdOverrides`)
 				) {
+					// Discard stale GLMClient instances whose baseUrl/apiKey/protocol may have changed.
+					clearClientCache();
 					// Re-fetch dynamic models when endpoint or custom models change.
 					void refreshDynamicModels().then(() => this.refreshModelPicker());
 				}
