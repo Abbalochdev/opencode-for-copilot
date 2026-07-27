@@ -66,11 +66,12 @@ export function getPonytailInstruction(mode: PonytailMode): string | undefined {
 }
 
 /**
- * Append the active Ponytail system instruction to the end of existing system messages.
+ * Prepend the active Ponytail system instruction to existing system messages.
  *
- * Recency bias means instructions at the end of a system message carry more weight.
- * Copilot injects its own lengthy system instructions; by appending Ponytail AFTER
- * them, it overrides conflicting directives about thoroughness/verbosity.
+ * Static instructions are placed BEFORE Copilot's dynamic system content
+ * (customizations, file context, timestamps) to keep the stable prefix
+ * longer, improving server-side prompt cache hit ratios. The "HIGHEST
+ * PRIORITY" header preserves instruction salience despite earlier placement.
  *
  * If no system message exists, one is created with just the Ponytail instruction.
  */
@@ -88,8 +89,8 @@ export function injectPonytailSystemMessage(
 		const updated = [...messages];
 		updated[firstSystemIndex] = {
 			...updated[firstSystemIndex],
-			// Append Ponytail AFTER existing system content for recency priority.
-			content: `${updated[firstSystemIndex].content}\n\n${instruction}`.trim(),
+			// Prepend BEFORE existing system content for cache-stable ordering.
+			content: `${instruction}\n\n${updated[firstSystemIndex].content}`.trim(),
 		};
 		return updated;
 	}

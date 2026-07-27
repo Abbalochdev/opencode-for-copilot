@@ -1,26 +1,83 @@
+import { createHash } from 'crypto';
 import vscode from 'vscode';
 import { t } from '../../i18n';
 import { toWellFormedString } from '../../json';
 import { parseFirstReplayMarker } from '../replay';
 import { createVisionProxyFailureNotice, createVisionProxyMissingNotice } from '../tools/notices';
 import {
-	IMAGE_DESCRIPTION_PREFIX,
-	IMAGE_DESCRIPTION_SUFFIX,
-	IMAGE_DESCRIPTION_UNAVAILABLE,
+    IMAGE_DESCRIPTION_PREFIX,
+    IMAGE_DESCRIPTION_SUFFIX,
+    IMAGE_DESCRIPTION_UNAVAILABLE,
 } from './consts';
 import { logVisionProxyDescribeFailed, logVisionProxyUnavailable } from './log';
 import {
-	formatVisionProxyErrorCode,
-	getVisionProxyErrorDisplayCode,
-	isVisionProxyError,
+    formatVisionProxyErrorCode,
+    getVisionProxyErrorDisplayCode,
+    isVisionProxyError,
 } from './protocols/errors';
 import { getVisionPrompt } from './sources/vscode';
 import type {
-	VisionDescriber,
-	VisionImagePart,
-	VisionResolutionResult,
-	VisionResolutionStats,
+    VisionDescriber,
+    VisionImagePart,
+    VisionResolutionResult,
+    VisionResolutionStats,
 } from './types';
+
+// ---- Vision description LRU cache ----
+// Avoids re-describing the same image across turns in a session.
+// Key: content hash of image bytes. Max 32 entries, ~5 min TTL.
+const VISION_CACHE_MAX_ENTRIES = 32;
+const VISION_CACHE_TTL_MS = 5 * 60 * 1000;
+
+interface VisionCacheEntry {
+	description: string;
+	expiresAt: number;
+}
+
+const visionDescriptionCache = new Map<string, VisionCacheEntry>();
+
+/**
+ * Compute a fast content fingerprint for an image buffer.
+ * Uses first/last 512 bytes + total length to avoid hashing large payloads.
+ */
+function computeImageFingerprint(data: Uint8Array): string {
+	const len = data.byteLength;
+	if (len <= 1024) {
+		return createHash('sha256').update(data).digest('hex');
+	}
+	const head = data.slice(0, 512);
+	const tail = data.slice(len - 512);
+	return createHash('sha256')
+		.update(head)
+		.update(tail)
+		.update(String(len))
+		.digest('hex');
+}
+
+function getCachedVisionDescription(data: Uint8Array): string | undefined {
+	const key = computeImageFingerprint(data);
+	const entry = visionDescriptionCache.get(key);
+	if (!entry || Date.now() > entry.expiresAt) {
+		visionDescriptionCache.delete(key);
+		return undefined;
+	}
+	return entry.description;
+}
+
+function setCachedVisionDescription(data: Uint8Array, description: string): void {
+	// Evict oldest entries when cache is full.
+	if (visionDescriptionCache.size >= VISION_CACHE_MAX_ENTRIES) {
+		const oldestKey = visionDescriptionCache.keys().next().value;
+		if (oldestKey) {
+			visionDescriptionCache.delete(oldestKey);
+		}
+	}
+	const key = computeImageFingerprint(data);
+	visionDescriptionCache.set(key, {
+		description,
+		expiresAt: Date.now() + VISION_CACHE_TTL_MS,
+	});
+}
 
 interface CurrentVisionResolution {
 	text: string;
@@ -245,6 +302,18 @@ async function resolveCurrentVisionText(
 		};
 	}
 
+	// Check the LRU cache for previously described images (avoids redundant
+	// vision API calls when the same screenshot is sent across turns).
+	if (imageParts.length === 1) {
+		const cached = getCachedVisionDescription(imageParts[0].data);
+		if (cached) {
+			stats.generatedImageMessages += 1;
+			return {
+				text: createVisionReplayText(cached, nonImageParts),
+			};
+		}
+	}
+
 	try {
 		const description = await visionDescriber.describe({
 			prompt: getVisionPrompt(),
@@ -258,6 +327,11 @@ async function resolveCurrentVisionText(
 				t('vision.proxy.error.emptyResponse'),
 				nonImageParts,
 			);
+		}
+
+		// Cache the description for single-image messages.
+		if (imageParts.length === 1) {
+			setCachedVisionDescription(imageParts[0].data, createImageDescriptionText(description));
 		}
 
 		stats.generatedImageMessages += 1;

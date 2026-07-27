@@ -27,10 +27,20 @@ interface AnthropicTool {
 	};
 }
 
+interface AnthropicCacheControl {
+	type: 'ephemeral';
+}
+
+interface AnthropicSystemBlock {
+	type: 'text';
+	text: string;
+	cache_control?: AnthropicCacheControl;
+}
+
 export interface AnthropicRequest {
 	model: string;
 	max_tokens: number;
-	system?: string;
+	system?: string | AnthropicSystemBlock[];
 	messages: AnthropicMessage[];
 	tools?: AnthropicTool[];
 	stream: boolean;
@@ -106,15 +116,29 @@ export function convertToAnthropicRequest(request: GLMRequest): AnthropicRequest
 /**
  * Extract the system prompt from the messages array.
  * In Anthropic format, system is a top-level field, not a message.
+ *
+ * Returns an array of text blocks with `cache_control` on the last block.
+ * The system prompt is the largest stable content prefix — caching it saves
+ * ~90% input cost on subsequent turns for Anthropic-protocol models.
  */
-function extractSystem(messages: GLMMessage[]): string | undefined {
+function extractSystem(messages: GLMMessage[]): string | AnthropicSystemBlock[] | undefined {
 	const parts: string[] = [];
 	for (const msg of messages) {
 		if (msg.role === 'system') {
 			parts.push(msg.content);
 		}
 	}
-	return parts.length > 0 ? parts.join('\n\n') : undefined;
+	if (parts.length === 0) {
+		return undefined;
+	}
+	const text = parts.join('\n\n');
+	return [
+		{
+			type: 'text',
+			text,
+			cache_control: { type: 'ephemeral' },
+		},
+	];
 }
 
 /**
@@ -193,6 +217,10 @@ function convertMessages(messages: GLMMessage[]): AnthropicMessage[] {
 		appendContentBlock(result, role, block);
 	}
 
+	// Cache breakpoint on the last user message: caches the stable prefix
+	// (system + all prior messages) for ~90% input cost reduction.
+	placeLastUserMessageCacheBreakpoint(result);
+
 	return result;
 }
 
@@ -213,6 +241,24 @@ function appendContentBlock(
 		return;
 	}
 	messages.push({ role, content: [block] });
+}
+
+/**
+ * Place a cache breakpoint on the last content block of the last user message.
+ * This caches the stable turn prefix (system + all messages up to the latest
+ * user turn), giving ~90% input cost reduction on subsequent turns.
+ */
+function placeLastUserMessageCacheBreakpoint(messages: AnthropicMessage[]): void {
+	for (let i = messages.length - 1; i >= 0; i--) {
+		const msg = messages[i];
+		if (msg.role === 'user' && Array.isArray(msg.content) && msg.content.length > 0) {
+			const lastBlock = msg.content[msg.content.length - 1];
+			if (!lastBlock.cache_control) {
+				lastBlock.cache_control = { type: 'ephemeral' };
+			}
+			return;
+		}
+	}
 }
 
 /**

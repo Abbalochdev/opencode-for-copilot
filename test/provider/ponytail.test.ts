@@ -22,7 +22,7 @@ describe('ponytail system message injection', () => {
 		expect(result[1]).toEqual({ role: 'user', content: 'hello' });
 	});
 
-	it('appends to the first existing system message (recency bias)', () => {
+	it('prepends to the first existing system message (stable prefix for cache)', () => {
 		const messages: GLMMessage[] = [
 			{ role: 'system', content: 'existing' },
 			{ role: 'user', content: 'hello' },
@@ -30,11 +30,11 @@ describe('ponytail system message injection', () => {
 		const result = injectPonytailSystemMessage(messages, 'lite');
 		expect(result).toHaveLength(2);
 		expect(result[0]?.role).toBe('system');
-		// Ponytail instruction should come AFTER existing content (recency)
+		// Ponytail instruction should come BEFORE existing content (stable prefix)
 		expect(result[0]?.content).toContain('existing');
 		expect(result[0]?.content).toContain('PONYTAIL');
-		// Verify Ponytail is at the end, not the beginning
-		expect(result[0]?.content?.endsWith('context.')).toBe(true);
+		// Verify Ponytail is at the beginning, not the end
+		expect(result[0]?.content?.startsWith('### PONYTAIL')).toBe(true);
 	});
 
 	it('leaves messages unchanged when mode is off', () => {

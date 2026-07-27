@@ -3,6 +3,60 @@ import { REPLAY_MARKER_MIME } from './replay';
 
 const IMAGE_PART_ESTIMATED_CHARS = 1020;
 
+// Chars-per-token ratios for different scripts.
+// Latin: ~4 chars/token. CJK: ~1.5 chars/token (2-3 CJK chars per token).
+const CHARS_PER_TOKEN_LATIN = 4.0;
+const CHARS_PER_TOKEN_CJK = 1.5;
+
+/**
+ * Check if a Unicode code point is CJK (Chinese/Japanese/Korean).
+ * Covers CJK Unified Ideographs, Extensions A/B, and common ranges.
+ */
+function isCjkCodePoint(cp: number): boolean {
+	return (
+		(cp >= 0x4e00 && cp <= 0x9fff) || // CJK Unified Ideographs
+		(cp >= 0x3400 && cp <= 0x4dbf) || // CJK Extension A
+		(cp >= 0x20000 && cp <= 0x2a6df) || // CJK Extension B
+		(cp >= 0x2a700 && cp <= 0x2b73f) || // CJK Extension C
+		(cp >= 0x2b740 && cp <= 0x2b81f) || // CJK Extension D
+		(cp >= 0xf900 && cp <= 0xfaff) || // CJK Compatibility Ideographs
+		(cp >= 0x3000 && cp <= 0x303f) || // CJK Symbols and Punctuation
+		(cp >= 0xff00 && cp <= 0xffef) // Fullwidth Forms
+	);
+}
+
+/**
+ * Estimate token count with per-script chars-per-token ratios.
+ * CJK text uses ~1.5 chars/token, Latin text uses ~4 chars/token.
+ */
+function estimateTokenCountFromText(text: string, charsPerToken: number): number {
+	if (text.length === 0) {
+		return 1;
+	}
+
+	let cjkChars = 0;
+	let otherChars = 0;
+	for (const cp of [...text]) {
+		if (isCjkCodePoint(cp.codePointAt(0) ?? 0)) {
+			cjkChars += cp.length;
+		} else {
+			otherChars += cp.length;
+		}
+	}
+
+	// Weighted average: tokens = cjkChars/CJK_RATIO + otherChars/LATIN_RATIO
+	if (cjkChars === 0) {
+		return Math.max(1, Math.ceil(otherChars / CHARS_PER_TOKEN_LATIN));
+	}
+	if (otherChars === 0) {
+		return Math.max(1, Math.ceil(cjkChars / CHARS_PER_TOKEN_CJK));
+	}
+
+	const cjkTokens = cjkChars / CHARS_PER_TOKEN_CJK;
+	const latinTokens = otherChars / CHARS_PER_TOKEN_LATIN;
+	return Math.max(1, Math.ceil(cjkTokens + latinTokens));
+}
+
 /**
  * Recursively estimate the character count for a single content part.
  * Returns character count, which the caller divides by charsPerToken to get token estimate.
@@ -117,7 +171,7 @@ export function estimateTokenCount(
 	charsPerToken: number,
 ): number {
 	if (typeof text === 'string') {
-		return Math.max(1, Math.ceil(text.length / charsPerToken));
+		return estimateTokenCountFromText(text, charsPerToken);
 	}
 
 	if (!text?.content || !Array.isArray(text.content)) {

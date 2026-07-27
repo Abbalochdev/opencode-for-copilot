@@ -1,5 +1,24 @@
 # Changelog
 
+## [3.8.0](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.7.0...v3.8.0) (2026-07-27)
+
+### Features
+
+* **perf:** add Anthropic `cache_control` breakpoints on system prompt and last user message — enables server-side prompt caching for Anthropic-protocol requests, reducing latency and cost on repeated/long conversations
+* **perf:** cache `GLMClient` instances by `${baseUrl}:${protocol}` to avoid per-request object churn and enable connection reuse via Node's fetch pool
+* **perf:** add exponential backoff + Retry-After support for HTTP 429/503 errors — retries up to 3 attempts with jittered delays before propagating the error
+* **perf:** guard cache diagnostics with early-out when debug logging is disabled — skips constructing the full `BeginCacheDiagnosticsOptions` object and uses a no-op implementation instead
+* **perf:** prepend (instead of append) Ponytail and Code Simplifier system instructions — places static instructions at the start of the system message for a longer stable prefix, improving server-side prompt cache hit ratio
+* **perf:** add LRU cache for vision image descriptions (32 entries, 5-minute TTL) — avoids re-describing the same screenshot via the vision proxy across conversation turns
+* **perf:** per-script token estimation — CJK text now uses ~1.5 chars/token vs ~4.0 chars/token for Latin text, improving budget accuracy for Chinese/Japanese/Korean content
+* **perf:** request deduplication for utility request kinds (`chat-title`, `git-branch-name`, `git-commit-message`, etc.) — coalesces concurrent identical requests within a 5-second window to prevent duplicate API calls
+* **perf:** per-platform rate limit tracking — parses `X-RateLimit-*` headers from successful responses and pre-emptively delays when quota is nearly exhausted
+* **perf:** platform failover — when a request to the primary GLM endpoint fails after retries, automatically tries the alternate regional endpoint (China ↔ International) before propagating the error
+
+### Docs
+
+* **docs:** add architecture optimization report documenting all 10 performance improvements, their rationale, and measured impact
+
 ## [3.7.0](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.6.0...v3.7.0) (2026-07-26)
 
 ### Features

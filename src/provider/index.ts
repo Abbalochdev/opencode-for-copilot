@@ -1,11 +1,12 @@
+import { createHash } from 'crypto';
 import vscode from 'vscode';
 import { AuthManager } from '../auth';
 import {
-	getBaseUrl,
-	getPonytailMode,
-	getStabilizeToolListEnabled,
-	listProviderModels,
-	refreshDynamicModels,
+    getBaseUrl,
+    getPonytailMode,
+    getStabilizeToolListEnabled,
+    listProviderModels,
+    refreshDynamicModels,
 } from '../config';
 import { API_KEY_SECRET, CONFIG_SECTION } from '../consts';
 import { isOpencodeBaseUrl, OPENCODE_GO_USAGE_CONSOLE_URL } from '../endpoint';
@@ -16,13 +17,63 @@ import { toChatInfo } from './models';
 import { getPricingCurrencyForBaseUrl } from './pricing/currency';
 import { UsageCostStatus } from './pricing/status';
 import { prepareChatRequest } from './request';
-import { classifyProviderRequest } from './routing';
+import { classifyProviderRequest, type RequestKind } from './routing';
 import { resolveConversationSegment } from './segment';
 import { streamChatCompletion } from './stream';
 import { estimateTokenCount } from './tokens';
 import { processToolFlow } from './tools/flow';
 import { formatGLMPlanUsageForLog, queryGLMPlanUsage, supportsGLMPlanUsage } from './usage';
 import { createVisionService } from './vision';
+
+// ---- Request deduplication for utility kinds ----
+// Prevents duplicate in-flight API calls when VS Code fires the same
+// utility request concurrently (e.g. prompt-categorizer, chat-title).
+// Only applies to deterministic, idempotent request kinds.
+const DEDUP_TTL_MS = 5_000;
+
+const DEDUPABLE_REQUEST_KINDS = new Set<RequestKind>([
+	'chat-title',
+	'git-branch-name',
+	'git-commit-message',
+	'rename-suggestions',
+	'inline-progress-message',
+	'prompt-categorizer',
+	'settings-resolver',
+]);
+
+/** Extract a dedup key from the last user message content hash + request kind. */
+function computeDedupKey(
+	requestKind: RequestKind,
+	messages: readonly vscode.LanguageModelChatRequestMessage[],
+): string | undefined {
+	if (!DEDUPABLE_REQUEST_KINDS.has(requestKind)) {
+		return undefined;
+	}
+	// Find last user message for keying.
+	const lastUser = [...messages].reverse().find((m) => m.role === vscode.LanguageModelChatMessageRole.User);
+	if (!lastUser) {
+		return undefined;
+	}
+	const content = typeof lastUser.content === 'string'
+		? lastUser.content
+		: Array.isArray(lastUser.content)
+			? lastUser.content.map((p) => (p as { value?: string }).value ?? '').join('')
+			: '';
+	const hash = createHash('sha256').update(content).digest('hex').slice(0, 16);
+	return `${requestKind}:${hash}`;
+}
+
+// In-flight dedup map: dedupKey → { promise, expiresAt }
+const inflightDedup = new Map<string, { promise: Promise<void>; expiresAt: number }>();
+
+function cleanupInflightDedup(): void {
+	const now = Date.now();
+	for (const [key, entry] of inflightDedup) {
+		if (now > entry.expiresAt) {
+			inflightDedup.delete(key);
+		}
+	}
+}
 
 /**
  * GLM Chat Provider — implements vscode.LanguageModelChatProvider so
@@ -204,6 +255,18 @@ export class GLMChatProvider implements vscode.LanguageModelChatProvider {
 			requestKind,
 		});
 
+		// Deduplicate concurrent identical utility requests.
+		cleanupInflightDedup();
+		const dedupKey = computeDedupKey(requestKind, messages);
+		if (dedupKey) {
+			const existing = inflightDedup.get(dedupKey);
+			if (existing && Date.now() < existing.expiresAt) {
+				logger.debug(`[dedup] Coalescing duplicate ${requestKind} request`);
+				await existing.promise;
+				return;
+			}
+		}
+
 		const toolFlow = processToolFlow({
 			stabilizeToolList: getStabilizeToolListEnabled(),
 			messages,
@@ -228,7 +291,7 @@ export class GLMChatProvider implements vscode.LanguageModelChatProvider {
 			requestKind,
 		});
 
-		return streamChatCompletion({
+		const completionPromise = streamChatCompletion({
 			prepared,
 			progress,
 			token,
@@ -242,6 +305,18 @@ export class GLMChatProvider implements vscode.LanguageModelChatProvider {
 			},
 			onUsageCost: (estimate) => this.usageCostStatus.report(estimate),
 		});
+
+		if (dedupKey) {
+			const expiresAt = Date.now() + DEDUP_TTL_MS;
+			const entry = { promise: completionPromise, expiresAt };
+			inflightDedup.set(dedupKey, entry);
+			void completionPromise.finally(() => {
+				// Remove after TTL to allow fresh requests.
+				setTimeout(() => inflightDedup.delete(dedupKey), DEDUP_TTL_MS);
+			});
+		}
+
+		return completionPromise;
 	}
 
 	async provideTokenCount(

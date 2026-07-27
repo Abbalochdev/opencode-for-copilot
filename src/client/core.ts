@@ -11,6 +11,15 @@ import type {
 } from '../types';
 import { convertToAnthropicRequest, parseAnthropicStream } from './anthropic';
 import { createHttpError, formatRequestError, GLMRequestError, normalizeRequestError } from './error';
+import { trackRateLimitHeaders, waitIfRateLimited } from './rate-limit';
+
+// Retry configuration for transient HTTP errors (429, 503).
+const MAX_RETRY_ATTEMPTS = 3;
+const BASE_RETRY_DELAY_MS = 1_000;
+const MAX_RETRY_DELAY_MS = 30_000;
+
+/** HTTP status codes eligible for retry with backoff. */
+const RETRYABLE_STATUSES = new Set([429, 503]);
 
 /**
  * Lightweight SSE-streaming GLM API client.
@@ -30,10 +39,11 @@ export class GLMClient {
 	 * Stream a chat completion from the GLM API.
 	 * Parses SSE chunks and dispatches callbacks for content, thinking, and tool calls.
 	 *
-	 * Tier 3 (reactive retry): if the first attempt fails with HTTP 500 and the
-	 * request carries more than 8 tools, retry once with half the tools — mirroring
-	 * Claude Code's `hasAttemptedReactiveCompact` pattern.  This covers the case
-	 * where a free-tier model's actual tool limit is lower than advertised.
+	 * Retry strategy:
+	 *   1. Exponential backoff for 429 (rate limit) and 503 (service unavailable),
+	 *      respecting Retry-After headers. Up to MAX_RETRY_ATTEMPTS.
+	 *   2. Reactive retry for HTTP 500 with >8 tools: halves the tool list
+	 *      (mirrors Claude Code's `hasAttemptedReactiveCompact` pattern).
 	 */
 	async streamChatCompletion(
 		request: GLMRequest,
@@ -45,43 +55,81 @@ export class GLMClient {
 				? this.streamAnthropicCompletion(req, callbacks, cancellationToken)
 				: this.streamOpenAIChatCompletion(req, callbacks, cancellationToken);
 
-		try {
-			await dispatch(request);
-		} catch (error) {
-			if (isAbortError(error) && cancellationToken?.isCancellationRequested) {
-				return;
-			}
-			if (
-				error instanceof GLMRequestError
-				&& error.status === 500
-				&& (request.tools?.length ?? 0) > 8
-			) {
-				const halvedTools = request.tools!.slice(0, Math.ceil(request.tools!.length / 2));
-				logger.warn(
-					`Reactive retry: HTTP 500 with ${request.tools!.length} tools, retrying with ${halvedTools.length} tools`,
-				);
-				const retriedRequest = { ...request, tools: halvedTools };
-				try {
-					await dispatch(retriedRequest);
-				} catch (retryError) {
-					// Retry exhausted — propagate the retry error, not the original.
-					const normalizedRetry = normalizeRequestError(retryError, {
-						baseUrl: this.baseUrl,
-						request: retriedRequest,
-					});
-					logger.error('GLM reactive retry failed:', formatRequestError(normalizedRetry));
-					callbacks.onError(normalizedRetry);
+		// Phase 1: retry with backoff for transient rate-limit / availability errors.
+		let lastError: unknown;
+		for (let attempt = 0; attempt < MAX_RETRY_ATTEMPTS; attempt++) {
+			try {
+				await dispatch(request);
+				return; // success
+			} catch (error) {
+				if (isAbortError(error) && cancellationToken?.isCancellationRequested) {
+					return;
 				}
-				return;
+				lastError = error;
+				if (
+					error instanceof GLMRequestError
+					&& RETRYABLE_STATUSES.has(error.status ?? 0)
+				) {
+					const delay = computeRetryDelay(error, attempt);
+					logger.warn(
+						`Retryable HTTP ${error.status} (attempt ${attempt + 1}/${MAX_RETRY_ATTEMPTS}), retrying in ${delay}ms`,
+					);
+					await sleep(delay);
+					if (cancellationToken?.isCancellationRequested) {
+						return;
+					}
+					continue;
+				}
+				// Not a retryable status — break out to phase 2 (tool halving).
+				break;
 			}
-			// Not retryable — propagate as before.
-			const normalizedError = normalizeRequestError(error, {
-				baseUrl: this.baseUrl,
-				request,
-			});
-			logger.error('GLM request failed:', formatRequestError(normalizedError));
-			callbacks.onError(normalizedError);
 		}
+
+		// Phase 2: reactive tool-halving retry for HTTP 500.
+		const error = lastError;
+		if (
+			error instanceof GLMRequestError
+			&& error.status === 500
+			&& (request.tools?.length ?? 0) > 8
+		) {
+			const halvedTools = request.tools!.slice(0, Math.ceil(request.tools!.length / 2));
+			logger.warn(
+				`Reactive retry: HTTP 500 with ${request.tools!.length} tools, retrying with ${halvedTools.length} tools`,
+			);
+			const retriedRequest = { ...request, tools: halvedTools };
+			try {
+				await dispatch(retriedRequest);
+			} catch (retryError) {
+				const normalizedRetry = normalizeRequestError(retryError, {
+					baseUrl: this.baseUrl,
+					request: retriedRequest,
+				});
+				logger.error('GLM reactive retry failed:', formatRequestError(normalizedRetry));
+				callbacks.onError(normalizedRetry);
+			}
+			return;
+		}
+		// Not retryable — propagate as before.
+		const normalizedError = normalizeRequestError(error, {
+			baseUrl: this.baseUrl,
+			request,
+		});
+		logger.error('GLM request failed:', formatRequestError(normalizedError));
+
+		// Phase 3: try failover endpoint if available.
+		const failoverUrl = resolveFailoverBaseUrl(this.baseUrl);
+		if (failoverUrl) {
+			logger.warn(`[failover] Primary ${this.baseUrl} failed, trying ${failoverUrl}`);
+			const failoverClient = new GLMClient(failoverUrl, this.apiKey, this.protocol);
+			try {
+				await failoverClient.streamChatCompletion(request, callbacks, cancellationToken);
+				return;
+			} catch (failoverError) {
+				logger.warn('[failover] Secondary endpoint also failed:', failoverError);
+			}
+		}
+
+		callbacks.onError(normalizedError);
 	}
 
 	/**
@@ -107,6 +155,7 @@ export class GLMClient {
 		let releaseReader: (() => Promise<void>) | undefined;
 
 		try {
+			await waitIfRateLimited(this.baseUrl);
 			const response = await fetch(`${this.baseUrl}/chat/completions`, {
 				method: 'POST',
 				headers: {
@@ -123,6 +172,8 @@ export class GLMClient {
 					request,
 				});
 			}
+
+			trackRateLimitHeaders(this.baseUrl, response.headers);
 
 			if (!response.body) {
 				throw new Error('No response body received');
@@ -309,6 +360,7 @@ export class GLMClient {
 		try {
 			const anthropicRequest = convertToAnthropicRequest(request);
 
+			await waitIfRateLimited(this.baseUrl);
 			const response = await fetch(`${this.baseUrl}/v1/messages`, {
 				method: 'POST',
 				headers: {
@@ -326,6 +378,8 @@ export class GLMClient {
 					request,
 				});
 			}
+
+			trackRateLimitHeaders(this.baseUrl, response.headers);
 
 			if (!response.body) {
 				throw new Error('No response body received');
@@ -362,4 +416,45 @@ function reportFinalUsage(callbacks: StreamCallbacks, usage: GLMUsage | undefine
 
 function isAbortError(error: unknown): boolean {
 	return error instanceof Error && error.name === 'AbortError';
+}
+
+function sleep(ms: number): Promise<void> {
+	return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Compute retry delay with exponential backoff + jitter.
+ * Respects Retry-After header (in seconds) from 429 responses.
+ * lazy: cap at MAX_RETRY_DELAY_MS to prevent runaway backoff.
+ */
+function computeRetryDelay(error: GLMRequestError, attempt: number): number {
+	// Respect Retry-After header if present (common for 429).
+	if (error.retryAfterMs) {
+		return Math.min(error.retryAfterMs, MAX_RETRY_DELAY_MS);
+	}
+	const exponential = BASE_RETRY_DELAY_MS * 2 ** attempt;
+	const jitter = Math.random() * BASE_RETRY_DELAY_MS;
+	return Math.min(exponential + jitter, MAX_RETRY_DELAY_MS);
+}
+
+// ---- Failover endpoint mapping ----
+// Maps primary endpoint hosts to their regional alternate.
+// Only applies to official GLM platforms (Zhipu CN ↔ Z.ai International).
+const FAILOVER_HOST_MAP: Record<string, string> = {
+	'open.bigmodel.cn': 'api.z.ai',
+	'api.z.ai': 'open.bigmodel.cn',
+};
+
+function resolveFailoverBaseUrl(baseUrl: string): string | undefined {
+	try {
+		const url = new URL(baseUrl);
+		const altHost = FAILOVER_HOST_MAP[url.hostname];
+		if (!altHost) {
+			return undefined;
+		}
+		url.hostname = altHost;
+		return url.toString();
+	} catch {
+		return undefined;
+	}
 }

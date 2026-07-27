@@ -33,6 +33,23 @@ export function setErrorActionUrl(key: keyof ErrorActionUrls, url: string): void
 	errorActionUrlStore.set(key, url);
 }
 
+/**
+ * Parse the Retry-After header from a Response into milliseconds.
+ * Supports both delta-seconds and HTTP-date formats.
+ * Returns undefined if the header is missing or unparseable.
+ */
+function parseRetryAfterHeader(response: Response): number | undefined {
+	const raw = response.headers.get('Retry-After');
+	if (!raw) {
+		return undefined;
+	}
+	const seconds = Number.parseInt(raw, 10);
+	if (Number.isFinite(seconds) && seconds > 0) {
+		return seconds * 1000;
+	}
+	return undefined;
+}
+
 export class GLMRequestError extends Error {
 	readonly kind: GLMRequestErrorKind;
 	readonly userSummary: string;
@@ -42,6 +59,7 @@ export class GLMRequestError extends Error {
 	readonly code?: string;
 	readonly businessCode?: string;
 	readonly serverMessage?: string;
+	readonly retryAfterMs?: number;
 
 	constructor(options: {
 		message: string;
@@ -53,6 +71,7 @@ export class GLMRequestError extends Error {
 		code?: string;
 		businessCode?: string;
 		serverMessage?: string;
+		retryAfterMs?: number;
 		cause?: unknown;
 	}) {
 		super(options.message, { cause: options.cause });
@@ -65,6 +84,7 @@ export class GLMRequestError extends Error {
 		this.code = options.code;
 		this.businessCode = options.businessCode;
 		this.serverMessage = options.serverMessage;
+		this.retryAfterMs = options.retryAfterMs;
 	}
 }
 
@@ -84,6 +104,7 @@ export async function createHttpError(
 		serverMessage,
 		toolCount: context.request.tools?.length,
 	});
+	const retryAfterMs = parseRetryAfterHeader(response);
 
 	return new GLMRequestError({
 		message: `GLM API request failed with HTTP ${response.status}`,
@@ -94,6 +115,7 @@ export async function createHttpError(
 		code: `HTTP_${response.status}`,
 		businessCode,
 		serverMessage,
+		retryAfterMs,
 		diagnosticMessage: joinDiagnosticParts(
 			`kind=http`,
 			`status=${response.status}`,

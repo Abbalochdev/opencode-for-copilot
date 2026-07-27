@@ -59,10 +59,11 @@ export function getCodeSimplifierInstruction(): string {
 }
 
 /**
- * Append the Code Simplifier instruction to the end of existing system messages.
+ * Prepend the Code Simplifier instruction to existing system messages.
  *
- * Follows the same recency-bias strategy as Ponytail: appended late so it
- * overrides earlier, more generic system content.
+ * Static instructions are placed before Copilot's dynamic system content
+ * (customizations, file context) to keep the stable prefix longer,
+ * improving server-side prompt cache hit ratios.
  */
 export function injectCodeSimplifierSystemMessage(messages: GLMMessage[]): GLMMessage[] {
 	const instruction = getCodeSimplifierInstruction();
@@ -71,7 +72,7 @@ export function injectCodeSimplifierSystemMessage(messages: GLMMessage[]): GLMMe
 		const updated = [...messages];
 		updated[firstSystemIndex] = {
 			...updated[firstSystemIndex],
-			content: `${updated[firstSystemIndex].content}\n\n${instruction}`.trim(),
+			content: `${instruction}\n\n${updated[firstSystemIndex].content}`.trim(),
 		};
 		return updated;
 	}

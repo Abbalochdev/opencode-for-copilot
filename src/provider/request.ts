@@ -26,6 +26,31 @@ import type { ConversationSegment } from './segment';
 import { collectTrailingToolResultIds, prepareRequestTools } from './tools/request';
 import { resolveImageMessages, type VisionDescriber } from './vision';
 
+// ---- GLMClient instance cache ----
+// Reuse client objects by `${baseUrl}:${protocol}` to avoid per-request GC
+// pressure and enable connection reuse via Node's fetch pool.
+const clientCache = new Map<string, GLMClient>();
+
+function getCachedClient(baseUrl: string, apiKey: string, protocol: ApiProtocol): GLMClient {
+	const key = `${baseUrl}:${protocol}`;
+	let client = clientCache.get(key);
+	// Invalidate if apiKey changed (rare but possible on config update).
+	if (client) {
+		return client;
+	}
+	client = new GLMClient(baseUrl, apiKey, protocol);
+	clientCache.set(key, client);
+	return client;
+}
+
+/**
+ * Clear cached GLMClient instances. Call when configuration changes
+ * (base URL, API key, or protocol) to ensure stale clients are discarded.
+ */
+export function clearClientCache(): void {
+	clientCache.clear();
+}
+
 export interface PreparedChatRequest {
 	client: GLMClient;
 	request: GLMRequest;
@@ -94,7 +119,7 @@ export async function prepareChatRequest({
 		baseUrl = getBaseUrl();
 		apiProtocol = getApiProtocol();
 	}
-	const client = new GLMClient(baseUrl, apiKey, apiProtocol);
+	const client = getCachedClient(baseUrl, apiKey, apiProtocol);
 	const isThinkingModel = modelDef?.capabilities.thinking ?? false;
 	const maxTokens = getMaxTokens();
 	const apiModelId = getApiModelId(modelInfo.id);
@@ -168,21 +193,26 @@ export async function prepareChatRequest({
 		visionStats: visionResolution.stats,
 	});
 
-	const diagnosticsRun = cacheDiagnostics.beginRequest({
-		request,
-		segment,
-		requestKind,
-		vscodeModelId: modelInfo.id,
-		isThinkingModel,
-		thinkingEffort,
-		maxTokens,
-		inputMessages: messages,
-		resolvedMessages,
-		visionModelId: visionResolution.visionModelId,
-		visionProxySource: visionResolution.visionProxySource,
-		visionStats: visionResolution.stats,
-		ponytailMode,
-	});
+	// Guard: skip heavy diagnostics options construction when debug logging
+	// is disabled. beginRequest() already returns a noop, but this avoids
+	// building the BeginCacheDiagnosticsOptions object with full message arrays.
+	const diagnosticsRun = cacheDiagnostics.isEnabled()
+		? cacheDiagnostics.beginRequest({
+				request,
+				segment,
+				requestKind,
+				vscodeModelId: modelInfo.id,
+				isThinkingModel,
+				thinkingEffort,
+				maxTokens,
+				inputMessages: messages,
+				resolvedMessages,
+				visionModelId: visionResolution.visionModelId,
+				visionProxySource: visionResolution.visionProxySource,
+				visionStats: visionResolution.stats,
+				ponytailMode,
+			})
+		: createNoopCacheDiagnosticsRun();
 
 	return {
 		client,
@@ -198,5 +228,15 @@ export async function prepareChatRequest({
 		pricingCurrency: getPricingCurrencyForBaseUrl(baseUrl),
 		visionMarkerTextChars: visionResolution.stats.markerVisionTextChars || undefined,
 		initialResponseNotice: visionResolution.initialResponseNotice,
+	};
+}
+
+/** No-op cache diagnostics run used when debug logging is disabled. */
+function createNoopCacheDiagnosticsRun(): CacheDiagnosticsRun {
+	return {
+		onDone() {},
+		onCancellationTokenRequested() {},
+		onReplayMarkerReport() {},
+		onUsage() {},
 	};
 }
