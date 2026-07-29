@@ -32,10 +32,6 @@ interface AnthropicTool {
 	};
 }
 
-interface AnthropicCacheControl {
-	type: 'ephemeral';
-}
-
 interface AnthropicSystemBlock {
 	type: 'text';
 	text: string;

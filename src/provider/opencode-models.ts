@@ -17,11 +17,12 @@
  */
 
 import {
-    OPENCODE_GO_OPENAI_BASE_URL,
-    OPENCODE_ZEN_OPENAI_BASE_URL,
+	OPENCODE_GO_OPENAI_BASE_URL,
+	OPENCODE_ZEN_OPENAI_BASE_URL,
 } from '../endpoint';
 import { logger } from '../logger';
 import type { EndpointPreset, ModelDefinition, ModelPricing, PriceCategory, PricingCurrency } from '../types';
+import { invalidateModelsDevCache, mergeModelListWithModelsDev } from './models-dev';
 import { GLM_TOOLS_LIMIT } from './tools/consts';
 
 // ---- API endpoints ----
@@ -63,6 +64,12 @@ interface ModelMeta {
 	priceCategory?: PriceCategory;
 }
 
+// Shared capability presets — avoids repeating identical blocks across 40+ entries.
+const CAPS_THINKING: ModelMeta['capabilities'] = { toolCalling: GLM_TOOLS_LIMIT, imageInput: true, thinking: true };
+const CAPS_STANDARD: ModelMeta['capabilities'] = { toolCalling: GLM_TOOLS_LIMIT, imageInput: true, thinking: false };
+const CAPS_FREE_TIER: ModelMeta['capabilities'] = { toolCalling: GLM_TOOLS_LIMIT, preferredToolLimit: 32, imageInput: false, thinking: false };
+const CAPS_UTILITY: ModelMeta['capabilities'] = { toolCalling: false, imageInput: false, thinking: false };
+
 const METADATA_OVERLAY: ReadonlyMap<string, ModelMeta> = new Map([
 	// ========================================================================
 	// OpenCode Go subscription models
@@ -83,7 +90,7 @@ const METADATA_OVERLAY: ReadonlyMap<string, ModelMeta> = new Map([
 			detail: 'Flagship coding and reasoning model',
 			maxInputTokens: 1_000_000,
 			maxOutputTokens: 131_072,
-			capabilities: { toolCalling: GLM_TOOLS_LIMIT, imageInput: true, thinking: true },
+			capabilities: CAPS_THINKING,
 			requiresThinkingParam: true,
 			supportsReasoningEffort: true,
 			// GLM-5.2 works on both Zhipu and OpenCode endpoints
@@ -103,7 +110,7 @@ const METADATA_OVERLAY: ReadonlyMap<string, ModelMeta> = new Map([
 			detail: 'Flagship coding and reasoning model',
 			maxInputTokens: 1_000_000,
 			maxOutputTokens: 131_072,
-			capabilities: { toolCalling: GLM_TOOLS_LIMIT, imageInput: true, thinking: true },
+			capabilities: CAPS_THINKING,
 			requiresThinkingParam: true,
 			supportsReasoningEffort: true,
 			endpointPreset: 'opencode-go',
@@ -120,7 +127,7 @@ const METADATA_OVERLAY: ReadonlyMap<string, ModelMeta> = new Map([
 			detail: 'Coding and reasoning model',
 			maxInputTokens: 1_000_000,
 			maxOutputTokens: 131_072,
-			capabilities: { toolCalling: GLM_TOOLS_LIMIT, imageInput: true, thinking: true },
+			capabilities: CAPS_THINKING,
 			requiresThinkingParam: true,
 			supportsReasoningEffort: true,
 			endpointPreset: 'opencode-go',
@@ -140,7 +147,7 @@ const METADATA_OVERLAY: ReadonlyMap<string, ModelMeta> = new Map([
 			detail: 'Frontier reasoning model from xAI',
 			maxInputTokens: 256_000,
 			maxOutputTokens: 131_072,
-			capabilities: { toolCalling: GLM_TOOLS_LIMIT, imageInput: true, thinking: false },
+			capabilities: CAPS_STANDARD,
 			requiresThinkingParam: false,
 			endpointPreset: 'opencode-go',
 			pricing: { USD: { cacheHitInput: 0.5, cacheMissInput: 2.0, output: 6.0 } },
@@ -159,7 +166,7 @@ const METADATA_OVERLAY: ReadonlyMap<string, ModelMeta> = new Map([
 			detail: 'Frontier reasoning model',
 			maxInputTokens: 200_000,
 			maxOutputTokens: 131_072,
-			capabilities: { toolCalling: GLM_TOOLS_LIMIT, imageInput: true, thinking: false },
+			capabilities: CAPS_STANDARD,
 			requiresThinkingParam: false,
 			endpointPreset: 'opencode-go',
 			pricing: { USD: { cacheHitInput: 0.3, cacheMissInput: 3.0, output: 15.0 } },
@@ -175,7 +182,7 @@ const METADATA_OVERLAY: ReadonlyMap<string, ModelMeta> = new Map([
 			detail: 'Coding-tuned reasoning model',
 			maxInputTokens: 200_000,
 			maxOutputTokens: 131_072,
-			capabilities: { toolCalling: GLM_TOOLS_LIMIT, imageInput: true, thinking: false },
+			capabilities: CAPS_STANDARD,
 			requiresThinkingParam: false,
 			endpointPreset: 'opencode-go',
 			pricing: { USD: { cacheHitInput: 0.19, cacheMissInput: 0.95, output: 4.0 } },
@@ -191,7 +198,7 @@ const METADATA_OVERLAY: ReadonlyMap<string, ModelMeta> = new Map([
 			detail: 'Reasoning model for general coding',
 			maxInputTokens: 200_000,
 			maxOutputTokens: 131_072,
-			capabilities: { toolCalling: GLM_TOOLS_LIMIT, imageInput: true, thinking: false },
+			capabilities: CAPS_STANDARD,
 			requiresThinkingParam: false,
 			endpointPreset: 'opencode-go',
 			pricing: { USD: { cacheHitInput: 0.16, cacheMissInput: 0.95, output: 4.0 } },
@@ -207,7 +214,7 @@ const METADATA_OVERLAY: ReadonlyMap<string, ModelMeta> = new Map([
 			detail: 'Coding model',
 			maxInputTokens: 200_000,
 			maxOutputTokens: 131_072,
-			capabilities: { toolCalling: GLM_TOOLS_LIMIT, imageInput: true, thinking: false },
+			capabilities: CAPS_STANDARD,
 			requiresThinkingParam: false,
 			endpointPreset: 'opencode-go',
 			pricing: { USD: { cacheHitInput: 0.1, cacheMissInput: 0.6, output: 3.0 } },
@@ -226,7 +233,7 @@ const METADATA_OVERLAY: ReadonlyMap<string, ModelMeta> = new Map([
 			detail: 'High-quality reasoning model',
 			maxInputTokens: 128_000,
 			maxOutputTokens: 131_072,
-			capabilities: { toolCalling: GLM_TOOLS_LIMIT, imageInput: true, thinking: false },
+			capabilities: CAPS_STANDARD,
 			requiresThinkingParam: false,
 			endpointPreset: 'opencode-go',
 			pricing: { USD: { cacheHitInput: 0.0145, cacheMissInput: 1.74, output: 3.48 } },
@@ -242,7 +249,7 @@ const METADATA_OVERLAY: ReadonlyMap<string, ModelMeta> = new Map([
 			detail: 'Fast and economical coding model',
 			maxInputTokens: 128_000,
 			maxOutputTokens: 131_072,
-			capabilities: { toolCalling: GLM_TOOLS_LIMIT, imageInput: true, thinking: false },
+			capabilities: CAPS_STANDARD,
 			requiresThinkingParam: false,
 			endpointPreset: 'opencode-go',
 			pricing: { USD: { cacheHitInput: 0.0028, cacheMissInput: 0.14, output: 0.28 } },
@@ -261,7 +268,7 @@ const METADATA_OVERLAY: ReadonlyMap<string, ModelMeta> = new Map([
 			detail: 'Fast and economical coding model',
 			maxInputTokens: 128_000,
 			maxOutputTokens: 131_072,
-			capabilities: { toolCalling: GLM_TOOLS_LIMIT, imageInput: true, thinking: false },
+			capabilities: CAPS_STANDARD,
 			requiresThinkingParam: false,
 			endpointPreset: 'opencode-go',
 			pricing: { USD: { cacheHitInput: 0.0028, cacheMissInput: 0.14, output: 0.28 } },
@@ -277,7 +284,7 @@ const METADATA_OVERLAY: ReadonlyMap<string, ModelMeta> = new Map([
 			detail: 'High-quality reasoning model',
 			maxInputTokens: 128_000,
 			maxOutputTokens: 131_072,
-			capabilities: { toolCalling: GLM_TOOLS_LIMIT, imageInput: true, thinking: false },
+			capabilities: CAPS_STANDARD,
 			requiresThinkingParam: false,
 			endpointPreset: 'opencode-go',
 			pricing: { USD: { cacheHitInput: 0.0145, cacheMissInput: 1.74, output: 3.48 } },
@@ -296,7 +303,7 @@ const METADATA_OVERLAY: ReadonlyMap<string, ModelMeta> = new Map([
 			detail: 'Coding model (Anthropic protocol)',
 			maxInputTokens: 200_000,
 			maxOutputTokens: 131_072,
-			capabilities: { toolCalling: GLM_TOOLS_LIMIT, imageInput: true, thinking: false },
+			capabilities: CAPS_STANDARD,
 			requiresThinkingParam: false,
 			endpointPreset: 'opencode-go-anthropic',
 			pricing: { USD: { cacheHitInput: 0.06, cacheMissInput: 0.3, output: 1.2 } },
@@ -312,7 +319,7 @@ const METADATA_OVERLAY: ReadonlyMap<string, ModelMeta> = new Map([
 			detail: 'Coding model (Anthropic protocol)',
 			maxInputTokens: 200_000,
 			maxOutputTokens: 131_072,
-			capabilities: { toolCalling: GLM_TOOLS_LIMIT, imageInput: true, thinking: false },
+			capabilities: CAPS_STANDARD,
 			requiresThinkingParam: false,
 			endpointPreset: 'opencode-go-anthropic',
 			pricing: { USD: { cacheHitInput: 0.06, cacheMissInput: 0.3, output: 1.2 } },
@@ -328,7 +335,7 @@ const METADATA_OVERLAY: ReadonlyMap<string, ModelMeta> = new Map([
 			detail: 'Coding model (Anthropic protocol)',
 			maxInputTokens: 200_000,
 			maxOutputTokens: 131_072,
-			capabilities: { toolCalling: GLM_TOOLS_LIMIT, imageInput: true, thinking: false },
+			capabilities: CAPS_STANDARD,
 			requiresThinkingParam: false,
 			endpointPreset: 'opencode-go-anthropic',
 			pricing: { USD: { cacheHitInput: 0.06, cacheMissInput: 0.3, output: 1.2 } },
@@ -347,7 +354,7 @@ const METADATA_OVERLAY: ReadonlyMap<string, ModelMeta> = new Map([
 			detail: 'Top-tier reasoning model (Anthropic protocol)',
 			maxInputTokens: 256_000,
 			maxOutputTokens: 131_072,
-			capabilities: { toolCalling: GLM_TOOLS_LIMIT, imageInput: true, thinking: false },
+			capabilities: CAPS_STANDARD,
 			requiresThinkingParam: false,
 			endpointPreset: 'opencode-go-anthropic',
 			pricing: { USD: { cacheHitInput: 0.5, cacheMissInput: 2.5, output: 7.5 } },
@@ -363,7 +370,7 @@ const METADATA_OVERLAY: ReadonlyMap<string, ModelMeta> = new Map([
 			detail: 'Cost-effective reasoning model (Anthropic protocol)',
 			maxInputTokens: 1_000_000,
 			maxOutputTokens: 131_072,
-			capabilities: { toolCalling: GLM_TOOLS_LIMIT, imageInput: true, thinking: false },
+			capabilities: CAPS_STANDARD,
 			requiresThinkingParam: false,
 			endpointPreset: 'opencode-go-anthropic',
 			pricing: {
@@ -389,7 +396,7 @@ const METADATA_OVERLAY: ReadonlyMap<string, ModelMeta> = new Map([
 			detail: 'Cost-effective reasoning model (Anthropic protocol)',
 			maxInputTokens: 256_000,
 			maxOutputTokens: 131_072,
-			capabilities: { toolCalling: GLM_TOOLS_LIMIT, imageInput: true, thinking: false },
+			capabilities: CAPS_STANDARD,
 			requiresThinkingParam: false,
 			endpointPreset: 'opencode-go-anthropic',
 			pricing: {
@@ -426,7 +433,7 @@ const METADATA_OVERLAY: ReadonlyMap<string, ModelMeta> = new Map([
 			detail: 'Free stealth coding model',
 			maxInputTokens: 128_000,
 			maxOutputTokens: 131_072,
-			capabilities: { toolCalling: GLM_TOOLS_LIMIT, preferredToolLimit: 32, imageInput: false, thinking: false },
+			capabilities: CAPS_FREE_TIER,
 			requiresThinkingParam: false,
 			endpointPreset: 'opencode-zen',
 			priceCategory: 'low',
@@ -441,7 +448,7 @@ const METADATA_OVERLAY: ReadonlyMap<string, ModelMeta> = new Map([
 			detail: 'Free fast coding model (limited time)',
 			maxInputTokens: 128_000,
 			maxOutputTokens: 131_072,
-			capabilities: { toolCalling: GLM_TOOLS_LIMIT, preferredToolLimit: 32, imageInput: false, thinking: false },
+			capabilities: CAPS_FREE_TIER,
 			requiresThinkingParam: false,
 			endpointPreset: 'opencode-zen',
 			priceCategory: 'low',
@@ -456,7 +463,7 @@ const METADATA_OVERLAY: ReadonlyMap<string, ModelMeta> = new Map([
 			detail: 'Free fast coding model (limited time)',
 			maxInputTokens: 128_000,
 			maxOutputTokens: 131_072,
-			capabilities: { toolCalling: GLM_TOOLS_LIMIT, preferredToolLimit: 32, imageInput: false, thinking: false },
+			capabilities: CAPS_FREE_TIER,
 			requiresThinkingParam: false,
 			endpointPreset: 'opencode-zen',
 			priceCategory: 'low',
@@ -471,7 +478,7 @@ const METADATA_OVERLAY: ReadonlyMap<string, ModelMeta> = new Map([
 			detail: 'Free coding model (limited time)',
 			maxInputTokens: 128_000,
 			maxOutputTokens: 131_072,
-			capabilities: { toolCalling: GLM_TOOLS_LIMIT, preferredToolLimit: 32, imageInput: false, thinking: false },
+			capabilities: CAPS_FREE_TIER,
 			requiresThinkingParam: false,
 			endpointPreset: 'opencode-zen',
 			priceCategory: 'low',
@@ -486,7 +493,7 @@ const METADATA_OVERLAY: ReadonlyMap<string, ModelMeta> = new Map([
 			detail: 'Free coding model (NVIDIA trial — limited time)',
 			maxInputTokens: 128_000,
 			maxOutputTokens: 131_072,
-			capabilities: { toolCalling: GLM_TOOLS_LIMIT, preferredToolLimit: 32, imageInput: false, thinking: false },
+			capabilities: CAPS_FREE_TIER,
 			requiresThinkingParam: false,
 			endpointPreset: 'opencode-zen',
 			priceCategory: 'low',
@@ -501,7 +508,7 @@ const METADATA_OVERLAY: ReadonlyMap<string, ModelMeta> = new Map([
 			detail: 'Free coding model (limited time)',
 			maxInputTokens: 128_000,
 			maxOutputTokens: 131_072,
-			capabilities: { toolCalling: GLM_TOOLS_LIMIT, preferredToolLimit: 32, imageInput: false, thinking: false },
+			capabilities: CAPS_FREE_TIER,
 			requiresThinkingParam: false,
 			endpointPreset: 'opencode-zen',
 			priceCategory: 'low',
@@ -516,7 +523,7 @@ const METADATA_OVERLAY: ReadonlyMap<string, ModelMeta> = new Map([
 			detail: 'Free coding model (limited time)',
 			maxInputTokens: 128_000,
 			maxOutputTokens: 131_072,
-			capabilities: { toolCalling: GLM_TOOLS_LIMIT, preferredToolLimit: 32, imageInput: false, thinking: false },
+			capabilities: CAPS_FREE_TIER,
 			requiresThinkingParam: false,
 			endpointPreset: 'opencode-zen',
 			priceCategory: 'low',
@@ -534,7 +541,7 @@ const METADATA_OVERLAY: ReadonlyMap<string, ModelMeta> = new Map([
 			detail: 'xAI coding-tuned reasoning model',
 			maxInputTokens: 256_000,
 			maxOutputTokens: 131_072,
-			capabilities: { toolCalling: GLM_TOOLS_LIMIT, imageInput: true, thinking: false },
+			capabilities: CAPS_STANDARD,
 			requiresThinkingParam: false,
 			endpointPreset: 'opencode-zen',
 			pricing: { USD: { cacheHitInput: 0.2, cacheMissInput: 1.0, output: 2.0 } },
@@ -553,7 +560,7 @@ const METADATA_OVERLAY: ReadonlyMap<string, ModelMeta> = new Map([
 			detail: 'Anthropic frontier reasoning model',
 			maxInputTokens: 200_000,
 			maxOutputTokens: 131_072,
-			capabilities: { toolCalling: GLM_TOOLS_LIMIT, imageInput: true, thinking: true },
+			capabilities: CAPS_THINKING,
 			requiresThinkingParam: true,
 			supportsReasoningEffort: true,
 			endpointPreset: 'opencode-zen-anthropic',
@@ -570,7 +577,7 @@ const METADATA_OVERLAY: ReadonlyMap<string, ModelMeta> = new Map([
 			detail: 'Anthropic high-quality reasoning model',
 			maxInputTokens: 200_000,
 			maxOutputTokens: 131_072,
-			capabilities: { toolCalling: GLM_TOOLS_LIMIT, imageInput: true, thinking: true },
+			capabilities: CAPS_THINKING,
 			requiresThinkingParam: true,
 			supportsReasoningEffort: true,
 			endpointPreset: 'opencode-zen-anthropic',
@@ -587,7 +594,7 @@ const METADATA_OVERLAY: ReadonlyMap<string, ModelMeta> = new Map([
 			detail: 'Anthropic high-quality reasoning model',
 			maxInputTokens: 200_000,
 			maxOutputTokens: 131_072,
-			capabilities: { toolCalling: GLM_TOOLS_LIMIT, imageInput: true, thinking: true },
+			capabilities: CAPS_THINKING,
 			requiresThinkingParam: true,
 			supportsReasoningEffort: true,
 			endpointPreset: 'opencode-zen-anthropic',
@@ -604,7 +611,7 @@ const METADATA_OVERLAY: ReadonlyMap<string, ModelMeta> = new Map([
 			detail: 'Anthropic high-quality reasoning model',
 			maxInputTokens: 200_000,
 			maxOutputTokens: 131_072,
-			capabilities: { toolCalling: GLM_TOOLS_LIMIT, imageInput: true, thinking: true },
+			capabilities: CAPS_THINKING,
 			requiresThinkingParam: true,
 			supportsReasoningEffort: true,
 			endpointPreset: 'opencode-zen-anthropic',
@@ -621,7 +628,7 @@ const METADATA_OVERLAY: ReadonlyMap<string, ModelMeta> = new Map([
 			detail: 'Anthropic high-quality reasoning model',
 			maxInputTokens: 200_000,
 			maxOutputTokens: 131_072,
-			capabilities: { toolCalling: GLM_TOOLS_LIMIT, imageInput: true, thinking: true },
+			capabilities: CAPS_THINKING,
 			requiresThinkingParam: true,
 			supportsReasoningEffort: true,
 			endpointPreset: 'opencode-zen-anthropic',
@@ -638,7 +645,7 @@ const METADATA_OVERLAY: ReadonlyMap<string, ModelMeta> = new Map([
 			detail: 'Anthropic high-quality reasoning model',
 			maxInputTokens: 200_000,
 			maxOutputTokens: 131_072,
-			capabilities: { toolCalling: GLM_TOOLS_LIMIT, imageInput: true, thinking: true },
+			capabilities: CAPS_THINKING,
 			requiresThinkingParam: true,
 			supportsReasoningEffort: true,
 			endpointPreset: 'opencode-zen-anthropic',
@@ -655,7 +662,7 @@ const METADATA_OVERLAY: ReadonlyMap<string, ModelMeta> = new Map([
 			detail: 'Anthropic balanced reasoning model',
 			maxInputTokens: 200_000,
 			maxOutputTokens: 131_072,
-			capabilities: { toolCalling: GLM_TOOLS_LIMIT, imageInput: true, thinking: true },
+			capabilities: CAPS_THINKING,
 			requiresThinkingParam: true,
 			supportsReasoningEffort: true,
 			endpointPreset: 'opencode-zen-anthropic',
@@ -672,7 +679,7 @@ const METADATA_OVERLAY: ReadonlyMap<string, ModelMeta> = new Map([
 			detail: 'Anthropic balanced reasoning model',
 			maxInputTokens: 200_000,
 			maxOutputTokens: 131_072,
-			capabilities: { toolCalling: GLM_TOOLS_LIMIT, imageInput: true, thinking: true },
+			capabilities: CAPS_THINKING,
 			requiresThinkingParam: true,
 			supportsReasoningEffort: true,
 			endpointPreset: 'opencode-zen-anthropic',
@@ -689,7 +696,7 @@ const METADATA_OVERLAY: ReadonlyMap<string, ModelMeta> = new Map([
 			detail: 'Anthropic balanced reasoning model',
 			maxInputTokens: 200_000,
 			maxOutputTokens: 131_072,
-			capabilities: { toolCalling: GLM_TOOLS_LIMIT, imageInput: true, thinking: true },
+			capabilities: CAPS_THINKING,
 			requiresThinkingParam: true,
 			supportsReasoningEffort: true,
 			endpointPreset: 'opencode-zen-anthropic',
@@ -706,7 +713,7 @@ const METADATA_OVERLAY: ReadonlyMap<string, ModelMeta> = new Map([
 			detail: 'Anthropic fast economical model',
 			maxInputTokens: 200_000,
 			maxOutputTokens: 131_072,
-			capabilities: { toolCalling: GLM_TOOLS_LIMIT, imageInput: true, thinking: false },
+			capabilities: CAPS_STANDARD,
 			requiresThinkingParam: false,
 			endpointPreset: 'opencode-zen-anthropic',
 			pricing: { USD: { cacheHitInput: 0.1, cacheMissInput: 1.0, output: 5.0 } },
@@ -722,7 +729,7 @@ const METADATA_OVERLAY: ReadonlyMap<string, ModelMeta> = new Map([
 			detail: 'Cost-effective reasoning model (Anthropic protocol)',
 			maxInputTokens: 256_000,
 			maxOutputTokens: 131_072,
-			capabilities: { toolCalling: GLM_TOOLS_LIMIT, imageInput: true, thinking: false },
+			capabilities: CAPS_STANDARD,
 			requiresThinkingParam: false,
 			endpointPreset: 'opencode-zen-anthropic',
 			pricing: { USD: { cacheHitInput: 0.02, cacheMissInput: 0.2, output: 1.2 } },
@@ -744,7 +751,7 @@ const METADATA_OVERLAY: ReadonlyMap<string, ModelMeta> = new Map([
 			detail: 'Utility model for quick chat tasks',
 			maxInputTokens: 128_000,
 			maxOutputTokens: 4096,
-			capabilities: { toolCalling: false, imageInput: false, thinking: false },
+			capabilities: CAPS_UTILITY,
 			requiresThinkingParam: false,
 			endpointPreset: 'opencode-go',
 			pricing: { USD: { cacheHitInput: 0.0028, cacheMissInput: 0.14, output: 0.28 } },
@@ -760,7 +767,7 @@ const METADATA_OVERLAY: ReadonlyMap<string, ModelMeta> = new Map([
 			detail: 'Small utility model for quick chat tasks',
 			maxInputTokens: 128_000,
 			maxOutputTokens: 2048,
-			capabilities: { toolCalling: false, imageInput: false, thinking: false },
+			capabilities: CAPS_UTILITY,
 			requiresThinkingParam: false,
 			endpointPreset: 'opencode-go',
 			pricing: { USD: { cacheHitInput: 0.0028, cacheMissInput: 0.14, output: 0.28 } },
@@ -946,8 +953,12 @@ export async function getDynamicModels(
 	}
 
 	cachedModels = buildDynamicModels(fetchedIds, customModels);
+	// Enrich with models.dev metadata (context windows, pricing, capabilities).
+	// Falls back silently to overlay-only data on network failure.
+	const enriched = [...await mergeModelListWithModelsDev(cachedModels)];
+	cachedModels = enriched;
 	cacheTimestamp = now;
-	return cachedModels;
+	return enriched;
 }
 
 /**
@@ -956,6 +967,7 @@ export async function getDynamicModels(
 export function invalidateModelCache(): void {
 	cachedModels = undefined;
 	cacheTimestamp = 0;
+	invalidateModelsDevCache();
 }
 
 /**
@@ -965,11 +977,4 @@ export function invalidateModelCache(): void {
  */
 export function getOverlayModels(): readonly ModelDefinition[] {
 	return [...METADATA_OVERLAY.entries()].map(([id, meta]) => ({ id, ...meta }));
-}
-
-/**
- * Check whether a model ID is known in the overlay.
- */
-export function isKnownModel(id: string): boolean {
-	return METADATA_OVERLAY.has(id);
 }

@@ -3,7 +3,7 @@
   "displayName": "OpenCode for Copilot",
   "description": "Use OpenCode Go & Zen coding models (GLM, Kimi, DeepSeek, Claude, Grok, Qwen, free models) in the Copilot Chat model picker. Vision, thinking mode, agent tools — zero config, BYOK.",
   "icon": "resources/icon.png",
-  "version": "3.8.1",
+  "version": "3.8.2",
   "packageManager": "pnpm@11.7.0",
   "publisher": "abbalochdev",
   "license": "MIT",
@@ -200,21 +200,7 @@
           "type": "object",
           "default": {
             "copilot-utility": "deepseek-v4-flash",
-            "copilot-utility-small": "deepseek-v4-flash",
-            "glm-5.2": "glm-5.2",
-            "glm-5.1": "glm-5.1",            "grok-4.5": "grok-4.5",
-            "kimi-k3": "kimi-k3",            "kimi-k2.7-code": "kimi-k2.7-code",
-            "kimi-k2.6": "kimi-k2.6",
-            "deepseek-v4-pro": "deepseek-v4-pro",
-            "deepseek-v4-flash": "deepseek-v4-flash",
-            "mimo-v2.5": "mimo-v2.5",
-            "mimo-v2.5-pro": "mimo-v2.5-pro",
-            "minimax-m3": "minimax-m3",
-            "minimax-m2.7": "minimax-m2.7",
-            "minimax-m2.5": "minimax-m2.5",
-            "qwen3.7-max": "qwen3.7-max",
-            "qwen3.7-plus": "qwen3.7-plus",
-            "qwen3.6-plus": "qwen3.6-plus"
+            "copilot-utility-small": "deepseek-v4-flash"
           },
           "markdownDescription": "%glm-copilot.config.modelIdOverrides.description%",
           "additionalProperties": {
@@ -228,70 +214,6 @@
             "copilot-utility-small": {
               "type": "string",
               "description": "API model ID for Copilot Chat small utility model."
-            },
-            "glm-5.2": {
-              "type": "string",
-              "description": "%glm-copilot.config.modelIdOverrides.glm-5.2.description%"
-            },
-            "glm-5.1": {
-              "type": "string",
-              "description": "API model ID for GLM-5.1 (OpenCode Go)."
-            },
-            "grok-4.5": {
-              "type": "string",
-              "description": "API model ID for Grok 4.5 (OpenCode Go)."
-            },
-            "kimi-k3": {
-              "type": "string",
-              "description": "API model ID for Kimi K3 (OpenCode Go)."
-            },
-            "kimi-k2.7-code": {
-              "type": "string",
-              "description": "API model ID for Kimi K2.7 Code (OpenCode Go)."
-            },
-            "kimi-k2.6": {
-              "type": "string",
-              "description": "API model ID for Kimi K2.6 (OpenCode Go)."
-            },
-            "deepseek-v4-pro": {
-              "type": "string",
-              "description": "API model ID for DeepSeek V4 Pro (OpenCode Go)."
-            },
-            "deepseek-v4-flash": {
-              "type": "string",
-              "description": "API model ID for DeepSeek V4 Flash (OpenCode Go)."
-            },
-            "mimo-v2.5": {
-              "type": "string",
-              "description": "API model ID for MiMo V2.5 (OpenCode Go)."
-            },
-            "mimo-v2.5-pro": {
-              "type": "string",
-              "description": "API model ID for MiMo V2.5 Pro (OpenCode Go)."
-            },
-            "minimax-m3": {
-              "type": "string",
-              "description": "API model ID for MiniMax M3 (OpenCode Go, Anthropic protocol)."
-            },
-            "minimax-m2.7": {
-              "type": "string",
-              "description": "API model ID for MiniMax M2.7 (OpenCode Go, Anthropic protocol)."
-            },
-            "minimax-m2.5": {
-              "type": "string",
-              "description": "API model ID for MiniMax M2.5 (OpenCode Go, Anthropic protocol)."
-            },
-            "qwen3.7-max": {
-              "type": "string",
-              "description": "API model ID for Qwen3.7 Max (OpenCode Go, Anthropic protocol)."
-            },
-            "qwen3.7-plus": {
-              "type": "string",
-              "description": "API model ID for Qwen3.7 Plus (OpenCode Go, Anthropic protocol)."
-            },
-            "qwen3.6-plus": {
-              "type": "string",
-              "description": "API model ID for Qwen3.6 Plus (OpenCode Go, Anthropic protocol)."
             }
           }
         },
@@ -404,6 +326,26 @@
           "type": "boolean",
           "default": true,
           "markdownDescription": "%glm-copilot.config.codeSimplifier.description%"
+        },
+        "glm-copilot.stripThinkTags": {
+          "type": "string",
+          "default": "auto",
+          "enum": [
+            "auto",
+            "always",
+            "never"
+          ],
+          "enumItemLabels": [
+            "%glm-copilot.config.stripThinkTags.auto.label%",
+            "%glm-copilot.config.stripThinkTags.always.label%",
+            "%glm-copilot.config.stripThinkTags.never.label%"
+          ],
+          "markdownEnumDescriptions": [
+            "%glm-copilot.config.stripThinkTags.auto.description%",
+            "%glm-copilot.config.stripThinkTags.always.description%",
+            "%glm-copilot.config.stripThinkTags.never.description%"
+          ],
+          "markdownDescription": "%glm-copilot.config.stripThinkTags.description%"
         }
       }
     }
@@ -416,6 +358,7 @@
     "lint": "vp lint",
     "format": "vp fmt --write src/ test/ vite.config.mts",
     "format:check": "vp fmt --check src/ test/ vite.config.mts",
+    "validate:models": "tsx scripts/validate-models.mts",
     "package": "vp run vsix"
   },
   "devDependencies": {

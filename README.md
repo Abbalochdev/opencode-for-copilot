@@ -5,6 +5,10 @@
   <img src="https://img.shields.io/badge/OpenCode-Go-007ACC?logo=visualstudiocode&logoColor=white&style=for-the-badge" alt="OpenCode Go" />
   <br/>
   <img src="https://img.shields.io/github/v/release/abbalochdev/opencode-for-copilot?style=for-the-badge&label=Version" alt="Version" />
+  <img src="https://img.shields.io/badge/models-31+-blue?style=for-the-badge" alt="31+ models" />
+  <img src="https://img.shields.io/badge/tests-95%20passing-brightgreen?style=for-the-badge" alt="95 tests passing" />
+  <img src="https://img.shields.io/badge/dependencies-zero-success?style=for-the-badge" alt="Zero runtime dependencies" />
+  <img src="https://img.shields.io/badge/license-MIT-green?style=for-the-badge" alt="MIT License" />
   <!-- marketplace-readme:remove-end -->
 </p>
 
@@ -69,7 +73,7 @@ After each completed GLM response, the extension reports usage to Copilot metada
 
 ### Ponytail Coding Discipline ("Lazy Senior Dev" Verification)
 
-Every request is prefixed with a **Ponytail-style system instruction** that makes the model think like a lazy senior developer — efficient, not careless. It climbs a 7-rung ladder before writing any code:
+Every **coding** request (agent and background chats) is prefixed with a **Ponytail-style system instruction** that makes the model think like a lazy senior developer — efficient, not careless. It climbs a 7-rung ladder before writing any code:
 
 1. **Does this need to be built at all?** (YAGNI)
 2. **Does it already exist in the codebase?** Reuse it.
@@ -82,6 +86,8 @@ Every request is prefixed with a **Ponytail-style system instruction** that make
 Three intensity modes — `lite` (brief reminder), `full` (complete ladder with all rules, default), and `ultra` (strict, with edge-case prioritization) — plus `off` to disable. Switch modes on the fly from the Command Palette: **OpenCode: Set Ponytail Mode**.
 
 > **Effect on plugin behaviour:** The model generates fewer unnecessary abstractions, avoids reinventing wheels that already exist in your project, prefers stdlib over new dependencies, and writes shorter, more maintainable diffs. This means cleaner PRs, less code to review, and fewer dependencies to manage — without sacrificing correctness, security, or error handling.
+
+> **Smart request routing:** The instruction is injected only into real coding conversations. Lightweight background calls — chat titles, git commit/branch names, rename suggestions, and prompt classifiers — are detected and left untouched, so they stay fast, cheap, and free of off-task instructions.
 
 ### Code Simplifier (Autonomous Code Refinement)
 
@@ -96,7 +102,7 @@ Enabled by default, the **Code Simplifier** is an autonomous refinement agent �
 
 **What it doesn't do:** change behaviour or exported API signatures, remove error handling or safety checks, introduce new dependencies, or rewrite entire files.
 
-When enabled, Ponytail is automatically lowered to **Lite** for compatibility — Ponytail keeps responses concise and reuse-focused, while Code Simplifier ensures what *is* written stays clean and readable. Disable it from the Command Palette: **OpenCode: Toggle Code Simplifier**, or set `glm-copilot.codeSimplifier` to `false`.
+When enabled, Ponytail is automatically lowered to **Lite** for compatibility — Ponytail keeps responses concise and reuse-focused, while Code Simplifier ensures what *is* written stays clean and readable. Like Ponytail, it activates only on coding conversations and stays silent on utility calls. Disable it from the Command Palette: **OpenCode: Toggle Code Simplifier**, or set `glm-copilot.codeSimplifier` to `false`.
 
 ### Zero Runtime Dependencies
 

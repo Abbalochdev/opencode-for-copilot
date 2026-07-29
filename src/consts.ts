@@ -1,4 +1,3 @@
-import { DEFAULT_GLM_BASE_URL } from './endpoint';
 import { getOverlayModels } from './provider/opencode-models';
 import type { ModelDefinition } from './types';
 
@@ -25,8 +24,6 @@ export const EXTERNAL_URLS = {
 		fairUsePolicy: 'https://www.bigmodel.cn/usercenter/valuepack',
 	},
 } as const;
-
-export { DEFAULT_GLM_BASE_URL };
 
 /** URI path handled by this extension to reveal the output log. */
 export const SHOW_LOGS_URI_PATH = '/showLogs';

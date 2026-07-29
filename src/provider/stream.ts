@@ -1,24 +1,26 @@
 import vscode from 'vscode';
 import { createUserFacingError } from '../client';
+import { getStripThinkTagsMode } from '../config';
 import { logger } from '../logger';
 import type { GLMToolCall, GLMUsage } from '../types';
 import {
-	observeCancellationToken,
-	type CacheDiagnosticsRun,
-	type ReplayMarkerReportTrigger,
+    observeCancellationToken,
+    type CacheDiagnosticsRun,
+    type ReplayMarkerReportTrigger,
 } from './debug';
 import {
-	estimateUsageCost,
-	formatUsageCostEstimate,
-	type UsageCostEstimate,
+    estimateUsageCost,
+    formatUsageCostEstimate,
+    type UsageCostEstimate,
 } from './pricing/usage';
 import {
-	createReplayMarkerPart,
-	hasReplayMarkerMetadata,
-	type ReplayMarkerMetadata,
+    createReplayMarkerPart,
+    hasReplayMarkerMetadata,
+    type ReplayMarkerMetadata,
 } from './replay';
 import type { PreparedChatRequest } from './request';
 import { formatRequestLogLine, type RequestKind } from './routing';
+import { ThinkTagFilter, shouldStripThinkTags } from './think-filter';
 
 interface ResponseStreamState {
 	accumulatedReasoning: string;
@@ -27,6 +29,8 @@ interface ResponseStreamState {
 	replayMarkerReported: boolean;
 	/** Whether any model-generated text or tool call has been reported to VS Code. */
 	hasModelOutput: boolean;
+	/** Strips leaked think tags from content deltas. Null when stripping is disabled. */
+	thinkTagFilter: ThinkTagFilter | null;
 }
 
 const COPILOT_USAGE_DATA_PART_MIME = 'usage';
@@ -50,12 +54,17 @@ export function streamChatCompletion({
 	setCharsPerToken,
 	onUsageCost,
 }: StreamChatCompletionOptions): Promise<void> {
+	const stripMode = getStripThinkTagsMode();
+	const modelId = prepared.modelDefinition?.id;
+	const thinkTagFilter = shouldStripThinkTags(stripMode, modelId) ? new ThinkTagFilter() : null;
+
 	const state: ResponseStreamState = {
 		accumulatedReasoning: '',
 		emittedToolCallIds: [],
 		initialResponseNoticeReported: false,
 		replayMarkerReported: false,
 		hasModelOutput: false,
+		thinkTagFilter,
 	};
 	const cancelListener = observeCancellationToken(token, prepared.cacheDiagnostics);
 
@@ -66,7 +75,10 @@ export function streamChatCompletion({
 				onContent: (content: string) => {
 					state.hasModelOutput = true;
 					reportInitialResponseNoticeOnce(progress, state, initialResponseNotice);
-					progress.report(new vscode.LanguageModelTextPart(content));
+					const filtered = thinkTagFilter ? thinkTagFilter.process(content) : content;
+					if (filtered) {
+						progress.report(new vscode.LanguageModelTextPart(filtered));
+					}
 				},
 
 				onThinking: (text: string) => {
@@ -90,6 +102,13 @@ export function streamChatCompletion({
 							'Model returned an empty response with no text or tool calls. ' +
 								'This may indicate an API issue or the model refused to answer.',
 						);
+					}
+					// Flush any remaining buffered content from the think-tag filter
+					if (state.thinkTagFilter) {
+						const flushed = state.thinkTagFilter.flush();
+						if (flushed) {
+							progress.report(new vscode.LanguageModelTextPart(flushed));
+						}
 					}
 					reportReplayMarkerOnce(prepared, progress, state, 'done');
 					finalizeReplayDiagnostics(

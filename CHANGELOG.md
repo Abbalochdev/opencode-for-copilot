@@ -1,5 +1,17 @@
 # Changelog
 
+## [3.8.2](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.8.1...v3.8.2) (2026-07-29)
+
+### Chores
+
+* **refactor:** dead-code audit — removed orphaned exports (`resolvePresetBaseUrl`, `resolveAnthropicBaseUrl`, `isKnownModel`, `getRateLimitSnapshot`) and one-time legacy settings migration functions (~200 lines) that are no longer reachable; runtime legacy-setting fallbacks are preserved so existing user configs keep resolving correctly
+* **refactor:** deduplicate `PonytailMode` type (now sourced solely from `provider/ponytail.ts`) and the `AnthropicCacheControl` interface in the Anthropic converter
+* **refactor:** extract shared capability presets (`CAPS_THINKING`, `CAPS_STANDARD`, `CAPS_FREE_TIER`, `CAPS_UTILITY`) in the model metadata overlay, replacing ~39 repeated inline capability blocks
+* **perf:** `findModelDefinition()` now resolves via a shared `Map.get()` instead of rebuilding and linearly scanning the model list on every lookup (O(n) → O(1))
+* **perf:** gate Ponytail and Code Simplifier system instructions to real coding requests (`main-agent`, `background`) — utility calls (chat-title, git-commit, rename, classifiers) no longer receive ~1,000 tokens of off-task coding-discipline instructions, reducing prompt size, latency, and cost on every automatic background call
+* **chore:** trim identity `modelIdOverrides` mappings from the settings schema (and their orphaned localization strings), keeping only the two utility-model aliases that actually remap
+* **fix:** add missing `invalidateModelsDevCache` import and resolve a readonly-array type mismatch in `provider/opencode-models.ts`
+
 ## [3.8.1](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.8.0...v3.8.1) (2026-07-27)
 
 ### Fixes

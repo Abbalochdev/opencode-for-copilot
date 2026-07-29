@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import type { CancellationToken } from 'vscode';
 import { safeStringify } from '../json';
 import { logger } from '../logger';
@@ -20,6 +21,28 @@ const MAX_RETRY_DELAY_MS = 30_000;
 
 /** HTTP status codes eligible for retry with backoff. */
 const RETRYABLE_STATUSES = new Set([429, 503]);
+
+// ---- Sticky gateway headers ----
+// OpenCode gateway uses these for session affinity and request tracing.
+// Only sent to opencode.ai hosts to avoid leaking metadata to custom endpoints.
+const OPENCODE_SESSION_ID = randomUUID();
+let opencodeRequestCounter = 0;
+
+function getOpenCodeGatewayHeaders(): Record<string, string> {
+	return {
+		'x-opencode-session': OPENCODE_SESSION_ID,
+		'x-opencode-request': `${OPENCODE_SESSION_ID}-${++opencodeRequestCounter}`,
+		'x-opencode-client': 'opencode-for-copilot',
+	};
+}
+
+function isOpencodeGateway(baseUrl: string): boolean {
+	try {
+		return new URL(baseUrl).hostname === 'opencode.ai';
+	} catch {
+		return false;
+	}
+}
 
 /**
  * Lightweight SSE-streaming GLM API client.
@@ -161,6 +184,7 @@ export class GLMClient {
 				headers: {
 					'Content-Type': 'application/json',
 					Authorization: `Bearer ${this.apiKey}`,
+					...(isOpencodeGateway(this.baseUrl) ? getOpenCodeGatewayHeaders() : {}),
 				},
 				body: safeStringify(request),
 				signal: controller.signal,
@@ -367,6 +391,7 @@ export class GLMClient {
 					'Content-Type': 'application/json',
 					'x-api-key': this.apiKey,
 					'anthropic-version': '2023-06-01',
+					...(isOpencodeGateway(this.baseUrl) ? getOpenCodeGatewayHeaders() : {}),
 				},
 				body: safeStringify(anthropicRequest),
 				signal: controller.signal,

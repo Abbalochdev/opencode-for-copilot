@@ -77,6 +77,7 @@ describe('request preparation', () => {
 			token,
 			cacheDiagnostics: createCacheDiagnosticsRecorder(),
 			getVisionDescriber: async () => describer,
+			requestKind: 'main-agent',
 		});
 
 		expect(prepared.request.model).toBe('provider-team-coder');

@@ -25,26 +25,13 @@ import {
     isOfficialGLMBaseUrl,
     isOpencodeBaseUrl,
     normalizeBaseUrl,
-    resolveAnthropicBaseUrl,
     resolveApiKeyUrl,
     resolveEndpointApiKeyUrl,
     resolveEndpointBaseUrl,
     resolveEndpointProtocol,
-    resolvePresetBaseUrl,
 } from '../src/endpoint';
 
 describe('endpoint helpers', () => {
-	it('resolves apiMode and region endpoint presets', () => {
-		expect(resolvePresetBaseUrl('coding-plan', 'china')).toBe(GLM_CN_CODING_BASE_URL);
-		expect(resolvePresetBaseUrl('standard', 'china')).toBe(GLM_CN_GENERAL_BASE_URL);
-		expect(resolvePresetBaseUrl('coding-plan', 'international')).toBe(
-			GLM_INTERNATIONAL_CODING_BASE_URL,
-		);
-		expect(resolvePresetBaseUrl('standard', 'international')).toBe(
-			GLM_INTERNATIONAL_GENERAL_BASE_URL,
-		);
-	});
-
 	it('resolves API key pages from apiMode and region', () => {
 		expect(resolveApiKeyUrl('coding-plan', 'china')).toBe(GLM_CN_CODING_API_KEY_URL);
 		expect(resolveApiKeyUrl('standard', 'china')).toBe(GLM_CN_GENERAL_API_KEY_URL);
@@ -94,11 +81,6 @@ describe('endpoint helpers', () => {
 		expect(isOfficialGLMBaseUrl(OPENCODE_ZEN_OPENAI_BASE_URL)).toBe(false);
 		expect(isOpencodeBaseUrl('https://api.z.ai/api/paas/v4')).toBe(false);
 		expect(isOpencodeBaseUrl('not a url')).toBe(false);
-	});
-
-	it('resolves the Anthropic endpoint for both regions (regression: international was hardcoded to CN)', () => {
-		expect(resolveAnthropicBaseUrl('china')).toBe(GLM_CN_ANTHROPIC_BASE_URL);
-		expect(resolveAnthropicBaseUrl('international')).toBe(GLM_INTERNATIONAL_ANTHROPIC_BASE_URL);
 	});
 });
 

@@ -74,24 +74,6 @@ export async function waitIfRateLimited(baseUrl: string): Promise<void> {
 	}
 }
 
-/**
- * Get a snapshot of current rate limit state for diagnostics.
- */
-export function getRateLimitSnapshot(): Record<string, { remaining: number; limit: number; resetsInMs: number }> {
-	const snapshot: Record<string, { remaining: number; limit: number; resetsInMs: number }> = {};
-	const now = Date.now();
-	for (const [host, state] of stateByHost) {
-		if (now < state.resetMs) {
-			snapshot[host] = {
-				remaining: state.remaining,
-				limit: state.limit,
-				resetsInMs: state.resetMs - now,
-			};
-		}
-	}
-	return snapshot;
-}
-
 function extractHost(baseUrl: string): string {
 	try {
 		return new URL(baseUrl).host;

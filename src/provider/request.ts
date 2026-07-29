@@ -23,6 +23,7 @@ import { getPricingCurrencyForBaseUrl } from './pricing/currency';
 import type { ReplayMarkerMetadata } from './replay';
 import { shouldForceThinkingNone, type RequestKind } from './routing';
 import type { ConversationSegment } from './segment';
+import { REQUEST_KINDS_ELIGIBLE_FOR_TOOL_TRIMMING } from './tools/consts';
 import { collectTrailingToolResultIds, prepareRequestTools } from './tools/request';
 import { resolveImageMessages, type VisionDescriber } from './vision';
 
@@ -134,10 +135,17 @@ export async function prepareChatRequest({
 	);
 
 	const ponytailMode = getPonytailMode();
-	let glmMessagesWithPonytail = injectPonytailSystemMessage(glmMessages, ponytailMode);
+	// Coding-discipline instructions only help real coding requests (main-agent,
+	// background). Injecting them into utility calls (chat-title, git-commit,
+	// rename, classifiers) wastes tokens, pollutes the prompt cache, and adds
+	// off-task noise — so gate on the same set tool-trimming already uses.
+	const isCodingRequest = REQUEST_KINDS_ELIGIBLE_FOR_TOOL_TRIMMING.has(requestKind);
+	let glmMessagesWithPonytail = isCodingRequest
+		? injectPonytailSystemMessage(glmMessages, ponytailMode)
+		: glmMessages;
 
 	// Code Simplifier runs on top of (downgraded) Ponytail for clean, refined output.
-	if (getCodeSimplifierEnabled()) {
+	if (isCodingRequest && getCodeSimplifierEnabled()) {
 		glmMessagesWithPonytail = injectCodeSimplifierSystemMessage(glmMessagesWithPonytail);
 	}
 

@@ -11,6 +11,7 @@ import {
 import {
 	getDynamicModels
 } from './provider/opencode-models';
+import type { PonytailMode } from './provider/ponytail';
 import type {
 	ApiMode,
 	ApiProtocol,
@@ -197,23 +198,28 @@ export function getCustomModels(): ModelDefinition[] {
  */
 let dynamicModelsOverride: readonly ModelDefinition[] | undefined;
 
-/**
- * Synchronous model list — used by the model picker, request handler, and tests.
- * Returns dynamic models if available, otherwise falls back to static MODELS.
- */
-export function listProviderModels(): ModelDefinition[] {
+/** Build the merged model map: dynamic/static base + custom overrides. */
+function buildModelMap(): Map<string, ModelDefinition> {
 	const source = dynamicModelsOverride ?? MODELS;
 	const byId = new Map(source.map((model) => [model.id, model]));
 	for (const model of getCustomModels()) {
 		byId.set(model.id, model);
 	}
-	return [...byId.values()];
+	return byId;
+}
+
+/**
+ * Synchronous model list — used by the model picker, request handler, and tests.
+ * Returns dynamic models if available, otherwise falls back to static MODELS.
+ */
+export function listProviderModels(): ModelDefinition[] {
+	return [...buildModelMap().values()];
 }
 
 /**
  * Asynchronously refresh the model list from the OpenCode API.
- * Updates `dynamicModelsOverride` and invalidates the cache so the next call
- * to `listProviderModels()` returns fresh data.
+ * Updates `dynamicModelsOverride` so the next call to
+ * `listProviderModels()` returns fresh data.
  *
  * On network failure the existing list (or static fallback) stays in place.
  */
@@ -224,7 +230,7 @@ export async function refreshDynamicModels(): Promise<void> {
 }
 
 export function findModelDefinition(modelId: string): ModelDefinition | undefined {
-	return listProviderModels().find((model) => model.id === modelId);
+	return buildModelMap().get(modelId);
 }
 
 /**
@@ -272,7 +278,25 @@ export function getStabilizeToolListEnabled(): boolean {
 	return config.get<boolean>('experimental.stabilizeToolList', false);
 }
 
-export type PonytailMode = 'off' | 'lite' | 'full' | 'ultra';
+export type StripThinkTagsMode = 'auto' | 'always' | 'never';
+
+/**
+ * Controls stripping of leaked think tags (`<think>`, `<ground>`, `deliberation`)
+ * from model output. Some models (MiniMax M2, DeepSeek) leak these into content
+ * instead of routing them through `reasoning_content`.
+ *
+ * - `auto` (default): strip only for models known to leak (MiniMax M2 family)
+ * - `always`: strip for all models
+ * - `never`: never strip
+ */
+export function getStripThinkTagsMode(): StripThinkTagsMode {
+	const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
+	const value = config.get<string>('stripThinkTags', 'auto');
+	if (value === 'always' || value === 'never') {
+		return value;
+	}
+	return 'auto';
+}
 
 const DEFAULT_PONYTAIL_MODE: PonytailMode = 'full';
 
@@ -299,195 +323,6 @@ function normalizePonytailMode(value: unknown): PonytailMode | undefined {
 export function getCodeSimplifierEnabled(): boolean {
 	const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
 	return config.get<boolean>('codeSimplifier', false);
-}
-
-/**
- * Migrate the legacy boolean `glm-copilot.debug` setting to `debugMode`.
- *
- * `debug: true` maps to `debugMode: metadata`; `debug: false` maps to the
- * default `minimal`, so it only needs cleanup.
- */
-export async function migrateLegacyDebugSetting(): Promise<void> {
-	await migrateLegacyDebugSettingAtScope(vscode.ConfigurationTarget.Global);
-
-	if (vscode.workspace.workspaceFile || vscode.workspace.workspaceFolders?.length) {
-		await migrateLegacyDebugSettingAtScope(vscode.ConfigurationTarget.Workspace);
-	}
-
-	// Also clean up per-folder scopes (multi-root workspaces), consistent with
-	// clearSettingsApiKey() in auth.ts.
-	for (const folder of vscode.workspace.workspaceFolders ?? []) {
-		await migrateLegacyDebugSettingAtScope(vscode.ConfigurationTarget.WorkspaceFolder, folder.uri);
-	}
-}
-
-/**
- * Migrate the legacy `region` + `apiMode` + `apiProtocol` settings into the
- * single `endpoint` preset, then clear the legacy keys.
- *
- * Reads the *effective* (cross-scope merged) legacy values so that users who
- * split their legacy keys across scopes (e.g. `region` at Global,
- * `apiMode` at Workspace) get a correct migration result.
- *
- * Writes the new endpoint to the most-specific scope that had any legacy key,
- * then clears legacy keys at all scopes.  Idempotent: a second run finds no
- * legacy values and exits immediately.
- */
-export async function migrateLegacyEndpointSettings(): Promise<void> {
-	const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
-
-	// Effective (cross-scope merged) endpoint — if already set explicitly the
-	// migration only needs to clean up stale legacy keys.
-	const effectiveEndpoint = normalizeEndpointPreset(config.get<string>('endpoint'));
-
-	// Effective legacy values (VS Code merges across Global → Workspace →
-	// WorkspaceFolder automatically via config.get).
-	const effectiveRegion = config.get<string>('region');
-	const effectiveApiMode = config.get<string>('apiMode');
-	const effectiveApiProtocol = config.get<string>('apiProtocol');
-
-	const region = normalizeApiRegion(effectiveRegion, undefined);
-	const apiMode = normalizeApiMode(effectiveApiMode, undefined);
-	const apiProtocol = normalizeApiProtocol(effectiveApiProtocol, undefined);
-
-	if (region === undefined && apiMode === undefined && apiProtocol === undefined) {
-		return;
-	}
-
-	const preset = deriveEndpointPreset(
-		region ?? DEFAULT_API_REGION,
-		apiMode ?? DEFAULT_API_MODE,
-		apiProtocol ?? DEFAULT_API_PROTOCOL,
-	);
-
-	if (!effectiveEndpoint) {
-		// Determine the most specific scope(s) that have any legacy key, and
-		// write the new endpoint there so VS Code's scope-precedence picks it
-		// up. WorkspaceFolder requires a resource-scoped config object — the
-		// section-scoped `config` above throws when ConfigurationTarget.
-		// WorkspaceFolder is passed without a resource URI (same root cause as
-		// the legacy-key cleanup below). Furthermore, in a multi-root workspace
-		// `config.inspect(...).workspaceFolderValue` is undefined (no specific
-		// resource is associated), so WorkspaceFolder legacy keys are only
-		// discoverable by inspecting each folder individually. Write the preset
-		// to every folder that carries a legacy key, plus the most specific of
-		// Workspace/Global when those scopes hold legacy keys.
-		await writeDerivedEndpointPreset(config, preset);
-	}
-
-	// Clear legacy keys at Global and Workspace scopes.  WorkspaceFolder
-	// requires a resource-scoped config object (the section-scoped config
-	// used above throws when ConfigurationTarget.WorkspaceFolder is passed
-	// without a resource URI).  Iterate workspace folders separately below.
-	// Failures are non-fatal — the new endpoint preset takes precedence at
-	// runtime regardless.
-	for (const target of [
-		vscode.ConfigurationTarget.Global,
-		vscode.ConfigurationTarget.Workspace,
-	] as const) {
-		try {
-			await config.update('region', undefined, target);
-		} catch {
-			/* non-fatal */
-		}
-		try {
-			await config.update('apiMode', undefined, target);
-		} catch {
-			/* non-fatal */
-		}
-		try {
-			await config.update('apiProtocol', undefined, target);
-		} catch {
-			/* non-fatal */
-		}
-	}
-	for (const folder of vscode.workspace.workspaceFolders ?? []) {
-		const folderConfig = vscode.workspace.getConfiguration(CONFIG_SECTION, folder.uri);
-		try {
-			await folderConfig.update('region', undefined, vscode.ConfigurationTarget.WorkspaceFolder);
-		} catch {
-			/* non-fatal */
-		}
-		try {
-			await folderConfig.update('apiMode', undefined, vscode.ConfigurationTarget.WorkspaceFolder);
-		} catch {
-			/* non-fatal */
-		}
-		try {
-			await folderConfig.update(
-				'apiProtocol',
-				undefined,
-				vscode.ConfigurationTarget.WorkspaceFolder,
-			);
-		} catch {
-			/* non-fatal */
-		}
-	}
-}
-
-/**
- * Write the derived endpoint preset to the most-specific scope(s) that carry at
- * least one legacy key.
- *
- * WorkspaceFolder keys require a resource-scoped config and are invisible to a
- * section-scoped `inspect()` in multi-root workspaces, so each folder is
- * inspected individually and the preset is written to every folder that has a
- * legacy key. The single-section config handles Workspace/Global. Failures are
- * non-fatal — the runtime endpoint resolver falls back to defaults.
- */
-async function writeDerivedEndpointPreset(
-	config: vscode.WorkspaceConfiguration,
-	preset: string,
-): Promise<void> {
-	// WorkspaceFolder: per-folder resource-scoped writes.
-	for (const folder of vscode.workspace.workspaceFolders ?? []) {
-		const folderConfig = vscode.workspace.getConfiguration(CONFIG_SECTION, folder.uri);
-		const regionInspect = folderConfig.inspect<string>('region');
-		const apiModeInspect = folderConfig.inspect<string>('apiMode');
-		const apiProtocolInspect = folderConfig.inspect<string>('apiProtocol');
-		if (
-			regionInspect?.workspaceFolderValue !== undefined ||
-			apiModeInspect?.workspaceFolderValue !== undefined ||
-			apiProtocolInspect?.workspaceFolderValue !== undefined
-		) {
-			try {
-				await folderConfig.update('endpoint', preset, vscode.ConfigurationTarget.WorkspaceFolder);
-			} catch {
-				/* non-fatal */
-			}
-		}
-	}
-
-	// Workspace scope.
-	const wsRegionInspect = config.inspect<string>('region');
-	const wsApiModeInspect = config.inspect<string>('apiMode');
-	const wsApiProtocolInspect = config.inspect<string>('apiProtocol');
-	if (
-		wsRegionInspect?.workspaceValue !== undefined ||
-		wsApiModeInspect?.workspaceValue !== undefined ||
-		wsApiProtocolInspect?.workspaceValue !== undefined
-	) {
-		try {
-			await config.update('endpoint', preset, vscode.ConfigurationTarget.Workspace);
-		} catch {
-			/* non-fatal */
-		}
-		return;
-	}
-
-	// Global scope (only when no Workspace legacy key exists, to avoid a
-	// lower-precedence Global write shadowing behaviour unexpectedly).
-	if (
-		wsRegionInspect?.globalValue !== undefined ||
-		wsApiModeInspect?.globalValue !== undefined ||
-		wsApiProtocolInspect?.globalValue !== undefined
-	) {
-		try {
-			await config.update('endpoint', preset, vscode.ConfigurationTarget.Global);
-		} catch {
-			/* non-fatal */
-		}
-	}
 }
 
 function getConfiguredDebugMode(config: vscode.WorkspaceConfiguration): DebugMode | undefined {
@@ -574,55 +409,4 @@ function getPositiveInteger(value: unknown, fallback: number): number {
 	return typeof value === 'number' && Number.isFinite(value) && value > 0
 		? Math.floor(value)
 		: fallback;
-}
-
-async function migrateLegacyDebugSettingAtScope(
-	target: vscode.ConfigurationTarget,
-	resource?: vscode.Uri,
-): Promise<void> {
-	const config = vscode.workspace.getConfiguration(CONFIG_SECTION, resource);
-	const legacy = config.inspect<boolean>('debug');
-	const mode = config.inspect<DebugMode>('debugMode');
-	const legacyValue = getScopedValue(legacy, target);
-
-	if (legacyValue === undefined) {
-		return;
-	}
-
-	if (legacyValue === true && getScopedValue(mode, target) === undefined) {
-		await config.update('debugMode', 'metadata', target);
-	}
-	// Clear the legacy key after migrate. If this fails the legacy key is
-	// harmless — the new debugMode takes precedence at runtime.
-	try {
-		await config.update('debug', undefined, target);
-	} catch {
-		/* non-fatal */
-	}
-}
-
-function getScopedValue<T>(
-	inspection:
-		| {
-				globalValue?: T;
-				workspaceValue?: T;
-				workspaceFolderValue?: T;
-		  }
-		| undefined,
-	target: vscode.ConfigurationTarget,
-): T | undefined {
-	if (!inspection) {
-		return undefined;
-	}
-
-	if (target === vscode.ConfigurationTarget.Global) {
-		return inspection.globalValue;
-	}
-	if (target === vscode.ConfigurationTarget.Workspace) {
-		return inspection.workspaceValue;
-	}
-	if (target === vscode.ConfigurationTarget.WorkspaceFolder) {
-		return inspection.workspaceFolderValue;
-	}
-	return undefined;
 }
