@@ -14,6 +14,7 @@ import { t } from '../i18n';
 import { logger } from '../logger';
 import { createCacheDiagnosticsRecorder, dumpProviderInput } from './debug';
 import { toChatInfo } from './models';
+import { setModelsDevSnapshotStorage } from './models-dev';
 import { getPricingCurrencyForBaseUrl } from './pricing/currency';
 import { UsageCostStatus } from './pricing/status';
 import { clearClientCache, prepareChatRequest } from './request';
@@ -106,6 +107,13 @@ export class GLMChatProvider implements vscode.LanguageModelChatProvider {
 		this.authManager = new AuthManager(context);
 		this.globalStorageUri = context.globalStorageUri;
 		this.vision = createVisionService(context, this.authManager);
+
+		// Persist the models.dev snapshot (context: ML-ware-adjacent global
+		// state via globalState Memento) so cold restarts stay offline-safe.
+		setModelsDevSnapshotStorage({
+			get: (key) => context.globalState.get(key),
+			update: (key, value) => context.globalState.update(key, value),
+		});
 
 		// Fetch live model list from OpenCode API on startup.
 		// Fire-and-forget: static MODELS array is used until this completes.

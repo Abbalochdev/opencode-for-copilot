@@ -7,20 +7,19 @@
  * context windows, output limits, capabilities, reasoning options, and USD
  * pricing — eliminating the need to manually update these per release.
  *
- * The merged result is cached with a TTL. On network failure, the overlay-only
- * fallback is used so the extension remains functional offline.
+ * The snapshot is cached in memory (30-min TTL) and, when storage is wired
+ * in via `setModelsDevSnapshotStorage`, persisted for cold-start reuse and
+ * revalidated with a conditional (ETag) request. On network failure the
+ * newest cached copy is served so the extension remains functional offline.
  */
 
 import { logger } from '../logger';
-import type {
-    ModelDefinition,
-    ModelPricing,
-    PricingCurrency
-} from '../types';
+import type { ModelDefinition, ModelPricing } from '../types';
 
 const MODELS_DEV_URL = 'https://models.dev/api.json';
 const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 const FETCH_TIMEOUT_MS = 10_000;
+const SNAPSHOT_STORAGE_KEY = 'modelsDevSnapshot.v1';
 
 // ---- models.dev API types (subset) ----
 
@@ -41,7 +40,7 @@ interface ModelsDevReasoningOption {
 	values?: string[];
 }
 
-interface ModelsDevModel {
+export interface ModelsDevModel {
 	id: string;
 	name?: string;
 	description?: string;
@@ -71,57 +70,172 @@ type ModelsDevResponse = Record<string, ModelsDevProvider>;
 
 let cachedSnapshot: Map<string, ModelsDevModel> | undefined;
 let cacheTimestamp = 0;
+let lastEtag: string | undefined;
+let inFlightFetch: Promise<Map<string, ModelsDevModel>> | undefined;
+
+/**
+ * Minimal key/value store the snapshot can be persisted to. Hook up
+ * `ExtensionContext.globalState` via `setModelsDevSnapshotStorage`. No-op
+ * until set, so the module stays functional and testable without VS Code.
+ */
+export interface SnapshotStorage {
+	get(key: string): unknown;
+	update(key: string, value: string): PromiseLike<void>;
+}
+
+let snapshotStorage: SnapshotStorage | undefined;
+
+/** Enable cold-start persistence of the models.dev snapshot. */
+export function setModelsDevSnapshotStorage(storage: SnapshotStorage | undefined): void {
+	snapshotStorage = storage;
+}
+
+interface PersistedEnvelope {
+	etag?: string;
+	snapshot: Array<[string, ModelsDevModel]>;
+}
+
+function serializeSnapshot(): string {
+	const envelope: PersistedEnvelope = {
+		etag: lastEtag,
+		snapshot: cachedSnapshot ? [...cachedSnapshot.entries()] : [],
+	};
+	return JSON.stringify(envelope);
+}
+
+function deserializeSnapshot(raw: string | undefined): PersistedEnvelope | undefined {
+	if (!raw) {
+		return undefined;
+	}
+	try {
+		const envelope = JSON.parse(raw) as PersistedEnvelope;
+		if (!Array.isArray(envelope.snapshot)) {
+			return undefined;
+		}
+		return envelope;
+	} catch (error) {
+		logger.warn('models.dev persisted snapshot ignored (corrupt):', error);
+		return undefined;
+	}
+}
+
+async function persistSnapshot(): Promise<void> {
+	if (!snapshotStorage) {
+		return;
+	}
+	try {
+		await snapshotStorage.update(SNAPSHOT_STORAGE_KEY, serializeSnapshot());
+	} catch (error) {
+		logger.warn('models.dev snapshot persistence failed:', error);
+	}
+}
+
+/** Serve the persisted snapshot on cold start (stale-while-revalidate). */
+function restorePersistedSnapshot(): void {
+	if (cachedSnapshot || !snapshotStorage) {
+		return;
+	}
+	const envelope = deserializeSnapshot(snapshotStorage.get(SNAPSHOT_STORAGE_KEY) as string | undefined);
+	if (envelope && envelope.snapshot.length > 0) {
+		cachedSnapshot = new Map(envelope.snapshot);
+		cacheTimestamp = 0; // stale — force a revalidation below
+		if (envelope.etag) {
+			lastEtag = envelope.etag;
+		}
+	}
+}
 
 /**
  * Fetch and index models.dev metadata by model ID.
  * Returns an empty map on failure so callers fall back to the overlay.
+ *
+ * Cold start: a persisted snapshot is served immediately and revalidated in
+ * the background, so an offline restart still shows last-known limits.
+ * Expired in-memory snapshots refresh single-flight (concurrent callers
+ * share one network request).
  */
 export async function fetchModelsDevSnapshot(): Promise<Map<string, ModelsDevModel>> {
-	const now = Date.now();
-	if (cachedSnapshot && now - cacheTimestamp < CACHE_TTL_MS) {
-		return cachedSnapshot;
+	if (!cachedSnapshot) {
+		restorePersistedSnapshot();
+		if (cachedSnapshot) {
+			// Stale-but-persisted beats waiting on the network at startup.
+			void refreshSnapshot();
+			return cachedSnapshot;
+		}
 	}
 
-	try {
-		const response = await fetch(MODELS_DEV_URL, {
-			headers: { Accept: 'application/json' },
-			signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-		});
-		if (!response.ok) {
-			logger.warn(`models.dev fetch failed (${response.status})`);
-			return cachedSnapshot ?? new Map();
-		}
-		const body = (await response.json()) as ModelsDevResponse;
+	if (cachedSnapshot && Date.now() - cacheTimestamp < CACHE_TTL_MS) {
+		return cachedSnapshot;
+	}
+	return refreshSnapshot();
+}
 
-		const index = new Map<string, ModelsDevModel>();
-		for (const provider of Object.values(body)) {
-			if (!provider?.models) continue;
-			for (const model of Object.values(provider.models)) {
-				if (model?.id) {
-					// First occurrence wins — opencode-go and opencode (Zen) may
-					// both list the same model ID; the Go entry is typically
-					// listed first and is the one we care about for Go models.
-					if (!index.has(model.id)) {
-						index.set(model.id, model);
-					}
+/** Single-flight refresh; returns the current snapshot on network failure. */
+function refreshSnapshot(): Promise<Map<string, ModelsDevModel>> {
+	if (!inFlightFetch) {
+		inFlightFetch = doFetch()
+			.then((snapshot) => {
+				cachedSnapshot = snapshot;
+				cacheTimestamp = Date.now();
+				return snapshot;
+			})
+			.catch((error) => {
+				logger.warn('models.dev fetch error:', error);
+				return cachedSnapshot ?? new Map();
+			})
+			.finally(() => {
+				inFlightFetch = undefined;
+			});
+	}
+	return inFlightFetch;
+}
+
+async function doFetch(): Promise<Map<string, ModelsDevModel>> {
+	const headers: Record<string, string> = { Accept: 'application/json' };
+	if (lastEtag) {
+		headers['If-None-Match'] = lastEtag;
+	}
+	const response = await fetch(MODELS_DEV_URL, {
+		headers,
+		signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+	});
+	if (response.status === 304) {
+		// Not modified — keep cached snapshot (note: 304 has `ok === false`).
+		return cachedSnapshot ?? new Map();
+	}
+	if (!response.ok) {
+		logger.warn(`models.dev fetch failed (${response.status})`);
+		return cachedSnapshot ?? new Map();
+	}
+	const body = (await response.json()) as ModelsDevResponse;
+
+	const index = new Map<string, ModelsDevModel>();
+	for (const provider of Object.values(body)) {
+		if (!provider?.models) continue;
+		for (const model of Object.values(provider.models)) {
+			if (model?.id) {
+				// First occurrence wins — opencode-go and opencode (Zen) may
+				// both list the same model ID; the Go entry is typically
+				// listed first and is the one we care about for Go models.
+				if (!index.has(model.id)) {
+					index.set(model.id, model);
 				}
 			}
 		}
-
-		cachedSnapshot = index;
-		cacheTimestamp = now;
-		logger.info(`models.dev: indexed ${index.size} models`);
-		return index;
-	} catch (error) {
-		logger.warn('models.dev fetch error:', error);
-		return cachedSnapshot ?? new Map();
 	}
+
+	lastEtag = response.headers.get('etag') ?? undefined;
+	logger.info(`models.dev: indexed ${index.size} models`);
+	await persistSnapshot();
+	return index;
 }
 
 /** Invalidate the cache so the next call re-fetches. */
 export function invalidateModelsDevCache(): void {
 	cachedSnapshot = undefined;
 	cacheTimestamp = 0;
+	lastEtag = undefined;
+	inFlightFetch = undefined;
 }
 
 // ---- Merge logic ----
@@ -130,9 +244,12 @@ export function invalidateModelsDevCache(): void {
  * Merge models.dev metadata into a model definition.
  *
  * The overlay wins for: endpointPreset, requiresThinkingParam,
- * supportsReasoningEffort, priceCategory, CNY pricing, preferredToolLimit.
+ * supportsReasoningEffort, priceCategory, CNY pricing, preferredToolLimit,
+ * and the short `detail` blurb (models.dev's `description` is a long
+ * paragraph that renders poorly in the model picker — it's only used when
+ * the overlay has no `detail` at all).
  * models.dev wins for: maxInputTokens, maxOutputTokens, imageInput,
- * toolCalling, thinking, USD pricing, name, detail.
+ * toolCalling, thinking, USD pricing, name.
  */
 export function mergeWithModelsDev(
 	base: ModelDefinition,
@@ -144,11 +261,12 @@ export function mergeWithModelsDev(
 
 	const merged: ModelDefinition = { ...base };
 
-	// Display name and description
+	// Display name (short title) — models.dev wins. The long description
+	// only fills `detail` when the overlay ships no curated blurb.
 	if (devModel.name) {
 		merged.name = devModel.name;
 	}
-	if (devModel.description) {
+	if (!base.detail && devModel.description) {
 		merged.detail = devModel.description;
 	}
 
@@ -179,7 +297,7 @@ export function mergeWithModelsDev(
 	// USD pricing — only set if models.dev provides cost data and the overlay
 	// doesn't already have USD pricing (overlay CNY pricing is preserved).
 	if (devModel.cost && !base.pricing?.USD) {
-		const usdPricing = extractPricing(devModel.cost, 'USD');
+		const usdPricing = extractPricing(devModel.cost);
 		if (usdPricing) {
 			merged.pricing = {
 				...base.pricing,
@@ -197,10 +315,7 @@ function hasImageInput(model: ModelsDevModel): boolean | undefined {
 	return inputs.includes('image');
 }
 
-function extractPricing(
-	cost: ModelsDevCost,
-	currency: PricingCurrency,
-): ModelPricing | undefined {
+function extractPricing(cost: ModelsDevCost): ModelPricing | undefined {
 	if (cost.input === undefined || cost.output === undefined) {
 		return undefined;
 	}
@@ -224,7 +339,48 @@ export async function mergeModelListWithModelsDev(
 	}
 
 	return models.map((model) => {
-		const devModel = snapshot.get(model.id);
+		const devModel = findModelsDevEntry(snapshot, model.id);
 		return devModel ? mergeWithModelsDev(model, devModel) : model;
 	});
+}
+
+/**
+ * Match a local model ID against an indexed models.dev snapshot.
+ *
+ * The OpenCode API returns bare IDs (e.g. `deepseek-v4-flash`) while models.dev
+ * exposes the same model under one or more provider-prefixed entries, e.g.
+ * `deepseek/deepseek-v4-flash` (official), `nvidia/deepseek-ai/deepseek-v4-flash`
+ * (mirror), or `opencode/deepseek-v4-flash-free` (gateway free tier).
+ *
+ * Matching rules (in order):
+ *   1. Exact map-key or `id` equality wins.
+ *   2. Otherwise the last path segment must equal the local ID exactly —
+ *      case-sensitive `endsWith('/' + id)` — so near-misses like
+ *      `baseten/.../DeepSeek-V4-Flash-0731` never match `deepseek-v4-flash`.
+ *   3. Among candidates, prefer the shallowest provider path: official
+ *      entries (`deepseek/…`) beat mirrors (`nvidia/deepseek-ai/…`). Ties keep
+ *      models.dev provider order.
+ */
+export function findModelsDevEntry(
+	snapshot: Map<string, ModelsDevModel>,
+	id: string,
+): ModelsDevModel | undefined {
+	const exact = snapshot.get(id);
+	if (exact) {
+		return exact;
+	}
+
+	const suffix = `/${id}`;
+	let best: ModelsDevModel | undefined;
+	let bestDepth = Number.MAX_SAFE_INTEGER;
+	for (const model of snapshot.values()) {
+		if (model.id === id || model.id.endsWith(suffix)) {
+			const depth = model.id.split('/').length;
+			if (depth < bestDepth) {
+				best = model;
+				bestDepth = depth;
+			}
+		}
+	}
+	return best;
 }

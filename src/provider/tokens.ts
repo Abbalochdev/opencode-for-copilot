@@ -29,14 +29,14 @@ function isCjkCodePoint(cp: number): boolean {
  * Estimate token count with per-script chars-per-token ratios.
  * CJK text uses ~1.5 chars/token, Latin text uses ~4 chars/token.
  */
-function estimateTokenCountFromText(text: string, charsPerToken: number): number {
+function estimateTokenCountFromText(text: string): number {
 	if (text.length === 0) {
 		return 1;
 	}
 
 	let cjkChars = 0;
 	let otherChars = 0;
-	for (const cp of [...text]) {
+	for (const cp of text) {
 		if (isCjkCodePoint(cp.codePointAt(0) ?? 0)) {
 			cjkChars += cp.length;
 		} else {
@@ -171,7 +171,7 @@ export function estimateTokenCount(
 	charsPerToken: number,
 ): number {
 	if (typeof text === 'string') {
-		return estimateTokenCountFromText(text, charsPerToken);
+		return estimateTokenCountFromText(text);
 	}
 
 	if (!text?.content || !Array.isArray(text.content)) {

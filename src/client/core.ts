@@ -3,12 +3,12 @@ import type { CancellationToken } from 'vscode';
 import { safeStringify } from '../json';
 import { logger } from '../logger';
 import type {
-	ApiProtocol,
-	GLMRequest,
-	GLMStreamChunk,
-	GLMToolCall,
-	GLMUsage,
-	StreamCallbacks,
+    ApiProtocol,
+    GLMRequest,
+    GLMStreamChunk,
+    GLMToolCall,
+    GLMUsage,
+    StreamCallbacks,
 } from '../types';
 import { convertToAnthropicRequest, parseAnthropicStream } from './anthropic';
 import { createHttpError, formatRequestError, GLMRequestError, normalizeRequestError } from './error';
@@ -127,7 +127,7 @@ export class GLMClient {
 			try {
 				await dispatch(retriedRequest);
 				return; // success with fewer tools
-			} catch (retryError) {
+			} catch {
 				logger.warn('Reactive tool-halving retry also failed, continuing to failover');
 			}
 			// Fall through to failover — don't swallow the error here.

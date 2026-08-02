@@ -1,5 +1,21 @@
 # Changelog
 
+## [3.8.3](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.8.2...v3.8.3) (2026-08-02)
+
+### Fixes
+
+* **models:** fix models.dev metadata merge — model IDs from the OpenCode API (`deepseek-v4-flash`) now match models.dev's provider-prefixed entries (`deepseek/deepseek-v4-flash`), so accurate context windows, output limits, capabilities, and USD pricing reach the model picker (e.g. DeepSeek V4 Flash now reports its real 1M context instead of the 128K overlay fallback)
+* **models:** disambiguate mirrored models on models.dev — matching is exact last-segment + shallowest-path-first, so `nvidia/deepseek-ai/...` mirrors never shadow the official entry and near-miss ids like `DeepSeek-V4-Flash-0731` are ignored
+* **models:** keep the short curated overlay `detail` text in the picker — models.dev's long `description` paragraph is only used when no overlay blurb exists, fixing paragraph-length rows in the model selector
+* **models:** persist the models.dev snapshot with single-flight refresh and ETag revalidation — cold restarts serve last-known limits immediately (offline-safe) and concurrent callers share one network request
+* **models:** pass model-picker cost metadata as raw numeric credits per 1M tokens instead of formatted `$`/`¥` currency strings — the current Copilot Chat picker parses these fields numerically, so the string labels rendered as "Unknown"; Input, Output, and Cache Read now show real prices for every model
+
+### Chores
+
+* **chore:** drop the unused error binding in the tool-halving retry path (`catch (retryError)` → `catch`) and remove the dead `charsPerToken` parameter from the token estimator
+* **test:** update model-metadata tests to assert the new numeric picker cost shape
+* **chore:** bump version to 3.8.3
+
 ## [3.8.2](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.8.1...v3.8.2) (2026-07-29)
 
 ### Chores
