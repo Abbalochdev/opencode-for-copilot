@@ -30,6 +30,7 @@ const zh: Translations = {
 		'GLM-5-Turbo，适合日常编码、快速修改和较高频率的工具调用；图片会先由 GLM-4.6V-Flash 视觉代理处理。',
 
 	// API Key
+	'model.deprecated': '提供商已弃用此模型——仅为已有会话保留，请选择其他模型。',
 	'auth.apiKeyRequiredDetail': '请先配置 API Key',
 	'auth.prompt': '请输入 OpenCode Go API Key 或兼容服务令牌。',
 	'auth.placeholder': 'OpenCode Go API Key',
@@ -278,6 +279,7 @@ const en: Translations = {
 		'GLM-5-Turbo for everyday coding, quick edits, and frequent tool calls. Images are described by the GLM-4.6V-Flash vision proxy first.',
 
 	// API Key
+	'model.deprecated': 'Deprecated by the provider — kept for existing chats; pick another model.',
 	'auth.apiKeyRequiredDetail': 'Please run OpenCode: Set API Key to configure.',
 	'auth.prompt': 'Enter your OpenCode Go API key or compatible provider token.',
 	'auth.placeholder': 'OpenCode Go API key',

@@ -12,15 +12,34 @@ import type {
 } from '../types';
 import { convertToAnthropicRequest, parseAnthropicStream } from './anthropic';
 import { createHttpError, formatRequestError, GLMRequestError, normalizeRequestError } from './error';
+import { analyzeContextOverflow } from './error/overflow-retry';
 import { trackRateLimitHeaders, waitIfRateLimited } from './rate-limit';
 
-// Retry configuration for transient HTTP errors (429, 503).
+// Retry configuration for transient HTTP errors (429, 502, 503, 504).
 const MAX_RETRY_ATTEMPTS = 3;
 const BASE_RETRY_DELAY_MS = 1_000;
 const MAX_RETRY_DELAY_MS = 30_000;
 
 /** HTTP status codes eligible for retry with backoff. */
-const RETRYABLE_STATUSES = new Set([429, 503]);
+const RETRYABLE_STATUSES = new Set([429, 502, 503, 504]);
+
+/** Whether an HTTP error is transient and worth a backoff retry. */
+function isRetryableHttpError(error: GLMRequestError): boolean {
+	const status = error.status ?? 0;
+	if (RETRYABLE_STATUSES.has(status)) {
+		return true;
+	}
+	// Other 5xx are retryable only when the gateway explicitly reports the
+	// transient `RouterUnavailable` failure (opencode gateway).
+	return (
+		status >= 500
+		&& /routerunavailable/i.test(stripWhitespace(error.serverMessage ?? error.message))
+	);
+}
+
+function stripWhitespace(text: string): string {
+	return text.replace(/\s+/gu, '').toLowerCase();
+}
 
 // ---- Sticky gateway headers ----
 // OpenCode gateway uses these for session affinity and request tracing.
@@ -63,10 +82,13 @@ export class GLMClient {
 	 * Parses SSE chunks and dispatches callbacks for content, thinking, and tool calls.
 	 *
 	 * Retry strategy:
-	 *   1. Exponential backoff for 429 (rate limit) and 503 (service unavailable),
-	 *      respecting Retry-After headers. Up to MAX_RETRY_ATTEMPTS.
+	 *   1. Exponential backoff for transient HTTP errors (429, 502, 503, 504 —
+	 *      plus other 5xx reporting `RouterUnavailable`), respecting Retry-After
+	 *      headers. Up to MAX_RETRY_ATTEMPTS.
 	 *   2. Reactive retry for HTTP 500 with >8 tools: halves the tool list
 	 *      (mirrors Claude Code's `hasAttemptedReactiveCompact` pattern).
+	 *   3. Context-overflow retry: HTTP 400 with authoritative token counts is
+	 *      retried once with a reduced max_tokens.
 	 */
 	async streamChatCompletion(
 		request: GLMRequest,
@@ -89,10 +111,7 @@ export class GLMClient {
 					return;
 				}
 				lastError = error;
-				if (
-					error instanceof GLMRequestError
-					&& RETRYABLE_STATUSES.has(error.status ?? 0)
-				) {
+				if (error instanceof GLMRequestError && isRetryableHttpError(error)) {
 					const delay = computeRetryDelay(error, attempt);
 					logger.warn(
 						`Retryable HTTP ${error.status} (attempt ${attempt + 1}/${MAX_RETRY_ATTEMPTS}), retrying in ${delay}ms`,
@@ -131,6 +150,29 @@ export class GLMClient {
 				logger.warn('Reactive tool-halving retry also failed, continuing to failover');
 			}
 			// Fall through to failover — don't swallow the error here.
+		}
+
+		// Phase 2.5: context-overflow retry — HTTP 400 whose message carries
+		// authoritative token counts; retry once with a reduced output budget.
+		if (error instanceof GLMRequestError && error.status === 400) {
+			const overflow = analyzeContextOverflow(
+				error.serverMessage ?? error.message,
+				request.max_tokens ?? 0,
+			);
+			if (overflow) {
+				logger.warn(
+					`[overflow-retry] context ${overflow.contextWindow} tokens, requested `
+					+ `${overflow.requestedTokens}; retrying with max_tokens ${overflow.maxTokens} `
+					+ `(was ${request.max_tokens ?? 0})`,
+				);
+				try {
+					await dispatch({ ...request, max_tokens: overflow.maxTokens });
+					return; // success with reduced output budget
+				} catch {
+					logger.warn('[overflow-retry] retry also failed, continuing to failover');
+				}
+				// Fall through to failover — don't swallow the error here.
+			}
 		}
 
 		// Phase 3: try failover endpoint if available.

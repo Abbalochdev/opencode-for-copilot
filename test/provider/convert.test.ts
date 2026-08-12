@@ -1,7 +1,12 @@
 import * as vscode from 'vscode';
 import { describe, expect, it } from 'vitest';
 import { LANGUAGE_MODEL_CHAT_SYSTEM_ROLE } from '../../src/consts';
-import { convertMessages, convertTools, countMessageChars } from '../../src/provider/convert';
+import {
+	convertMessages,
+	convertTools,
+	countMessageChars,
+	shouldEchoThinkingHistory,
+} from '../../src/provider/convert';
 import { createReplayMarkerPart } from '../../src/provider/replay';
 
 function message(
@@ -92,6 +97,31 @@ describe('message and tool conversion', () => {
 		});
 	});
 
+	it('echoes reasoning history only for deepseek-family models', () => {
+		expect(shouldEchoThinkingHistory('deepseek-v4-flash')).toBe(true);
+		expect(shouldEchoThinkingHistory('deepseek-v4-flash-free')).toBe(true);
+		expect(shouldEchoThinkingHistory('glm-5.2')).toBe(false);
+		expect(shouldEchoThinkingHistory('kimi-k3')).toBe(false);
+		expect(shouldEchoThinkingHistory(undefined)).toBe(true);
+		expect(shouldEchoThinkingHistory('team-coder')).toBe(true);
+	});
+
+	it('skips reasoning_content for non-deepseek thinking models', () => {
+		const messages = convertMessages(
+			[
+				message(vscode.LanguageModelChatMessageRole.Assistant, [
+					new vscode.LanguageModelThinkingPart('step one'),
+					new vscode.LanguageModelTextPart('answer'),
+				]),
+			],
+			true,
+			'glm-5.2',
+		);
+
+		expect(messages[0]?.content).toBe('answer');
+		expect(messages[0]?.reasoning_content).toBeUndefined();
+	});
+
 	it('prefers replay marker reasoning over visible thinking parts', () => {
 		const marker = createReplayMarkerPart({ reasoningText: 'marker reasoning' });
 		const messages = convertMessages(
@@ -143,5 +173,23 @@ describe('message and tool conversion', () => {
 				},
 			]),
 		).toBe(14);
+	});
+
+	it('includes tool schema weight when tools are provided', () => {
+		expect(
+			countMessageChars(
+				[{ role: 'user', content: 'hi' }],
+				[
+					{
+						type: 'function',
+						function: {
+							name: 'search',
+							description: 'Search files',
+							parameters: { type: 'object' },
+						},
+					},
+				],
+			),
+		).toBe(2 + 'search'.length + 'Search files'.length + JSON.stringify({ type: 'object' }).length);
 	});
 });

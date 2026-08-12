@@ -2,7 +2,11 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import * as vscode from 'vscode';
 import { listProviderModels } from '../../src/config';
 import { MODELS } from '../../src/consts';
-import { getConfiguredThinkingEffort, toChatInfo } from '../../src/provider/models';
+import {
+	getConfiguredThinkingEffort,
+	providerLabel,
+	toChatInfo,
+} from '../../src/provider/models';
 import { findModelsDevEntry, mergeWithModelsDev, type ModelsDevModel } from '../../src/provider/models-dev';
 import { __clearConfigurationValues, __setConfigurationValue } from '../support/vscode.mock';
 
@@ -47,6 +51,30 @@ describe('model metadata helpers', () => {
 		expect(info.tooltip).toBe('Please run OpenCode: Set API Key to configure.');
 		expect(info.isBYOK).toBe(true);
 		expect(info.isUserSelectable).toBe(true);
+	});
+
+	it('hides models.dev-deprecated models from the picker', () => {
+		const info = toChatInfo({ ...MODELS[0], deprecated: true }, true, 'USD');
+
+		expect(info.isUserSelectable).toBe(false);
+		expect(info.statusIcon?.id).toBe('warning');
+		expect(info.detail).toBe(
+			'Deprecated by the provider — kept for existing chats; pick another model.',
+		);
+	});
+
+	it('prefixes picker names with the provider label when enabled', () => {
+		__setConfigurationValue('glm-copilot.showProviderPrefix', true);
+		const info = toChatInfo(MODELS[0], true, 'USD');
+
+		expect(info.name).toBe(`GLM · ${MODELS[0].name}`);
+	});
+
+	it('maps families to provider labels', () => {
+		expect(providerLabel('kimi')).toBe('Kimi');
+		expect(providerLabel('deepseek')).toBe('DeepSeek');
+		expect(providerLabel('minimax')).toBe('MiniMax');
+		expect(providerLabel('unknown-family')).toBe('unknown-family');
 	});
 
 	it('reports capabilities, thinking configuration, and price metadata when unlocked', () => {

@@ -93,7 +93,7 @@ export class GLMChatProvider implements vscode.LanguageModelChatProvider {
 
 	/** Vision proxy: internal bridge + VS Code LM fallback. */
 	private readonly vision: ReturnType<typeof createVisionService>;
-	private readonly usageCostStatus = new UsageCostStatus();
+	private readonly usageCostStatus: UsageCostStatus;
 
 	/**
 	 * Adaptive chars-per-token ratio, calibrated from actual usage data.
@@ -107,6 +107,7 @@ export class GLMChatProvider implements vscode.LanguageModelChatProvider {
 		this.authManager = new AuthManager(context);
 		this.globalStorageUri = context.globalStorageUri;
 		this.vision = createVisionService(context, this.authManager);
+		this.usageCostStatus = new UsageCostStatus(context.globalState);
 
 		// Persist the models.dev snapshot (context: ML-ware-adjacent global
 		// state via globalState Memento) so cold restarts stay offline-safe.

@@ -54,7 +54,7 @@ export function trackRateLimitHeaders(baseUrl: string, headers: Headers): void {
 export async function waitIfRateLimited(baseUrl: string): Promise<void> {
 	const host = extractHost(baseUrl);
 	const state = stateByHost.get(host);
-	if (!state || state.remaining > 2) {
+	if (!state || state.remaining > 0) {
 		return;
 	}
 

@@ -40,7 +40,7 @@ jobs:
       - name: Upload packaged VSIX
         uses: actions/upload-artifact@v7
         with:
-          name: glm-for-copilot-vsix
+          name: opencode-for-copilot-vsix
           path: dist/*.vsix
           if-no-files-found: error
           retention-days: 30
@@ -93,7 +93,7 @@ jobs:
       - name: Download packaged VSIX
         uses: actions/download-artifact@v7
         with:
-          name: glm-for-copilot-vsix
+          name: opencode-for-copilot-vsix
           path: dist
 
       - name: Locate VSIX

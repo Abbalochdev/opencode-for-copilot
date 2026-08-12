@@ -126,7 +126,7 @@ export async function prepareChatRequest({
 
 	const visionResolution = await resolveImageMessages(messages, token, getVisionDescriber);
 	const resolvedMessages = visionResolution.messages;
-	const glmMessages = convertMessages(resolvedMessages, isThinkingModel);
+	const glmMessages = convertMessages(resolvedMessages, isThinkingModel, modelDef?.id);
 	const tools = prepareRequestTools(
 		modelDef?.capabilities.toolCalling,
 		options,
@@ -149,7 +149,7 @@ export async function prepareChatRequest({
 		glmMessagesWithPonytail = injectCodeSimplifierSystemMessage(glmMessagesWithPonytail);
 	}
 
-	const totalRequestChars = countMessageChars(glmMessagesWithPonytail);
+	const totalRequestChars = countMessageChars(glmMessagesWithPonytail, tools);
 	const baseRequest: GLMRequest = {
 		model: apiModelId,
 		messages: glmMessagesWithPonytail,

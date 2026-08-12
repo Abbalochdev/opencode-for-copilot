@@ -11,8 +11,10 @@ import { parseFirstReplayMarker } from './replay';
 export function convertMessages(
 	messages: readonly vscode.LanguageModelChatRequestMessage[],
 	isThinkingModel: boolean,
+	modelId?: string,
 ): GLMMessage[] {
 	const result: GLMMessage[] = [];
+	const echoThinkingHistory = shouldEchoThinkingHistory(modelId);
 
 	for (const message of messages) {
 		const role = mapRole(message.role);
@@ -51,8 +53,8 @@ export function convertMessages(
 		}
 
 		if (role === 'assistant') {
-			if (content || toolCalls.length > 0 || (isThinkingModel && thinkingContent)) {
-				const replayMarker = isThinkingModel ? parseFirstReplayMarker(message) : undefined;
+			if (content || toolCalls.length > 0 || (isThinkingModel && echoThinkingHistory && thinkingContent)) {
+				const replayMarker = isThinkingModel && echoThinkingHistory ? parseFirstReplayMarker(message) : undefined;
 				const msg: GLMMessage = {
 					role: 'assistant' as const,
 					content: content || '',
@@ -62,7 +64,7 @@ export function convertMessages(
 					msg.tool_calls = toolCalls;
 				}
 
-				if (isThinkingModel) {
+				if (isThinkingModel && echoThinkingHistory) {
 					msg.reasoning_content = getReasoningContent(replayMarker, thinkingContent);
 				}
 
@@ -88,6 +90,23 @@ export function convertMessages(
 	}
 
 	return result;
+}
+
+/**
+ * Whether to echo prior assistant reasoning into the next request.
+ *
+ * DeepSeek requires the previous `reasoning_content` for correct multi-turn
+ * reasoning; the other built-in families treat it as optional, so skipping it
+ * saves tokens. Unknown/custom models keep the conservative default (echo).
+ */
+const OPTIONAL_REASONING_ECHO_PATTERN =
+	/^(glm|kimi|grok|mimo|minimax|qwen|claude|pickle|north|nemotron|laguna|ling)/i;
+
+export function shouldEchoThinkingHistory(modelId: string | undefined): boolean {
+	if (!modelId) {
+		return true;
+	}
+	return !OPTIONAL_REASONING_ECHO_PATTERN.test(modelId);
 }
 
 function getReasoningContent(
@@ -148,7 +167,7 @@ export function convertTools(
 /**
  * Count total characters across all messages to calibrate chars-per-token ratio.
  */
-export function countMessageChars(messages: GLMMessage[]): number {
+export function countMessageChars(messages: GLMMessage[], tools?: GLMTool[]): number {
 	let total = 0;
 	for (const msg of messages) {
 		total += msg.content?.length ?? 0;
@@ -157,6 +176,21 @@ export function countMessageChars(messages: GLMMessage[]): number {
 			for (const tc of msg.tool_calls) {
 				total += tc.function?.name?.length ?? 0;
 				total += tc.function?.arguments?.length ?? 0;
+			}
+		}
+	}
+	if (tools) {
+		// Tool schemas count toward the API's `prompt_tokens`; including them
+		// keeps the chars-per-token calibration honest.
+		for (const tool of tools) {
+			total += tool.function.name.length;
+			total += tool.function.description?.length ?? 0;
+			if (tool.function.parameters) {
+				try {
+					total += safeStringify(tool.function.parameters).length;
+				} catch {
+					total += 64; // unresolvable schema — approximate
+				}
 			}
 		}
 	}

@@ -6,74 +6,104 @@
   <br/>
   <img src="https://img.shields.io/github/v/release/abbalochdev/opencode-for-copilot?style=for-the-badge&label=Version" alt="Version" />
   <img src="https://img.shields.io/badge/models-31+-blue?style=for-the-badge" alt="31+ models" />
-  <img src="https://img.shields.io/badge/tests-95%20passing-brightgreen?style=for-the-badge" alt="95 tests passing" />
+  <img src="https://img.shields.io/badge/tests-139%20passing-brightgreen?style=for-the-badge" alt="139 tests passing" />
   <img src="https://img.shields.io/badge/dependencies-zero-success?style=for-the-badge" alt="Zero runtime dependencies" />
   <img src="https://img.shields.io/badge/license-MIT-green?style=for-the-badge" alt="MIT License" />
   <!-- marketplace-readme:remove-end -->
 </p>
 
-**Use OpenCode Go & Zen coding models in the Copilot Chat model picker — and keep everything else Copilot already gives you.**
+<p align="center">
+  <b>31+ open coding models — GLM, Kimi, DeepSeek, Claude, Grok, Qwen — inside Copilot Chat's model picker, with vision, thinking mode, and a multi-agent swarm.</b>
+</p>
 
 <p align="center">
   <img src="resources/screenshots/01-picker.png" alt="OpenCode Go & Zen models in the Copilot Chat model picker" width="800">
 </p>
 
-Love the open coding models on [OpenCode Go](https://opencode.ai/docs/go/) and [OpenCode Zen](https://opencode.ai/docs/zen) but don't want to give up GitHub Copilot's agent mode, tool calling, and polished UI? This extension drops **GLM, Kimi, DeepSeek, Claude, Grok, Qwen, MiMo, MiniMax, and 5 free models** straight into the Copilot Chat model selector — with **vision**, **thinking mode**, and your own OpenCode API key.
+## Quick Start
+
+1. **Get a key** — subscribe at [opencode.ai/auth](https://opencode.ai/auth) ([Go](https://opencode.ai/docs/go/) or [Zen](https://opencode.ai/docs/zen)) and copy your API key.
+2. **Set it** — run **OpenCode: Set API Key**; it lands in your OS keychain, never on disk.
+3. **Chat** — pick any of the 31+ models in Copilot Chat, or type `@swarm` and let a team of agents do the work.
 
 ## Why this extension?
 
-- **Don't replace Copilot — power it up.** No new sidebar, no new chat UI to learn. Just a new model in the picker you already use.
-- **All OpenCode Go & Zen models.** 14 Go models plus 17 Zen models (including 5 free) — one API key, one extension. GLM, Kimi, DeepSeek, Claude, Grok, Qwen, MiMo, MiniMax, and free models (Big Pickle, DeepSeek V4 Flash Free, MiMo V2.5 Free, North Mini Code Free, Nemotron 3 Ultra Free).
-- **Mixed protocols handled automatically.** GLM/Kimi/DeepSeek/Grok/MiMo run on the OpenAI `/chat/completions` endpoint; Claude/MiniMax/Qwen run on the Anthropic `/v1/messages` endpoint. The extension routes each model to the right endpoint automatically.
-- **Agent mode, tool calling, instructions, MCP, skills — all of it still works.** Copilot's entire stack, now running on your OpenCode Go or Zen subscription.
-- **Vision where each model needs it.** Images are transparently described by the vision proxy first, then passed along as text. If no vision model is configured, the extension falls back to another Copilot/VS Code vision model.
-- **Estimated per-turn cost.** When the API returns usage, the extension estimates the list-price cost in USD, reports it to Copilot usage metadata, writes it to logs, and shows the latest turn in the status bar.
-- **BYOK, pay OpenCode directly.** Your OpenCode API key, your Go subscription or Zen credits, your rate limits. Stored in the OS keychain, never on disk.
+You already have Copilot's agent mode, tool calling, MCP, and skills. What you might not have is the *models you want to run them on*. This extension keeps the entire Copilot stack and swaps the brain:
 
-## Features
-
-### GLM-5.2/5.1, Kimi K2.7 Code/K2.6, DeepSeek V4 Pro/Flash, MiMo V2.5/V2.5 Pro, MiniMax M3/M2.7/M2.5, Qwen3.7 Max/Plus/3.6 Plus, Claude (Opus/Sonnet/Haiku), Grok Build 0.1, and 5 free models in the model picker
-
-All three models show up alongside GPT-4o, Claude, and friends in Copilot Chat's model selector. Switch models mid-chat without losing history.
-
-### Transparent Vision Proxy
-
-Drop a screenshot into chat and the automatic proxy describes it before the selected model receives the prompt. If no vision model is available on the current endpoint or plan, the extension falls back to another installed Copilot/VS Code vision model. You can also force a VS Code model or a custom API endpoint from **OpenCode: Configure Vision Proxy**.
-
-This keeps GLM-5.2 focused on coding/reasoning while GLM-4.6V-Flash handles multimodal extraction.
-
-<p align="center">
-  <img src="resources/screenshots/03-vision.png" alt="Dropping an image into Copilot Chat and GLM responding to it via the vision proxy" width="800">
-</p>
-
-### Thinking Mode with Reasoning Effort Control
-
-Full support for GLM's `reasoning_content`. Use Copilot Chat's native model picker menu to choose `none` (off), `high` (balanced), or `max` (default deep reasoning for hard agent tasks).
-
-### Inherits Every Copilot Capability
-
-Because this plugs into Copilot's native provider API, you get the full stack for free:
-
-- **Agent mode** — autonomous multi-step tasks
-- **Tool calling** — file edits, terminal, workspace search, Git, tests
-- **Instructions & skills** — all your `.instructions.md`, `AGENTS.md`, and skills just work
-- **Prompt caching stats** — GLM's cache hit rate logged in the output channel so you can see the savings
+- **Don't replace Copilot — power it up.** No sidebar, no new UI. Just a new model in the picker you already use.
+- **One API key, 31+ models.** 14 OpenCode Go + 17 Zen models (5 free): GLM, Kimi, DeepSeek, Claude, Grok, Qwen, MiMo, MiniMax, Big Pickle, and more.
+- **Protocols handled for you.** OpenAI `/chat/completions` for GLM/Kimi/DeepSeek/Grok/MiMo, Anthropic `/v1/messages` for Claude/MiniMax/Qwen — routed automatically per model.
+- **Everything Copilot gives you still works.** Agent mode, tools, instructions, MCP, skills — untouched, now on your OpenCode subscription.
+- **Zero runtime dependencies.** Pure VS Code API + Node.js built-ins. No Python, no Docker, no proxy process to babysit.
 
 <p align="center">
   <img src="resources/screenshots/04-agent.png" alt="GLM-5.2 running Copilot's agent mode with tool calls" width="800">
 </p>
 
-### Secure by Default
+## Architecture at a Glance
 
-API key lives in VS Code's `SecretStorage` (OS keychain on macOS / Windows / Linux). Never in `settings.json`, never in your Git history.
+```mermaid
+flowchart LR
+    subgraph VSCODE["VS Code · Copilot Chat"]
+        PICKER[Model Picker]
+        SWARM[Agent Swarm<br/>@swarm participant]
+        VISION[Vision Proxy<br/>describes images first]
+    end
+    PICKER --> ROUTER{Protocol Router}
+    SWARM --> ROUTER
+    VISION --> PICKER
+    ROUTER -->|OpenAI protocol| GO[OpenCode Go / Zen<br/>/chat/completions]
+    ROUTER -->|Anthropic protocol| ANTH[OpenCode Go / Zen<br/>/v1/messages]
+    ROUTER -->|GLM native| GLM[Zhipu · Z.ai · Coding Plan]
+```
 
-### Cost Visibility
+Every model is routed to the endpoint it speaks natively, images are described before they reach the model, and the Agent Swarm orchestrates parallel agents — all inside the model picker you already know.
 
-After each completed GLM response, the extension reports usage to Copilot metadata and writes it to logs. The status bar shows the latest turn and session total. Estimates use the official GLM list prices for the current endpoint currency: CNY for domestic BigModel endpoints and USD for Z.ai endpoints. Coding Plan requests also show an approximate list-price equivalent when token usage is returned.
+## Features
 
-### Ponytail Coding Discipline ("Lazy Senior Dev" Verification)
+### 🐝 Agent Swarm — parallel agents on one task (`@swarm`)
 
-Every **coding** request (agent and background chats) is prefixed with a **Ponytail-style system instruction** that makes the model think like a lazy senior developer — efficient, not careless. It climbs a 7-rung ladder before writing any code:
+Type `@swarm` and a team of autonomous agents takes over: **research agents explore the codebase in parallel, review agents verify the plan before a single line is written, and an implementation agent — on the exact model you have selected — does the work and runs the tests.**
+
+```mermaid
+flowchart TD
+    TASK[Your task] --> DECOMP[Decompose<br/>≤ 3 focus areas]
+    DECOMP --> R1[Research Agent · Area 1]
+    DECOMP --> R2[Research Agent · Area 2]
+    DECOMP --> R3[Research Agent · Area 3]
+    R1 --> F1[(Findings)]
+    R2 --> F1
+    R3 --> F1
+    F1 --> RV1[Reviewer A · verifies the plan]
+    F1 --> RV2[Reviewer B · verifies the plan]
+    RV1 --> IMPL[Implementation Agent<br/>chat-selected model]
+    RV2 --> IMPL
+    IMPL --> TESTS{runTests}
+    TESTS -->|fail · fix| IMPL
+    TESTS -->|pass| REPORT[Report · findings + review + diff + tests]
+```
+
+- **Every agent is autonomous** — its own tool loop and turn budget. Research and review are read-only; only the implementer edits.
+- **Resilient by design** — a rate-limited or failed sub-agent degrades to a marked note; the swarm never sinks.
+- **Your model, your cost** — research/review default to free models; implementation always runs on the model you picked.
+
+> Role models are configurable via `glm-copilot.agentRoles` — see [Settings](#settings).
+
+### 👁 Transparent Vision Proxy
+
+Drop a screenshot into chat and the proxy describes it *before* the model sees it — GLM-5.2 focuses on code while GLM-4.6V-Flash handles the pixels. Falls back to any installed VS Code vision model automatically.
+
+<p align="center">
+  <img src="resources/screenshots/03-vision.png" alt="Dropping an image into Copilot Chat and GLM responding to it via the vision proxy" width="800">
+</p>
+
+### 🧠 Thinking Mode with Reasoning Effort Control
+
+Full `reasoning_content` support on GLM-5.2/5.1 and Claude models. Pick `none` / `high` / `max` per model from Copilot Chat's native picker menu.
+
+### 🦥 Ponytail — Lazy Senior Dev Verification
+
+Every **coding** request carries a Ponytail-style system instruction that makes the model think like a lazy senior developer — efficient, not careless. Before writing any code it climbs a 7-rung ladder:
 
 1. **Does this need to be built at all?** (YAGNI)
 2. **Does it already exist in the codebase?** Reuse it.
@@ -83,30 +113,20 @@ Every **coding** request (agent and background chats) is prefixed with a **Ponyt
 6. **Can this be one line?** Make it one line.
 7. **Only then:** write the minimum code that works.
 
-Three intensity modes — `lite` (brief reminder), `full` (complete ladder with all rules, default), and `ultra` (strict, with edge-case prioritization) — plus `off` to disable. Switch modes on the fly from the Command Palette: **OpenCode: Set Ponytail Mode**.
+Three intensity modes — `lite` (reminder), `full` (complete ladder, default), `ultra` (strict, edge-case-first) — plus `off`. Injected **only** into real coding requests; utility calls stay lean and cheap. Switch live with **OpenCode: Set Ponytail Mode**.
 
-> **Effect on plugin behaviour:** The model generates fewer unnecessary abstractions, avoids reinventing wheels that already exist in your project, prefers stdlib over new dependencies, and writes shorter, more maintainable diffs. This means cleaner PRs, less code to review, and fewer dependencies to manage — without sacrificing correctness, security, or error handling.
+### 🧹 Code Simplifier — Autonomous Code Refinement
 
-> **Smart request routing:** The instruction is injected only into real coding conversations. Lightweight background calls — chat titles, git commit/branch names, rename suggestions, and prompt classifiers — are detected and left untouched, so they stay fast, cheap, and free of off-task instructions.
+An always-on refinement agent (inspired by the [Claude Code Simplifier plugin](https://claude.com/plugins/code-simplifier)) that reviews recently modified code and flattens nesting, kills redundancy, renames vague identifiers, and replaces chained ternaries — while **never** changing behaviour, API signatures, or safety checks. When active, Ponytail auto-downgrades to Lite for compatibility.
 
-### Code Simplifier (Autonomous Code Refinement)
+### ♻️ Inherits Every Copilot Capability
 
-Enabled by default, the **Code Simplifier** is an autonomous refinement agent — inspired by the [Claude Code Simplifier plugin](https://claude.com/plugins/code-simplifier). It proactively reviews recently modified code and simplifies it for clarity, consistency, and maintainability while preserving all original behaviour.
+Because the extension plugs into Copilot's native provider API, you keep the full stack for free: **agent mode**, tool calling, instructions & skills, MCP, and prompt-caching stats.
 
-**What it does:**
-- Reduces nesting depth with early returns, guard clauses, and well-named helpers
-- Eliminates redundant code — merges duplicate blocks, extracts repeated expressions, removes dead branches
-- Improves naming — replaces vague identifiers (`data`, `tmp`, `val`) with intent-revealing names
-- Simplifies boolean expressions and replaces chained ternaries with readable structures
-- Extracts magic numbers and strings into well-named constants
+### 💰 Cost Visibility · 🔒 Security by Default
 
-**What it doesn't do:** change behaviour or exported API signatures, remove error handling or safety checks, introduce new dependencies, or rewrite entire files.
-
-When enabled, Ponytail is automatically lowered to **Lite** for compatibility — Ponytail keeps responses concise and reuse-focused, while Code Simplifier ensures what *is* written stays clean and readable. Like Ponytail, it activates only on coding conversations and stays silent on utility calls. Disable it from the Command Palette: **OpenCode: Toggle Code Simplifier**, or set `glm-copilot.codeSimplifier` to `false`.
-
-### Zero Runtime Dependencies
-
-Pure VS Code API + Node.js built-ins. No Python, no Docker, no local proxy server to babysit.
+- Per-turn list-price estimates in the status bar and logs — CNY on domestic GLM endpoints, USD on Z.ai.
+- API key in VS Code `SecretStorage` (OS keychain) — never in `settings.json`, never in Git history.
 
 ## Getting Started
 
@@ -199,7 +219,8 @@ All models support tool calling. GLM-5.2, GLM-5.1, and Claude (Fable 5, Opus, So
 | `glm-copilot.visionModel`                    | _(auto)_                  | VS Code vision model used as fallback when automatic vision is unavailable. Configure from `OpenCode: Configure Vision Proxy`; new saves use `vendor/id`, while legacy bare model IDs are still read                                                                                                                                                                                                                                                                                                                |
 | `glm-copilot.visionPrompt`                   | _(built-in)_              | Prompt used to describe image attachments                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | `glm-copilot.ponytailMode`                   | `full`                    | Ponytail coding-discipline system instruction level. `off` = no instruction; `lite` = brief reminder; `full` = complete 7-rung ladder with all rules; `ultra` = strict mode prioritizing edge-case correctness. Use `OpenCode: Set Ponytail Mode` to switch at runtime                                                                                                                                                                                                                                                         |
-| `glm-copilot.codeSimplifier`                 | `true`                    | Autonomous code refinement agent (on by default). Proactively reviews modified code and simplifies for clarity, consistency, and maintainability. When enabled, Ponytail auto-downgrades to Lite. Toggle with `OpenCode: Toggle Code Simplifier`                                                                                                                                                                                                                                                                               |
+| `glm-copilot.codeSimplifier`                 | `true`                    | Autonomous code refinement agent (on by default). Proactively reviews modified code and simplifies for clarity, consistency, and maintainability. When enabled, Ponytail auto-downgrades to Lite. Toggle with `OpenCode: Toggle Code Simplifier`                                                                                                                                                                                                                                                                               | 
+| `glm-copilot.agentRoles`                     | `{}`                      | Models per agent-swarm role: `research` (list, round-robin — defaults to free DeepSeek V4 Flash Free), `implement` (always the chat-selected model), and optional `review` (list, defaults to free Big Pickle). Each entry is `{ "vendor", "family", "id"? }`                                                                                                                                                                                                                                                                 |
 | `glm-copilot.experimental.stabilizeToolList` | `false`                   | Experimental. Tries to pre-activate VS Code/Copilot virtual tools so the API `tools` parameter is more complete and stable across turns. May improve context-cache hit rate when enabled tools change between turns. Can increase input tokens because more function definitions may be included; cache-hit input tokens are cheaper but still count toward usage. Usually leave it off with 64 or fewer enabled tools unless the tool list still changes across turns; do not enable it with more than 128 enabled tools |
 
 Thinking Effort is configured from Copilot Chat's model picker for each thinking-capable GLM model.

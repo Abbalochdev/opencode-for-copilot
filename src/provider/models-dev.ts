@@ -49,6 +49,7 @@ export interface ModelsDevModel {
 	reasoning?: boolean;
 	reasoning_options?: ModelsDevReasoningOption[];
 	tool_call?: boolean;
+	deprecated?: boolean;
 	temperature?: boolean;
 	modalities?: {
 		input?: string[];
@@ -285,6 +286,11 @@ export function mergeWithModelsDev(
 		imageInput: hasImageInput(devModel) ?? base.capabilities.imageInput,
 		thinking: devModel.reasoning ?? base.capabilities.thinking,
 	};
+
+	// Deprecation — models.dev marks retired/unavailable entries.
+	if (devModel.deprecated) {
+		merged.deprecated = true;
+	}
 
 	// Reasoning effort support
 	if (devModel.reasoning_options) {

@@ -6,6 +6,7 @@ import { registerActionUrls } from './actions';
 import { seedChatLanguageModelDefaults } from './chat-language-models';
 import { registerCommands } from './commands';
 import { initializeDiagnostics } from './diagnostics';
+import { registerAgentPipeline } from './agent-pipeline';
 import { registerProvider } from './provider';
 import { showWelcomeIfNeeded } from './welcome';
 
@@ -16,6 +17,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 	await seedChatLanguageModelDefaults(context);
 	registerCommands(context);
 	registerActionUrls(context);
+	registerAgentPipeline(context);
 
 	try {
 		const provider = await registerProvider(context);

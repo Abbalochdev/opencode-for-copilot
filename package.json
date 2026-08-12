@@ -3,7 +3,7 @@
   "displayName": "OpenCode for Copilot",
   "description": "Use OpenCode Go & Zen coding models (GLM, Kimi, DeepSeek, Claude, Grok, Qwen, free models) in the Copilot Chat model picker. Vision, thinking mode, agent tools — zero config, BYOK.",
   "icon": "resources/icon.png",
-  "version": "3.8.3",
+  "version": "3.9.0",
   "packageManager": "pnpm@11.7.0",
   "publisher": "abbalochdev",
   "license": "MIT",
@@ -55,6 +55,14 @@
         "displayName": "OpenCode"
       }
     ],
+    "chatParticipants": [
+      {
+        "id": "glm-copilot.pipeline",
+        "name": "swarm",
+        "fullName": "OpenCode Agent Swarm",
+        "description": "Runs the agent swarm: parallel research agents, pre-implementation review, then implementation on the current model."
+      }
+    ],
     "commands": [
       {
         "command": "glm-copilot.setApiKey",
@@ -83,6 +91,10 @@
       {
         "command": "glm-copilot.showLogs",
         "title": "%glm-copilot.command.showLogs%"
+      },
+      {
+        "command": "glm-copilot.showDiagnostics",
+        "title": "%glm-copilot.command.showDiagnostics%"
       },
       {
         "command": "glm-copilot.openRequestDumpsFolder",
@@ -136,6 +148,59 @@
     "configuration": {
       "title": "%glm-copilot.config.title%",
       "properties": {
+        "glm-copilot.agentRoles": {
+          "type": "object",
+          "default": {},
+          "markdownDescription": "%glm-copilot.config.agentRoles.description%",
+          "properties": {
+            "research": {
+              "type": "array",
+              "markdownDescription": "%glm-copilot.config.agentRoles.research.description%",
+              "items": {
+                "type": "object",
+                "required": [
+                  "vendor",
+                  "family"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "vendor": {
+                    "type": "string"
+                  },
+                  "family": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "review": {
+              "type": "array",
+              "markdownDescription": "%glm-copilot.config.agentRoles.review.description%",
+              "items": {
+                "type": "object",
+                "required": [
+                  "vendor",
+                  "family"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "vendor": {
+                    "type": "string"
+                  },
+                  "family": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
         "glm-copilot.baseUrl": {
           "type": "string",
           "default": "",
@@ -187,6 +252,11 @@
           "default": 0,
           "minimum": 0,
           "description": "%glm-copilot.config.maxTokens.description%"
+        },
+        "glm-copilot.showProviderPrefix": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "%glm-copilot.config.showProviderPrefix.description%"
         },
         "glm-copilot.experimental.stabilizeToolList": {
           "type": "boolean",

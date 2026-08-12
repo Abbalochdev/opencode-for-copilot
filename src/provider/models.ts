@@ -1,4 +1,5 @@
 import vscode from 'vscode';
+import { getShowProviderPrefix } from '../config';
 import { t } from '../i18n';
 import type { ModelDefinition, PricingCurrency } from '../types';
 import { toModelCostInfo, type ModelCostInformation } from './pricing/costs';
@@ -42,18 +43,27 @@ export function toChatInfo(
 ): ModelPickerChatInformation {
 	const modelDetail = resolveModelText(m, 'detail') ?? m.detail;
 	const modelTooltip = resolveModelText(m, 'tooltip');
+	const apiKeyMissing = !hasApiKey;
+	const deprecated = m.deprecated === true;
+	let detail = modelDetail;
+	let tooltip = modelTooltip;
+	if (apiKeyMissing) {
+		detail = tooltip = t('auth.apiKeyRequiredDetail');
+	} else if (deprecated) {
+		detail = tooltip = t('model.deprecated');
+	}
 	return {
 		id: m.id,
-		name: m.name,
+		name: getShowProviderPrefix() ? `${providerLabel(m.family)} · ${m.name}` : m.name,
 		family: m.family,
 		version: m.version,
-		detail: hasApiKey ? modelDetail : t('auth.apiKeyRequiredDetail'),
-		tooltip: hasApiKey ? modelTooltip : t('auth.apiKeyRequiredDetail'),
-		statusIcon: hasApiKey ? undefined : new vscode.ThemeIcon('warning'),
+		detail,
+		tooltip,
+		statusIcon: apiKeyMissing || deprecated ? new vscode.ThemeIcon('warning') : undefined,
 		maxInputTokens: m.maxInputTokens,
 		maxOutputTokens: m.maxOutputTokens,
 		isBYOK: true,
-		isUserSelectable: isUserSelectableModel(m.id),
+		isUserSelectable: isUserSelectableModel(m.id) && !deprecated,
 		capabilities: {
 			toolCalling: m.capabilities.toolCalling,
 			imageInput: m.capabilities.imageInput,
@@ -66,6 +76,27 @@ export function toChatInfo(
 /** @returns `false` for internal utility models so they stay out of the picker. */
 function isUserSelectableModel(modelId: string): boolean {
 	return modelId !== 'copilot-utility' && modelId !== 'copilot-utility-small';
+}
+
+const PROVIDER_LABELS: Record<string, string> = {
+	glm: 'GLM',
+	kimi: 'Kimi',
+	deepseek: 'DeepSeek',
+	grok: 'Grok',
+	mimo: 'MiMo',
+	minimax: 'MiniMax',
+	qwen: 'Qwen',
+	claude: 'Claude',
+	pickle: 'Pickle',
+	north: 'North',
+	nemotron: 'Nemotron',
+	laguna: 'Laguna',
+	ling: 'Ling',
+};
+
+/** Human-readable provider label for a model family (e.g. `kimi` → `Kimi`). */
+export function providerLabel(family: string): string {
+	return PROVIDER_LABELS[family] ?? family;
 }
 
 export function getConfiguredThinkingEffort(options: ModelConfigurationOptions): ThinkingEffort {

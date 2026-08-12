@@ -176,6 +176,8 @@ export interface ModelDefinition {
 	};
 	requiresThinkingParam: boolean;
 	supportsReasoningEffort?: boolean;
+	/** models.dev marks retired/unavailable entries; these are hidden from the picker. */
+	deprecated?: boolean;
 	/**
 	 * Optional endpoint preset that pins this model to a specific base URL and
 	 * wire protocol, overriding the global `endpoint` setting.

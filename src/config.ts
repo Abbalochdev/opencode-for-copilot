@@ -278,6 +278,15 @@ export function getStabilizeToolListEnabled(): boolean {
 	return config.get<boolean>('experimental.stabilizeToolList', false);
 }
 
+/**
+ * Prefix model picker names with their provider (e.g. "Kimi · Kimi K3") so
+ * models stay identifiable when the picker truncates long names.
+ */
+export function getShowProviderPrefix(): boolean {
+	const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
+	return config.get<boolean>('showProviderPrefix', false);
+}
+
 export type StripThinkTagsMode = 'auto' | 'always' | 'never';
 
 /**

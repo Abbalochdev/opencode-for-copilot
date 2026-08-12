@@ -6,9 +6,12 @@
   "glm-copilot.command.setVisionModel": "OpenCode: Configure Vision Proxy",
   "glm-copilot.command.openSettings": "OpenCode: Open Settings",
   "glm-copilot.command.showLogs": "OpenCode: Show Logs",
+  "glm-copilot.command.showDiagnostics": "OpenCode: Show Runtime Diagnostics",
+  "glm-copilot.config.showProviderPrefix.description": "Prefix model picker names with their provider (e.g. `Kimi · Kimi K3`) so models stay identifiable in narrow picker rows.",
   "glm-copilot.command.openRequestDumpsFolder": "OpenCode: Open Request Dumps Folder",
   "glm-copilot.command.setPonytailMode": "OpenCode: Set Ponytail Mode",
   "glm-copilot.command.toggleCodeSimplifier": "OpenCode: Toggle Code Simplifier",
+  "glm-copilot.chatParticipants.pipeline.description": "Runs the agent swarm: parallel research agents, pre-implementation review, then implementation on the model you have selected.",
   "glm-copilot.walkthrough.title": "OpenCode for Copilot Chat",
   "glm-copilot.walkthrough.description": "Set up OpenCode Go models in Copilot Chat.",
   "glm-copilot.walkthrough.setApiKey.title": "Set your OpenCode API key",
@@ -76,5 +79,8 @@
   "glm-copilot.config.customModels.toolCalling.description": "Whether this custom model supports tool calling. Defaults to true.",
   "glm-copilot.config.customModels.thinking.description": "Whether this custom model supports thinking mode. Defaults to true.",
   "glm-copilot.config.visionModel.description": "Compatibility setting managed by [Configure Vision Proxy](command:glm-copilot.setVisionModel). Stores the selected VS Code vision model as `vendor/id` when that source is active. In automatic mode, GLM-4.6V-Flash is tried first and this VS Code model is used as fallback. Legacy bare model IDs are read for compatibility.",
-  "glm-copilot.config.visionPrompt.description": "Prompt sent to the vision proxy model when describing image attachments before forwarding them to GLM.\n\n[Configure Vision Proxy](command:glm-copilot.setVisionModel)"
+  "glm-copilot.config.visionPrompt.description": "Prompt sent to the vision proxy model when describing image attachments before forwarding them to GLM.\n\n[Configure Vision Proxy](command:glm-copilot.setVisionModel)",
+  "glm-copilot.config.agentRoles.description": "Models used by the pipeline's agent roles: research (parallel research step) and review (final code review).",
+  "glm-copilot.config.agentRoles.research.description": "Models used for the parallel research step. Areas are assigned round-robin across the listed models, so multiple models run research concurrently.",
+  "glm-copilot.config.agentRoles.review.description": "Models used for the final code review step."
 }

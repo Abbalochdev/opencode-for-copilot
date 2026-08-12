@@ -3,10 +3,14 @@ import { getApiKeyUrl } from '../config';
 import { t } from '../i18n';
 import { logger } from '../logger';
 import { ensureRequestDumpRoot } from '../provider/debug';
+import { buildRuntimeDiagnosticsReport } from './diagnostics';
 
 export function registerCommands(context: vscode.ExtensionContext): void {
 	context.subscriptions.push(
 		vscode.commands.registerCommand('glm-copilot.showLogs', () => logger.show()),
+		vscode.commands.registerCommand('glm-copilot.showDiagnostics', () =>
+			showRuntimeDiagnostics(context),
+		),
 		vscode.commands.registerCommand('glm-copilot.openRequestDumpsFolder', () =>
 			openRequestDumpsFolder(context),
 		),
@@ -28,4 +32,13 @@ async function openRequestDumpsFolder(context: vscode.ExtensionContext): Promise
 		logger.warn('Failed to open request dumps folder', error);
 		void vscode.window.showErrorMessage(t('extension.openRequestDumpsFolderFailed'));
 	}
+}
+
+/** Open the runtime-diagnostics report as an untitled markdown document. */
+async function showRuntimeDiagnostics(context: vscode.ExtensionContext): Promise<void> {
+	const doc = await vscode.workspace.openTextDocument({
+		language: 'markdown',
+		content: buildRuntimeDiagnosticsReport(context),
+	});
+	await vscode.window.showTextDocument(doc, { preview: true });
 }

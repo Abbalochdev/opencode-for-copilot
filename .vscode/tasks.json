@@ -1,84 +1,1078 @@
 {
-  "version": "2.0.0",
-  "tasks": [
-    {
-      "label": "pnpm: watch",
-      "type": "shell",
-      "command": "pnpm",
-      "args": [
-        "watch"
-      ],
-      "problemMatcher": {
-        "owner": "viteplus",
-        "pattern": {
-          "regexp": "^(.*)$",
-          "message": 1
-        },
-        "background": {
-          "activeOnStart": true,
-          "beginsPattern": "Build start",
-          "endsPattern": "Build complete|Rebuilt in"
-        }
-      },
-      "isBackground": true,
-      "presentation": {
-        "reveal": "silent"
-      },
-      "group": "build"
-    },
-    {
-      "label": "Launch Extension Host (Insiders CLI)",
-      "type": "shell",
-      "command": "bash",
-      "args": [
-        "${workspaceFolder}/.vscode/launch-extension-host.sh",
-        "insiders",
-        "9333",
-        "${workspaceFolder}"
-      ],
-      "windows": {
-        "command": "powershell",
-        "args": [
-          "-NoProfile",
-          "-ExecutionPolicy",
-          "Bypass",
-          "-File",
-          "${workspaceFolder}/.vscode/launch-extension-host.ps1",
-          "insiders",
-          "9333",
-          "${workspaceFolder}"
-        ]
-      },
-      "dependsOn": "pnpm: watch",
-      "dependsOrder": "sequence",
-      "problemMatcher": []
-    },
-    {
-      "label": "Launch Extension Host (Stable CLI)",
-      "type": "shell",
-      "command": "bash",
-      "args": [
-        "${workspaceFolder}/.vscode/launch-extension-host.sh",
-        "stable",
-        "9334",
-        "${workspaceFolder}"
-      ],
-      "windows": {
-        "command": "powershell",
-        "args": [
-          "-NoProfile",
-          "-ExecutionPolicy",
-          "Bypass",
-          "-File",
-          "${workspaceFolder}/.vscode/launch-extension-host.ps1",
-          "stable",
-          "9334",
-          "${workspaceFolder}"
-        ]
-      },
-      "dependsOn": "pnpm: watch",
-      "dependsOrder": "sequence",
-      "problemMatcher": []
-    }
-  ]
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "pnpm: watch",
+			"type": "shell",
+			"command": "pnpm",
+			"args": [
+				"watch"
+			],
+			"problemMatcher": {
+				"owner": "viteplus",
+				"pattern": {
+					"regexp": "^(.*)$",
+					"message": 1
+				},
+				"background": {
+					"activeOnStart": true,
+					"beginsPattern": "Build start",
+					"endsPattern": "Build complete|Rebuilt in"
+				}
+			},
+			"isBackground": true,
+			"presentation": {
+				"reveal": "silent"
+			},
+			"group": "build"
+		},
+		{
+			"label": "Launch Extension Host (Insiders CLI)",
+			"type": "shell",
+			"command": "bash",
+			"args": [
+				"${workspaceFolder}/.vscode/launch-extension-host.sh",
+				"insiders",
+				"9333",
+				"${workspaceFolder}"
+			],
+			"windows": {
+				"command": "powershell",
+				"args": [
+					"-NoProfile",
+					"-ExecutionPolicy",
+					"Bypass",
+					"-File",
+					"${workspaceFolder}/.vscode/launch-extension-host.ps1",
+					"insiders",
+					"9333",
+					"${workspaceFolder}"
+				]
+			},
+			"dependsOn": "pnpm: watch",
+			"dependsOrder": "sequence",
+			"problemMatcher": []
+		},
+		{
+			"label": "Launch Extension Host (Stable CLI)",
+			"type": "shell",
+			"command": "bash",
+			"args": [
+				"${workspaceFolder}/.vscode/launch-extension-host.sh",
+				"stable",
+				"9334",
+				"${workspaceFolder}"
+			],
+			"windows": {
+				"command": "powershell",
+				"args": [
+					"-NoProfile",
+					"-ExecutionPolicy",
+					"Bypass",
+					"-File",
+					"${workspaceFolder}/.vscode/launch-extension-host.ps1",
+					"stable",
+					"9334",
+					"${workspaceFolder}"
+				]
+			},
+			"dependsOn": "pnpm: watch",
+			"dependsOrder": "sequence",
+			"problemMatcher": []
+		},
+		{
+			"label": "probe-shell",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"node -e \"console.log(process.version)\""
+			],
+			"isBackground": false
+		},
+		{
+			"label": "probe-shell2",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"node -e 'console.log(process.version)'"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "probe-cmd",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"node -e \"console.log('probe-ok')\""
+			],
+			"isBackground": false
+		},
+		{
+			"label": "apply-agents-patch",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Set-Content -Path agents-patch.mjs -Encoding utf8 -Value @\"\nconst fs = require(\"fs\");\nfunction read(p) { return fs.readFileSync(p, \"utf8\"); }\nfunction write(p, s) { fs.writeFileSync(p, s, \"utf8\"); }\nfunction up(p, from, to) {\n  let s = read(p);\n  const i = s.indexOf(from);\n  if (i < 0) { throw new Error(\"anchor missing in \" + p + \": \" + from.slice(0, 80)); }\n  write(p, s.slice(0, i) + to + s.slice(i + from.length));\n}\n\n// 1) rate-limit: allow one in-flight requests headroom instead of waiting at 2\nup(\"src/client/rate-limit.ts\", \"if (!state || state.remaining > 2) {\", \"if (!state || state.remaining > 0) {\");\n\n// 2) implement loop: more runway before hard stop\nup(\"src/agents/implement.ts\", \"const MAX_TURNS = 8;\", \"const MAX_TURNS = 12;\");\n\n// 3) research: accept a progress sink and report each area as it goes out\nup(\"src/agents/research.ts\", \"  token: vscode.CancellationToken\\n): Promise<ResearchFinding[]> {\", \"  token: vscode.CancellationToken,\\n  progress?: vscode.Progress<{ message: string }>\\n): Promise<ResearchFinding[]> {\");\nup(\"src/agents/research.ts\", \"    const modelRef = config.research[i % config.research.length];\", \"    const modelRef = config.research[i % config.research.length];\\n    progress?.report({ message: \\\"Research area \\\" + (i + 1) + \\\" of \\\" + areas.length + \\\" (\\\" + (modelRef.id ?? modelRef.family) + \\\")\\\" });\");\nup(\"src/agents/pipeline.ts\", \"findings = await runResearch(task, config, tools, token);\", \"findings = await runResearch(task, config, tools, token, progress);\");\n\n// 4) package.json: declare the agentRoles setting (was read but undeclared)\nconst ag = [\n  \"        \\\"glm-copilot.agentRoles\\\": {\",\n  \"          \\\"type\\\": \\\"object\\\",\",\n  \"          \\\"default\\\": {},\",\n  \"          \\\"markdownDescription\\\": \\\"%glm-copilot.config.agentRoles.description%\\\",\",\n  \"          \\\"properties\\\": {\",\n  \"            \\\"research\\\": {\",\n  \"              \\\"type\\\": \\\"array\\\",\",\n  \"              \\\"description\\\": \\\"Models used for the parallel research pre-pass (round-robin). Free models recommended.\\\",\",\n  \"              \\\"items\\\": { \\\"type\\\": \\\"object\\\", \\\"required\\\": [\\\"vendor\\\", \\\"family\\\"], \\\"additionalProperties\\\": false, \\\"properties\\\": { \\\"vendor\\\": { \\\"type\\\": \\\"string\\\" }, \\\"family\\\": { \\\"type\\\": \\\"string\\\" }, \\\"id\\\": { \\\"type\\\": \\\"string\\\" } } }\",\n  \"            },\",\n  \"            \\\"review\\\": {\",\n  \"              \\\"type\\\": \\\"array\\\",\",\n  \"              \\\"description\\\": \\\"Optional models that review the diff in parallel after implementation.\\\",\",\n  \"              \\\"items\\\": { \\\"type\\\": \\\"object\\\", \\\"required\\\": [\\\"vendor\\\", \\\"family\\\"], \\\"additionalProperties\\\": false, \\\"properties\\\": { \\\"vendor\\\": { \\\"type\\\": \\\"string\\\" }, \\\"family\\\": { \\\"type\\\": \\\"string\\\" }, \\\"id\\\": { \\\"type\\\": \\\"string\\\" } } }\",\n  \"            }\",\n  \"          }\",\n  \"        },\",\n  \"\"\n].join(\"\\n\");\nup(\"package.json\", \"        \\\"glm-copilot.visionModel\\\": {\", agRoles + \"        \\\"glm-copilot.visionModel\\\": {\");\n\n// 5) version bump + nls keys\nup(\"package.json\", \"\\\"version\\\": \\\"3.9.0\\\"\", \"\\\"version\\\": \\\"3.9.1\\\"\");\nconst nlsEn = [\n  \"  \\\"glm-copilot.config.agentRoles.description\\\": \\\"Agent pipeline role models for the @pipeline chat participant. `research` is a list of models for the parallel pre-pass (round-robin across them; free models recommended). `review` is an optional list of models that give a second opinion on the diff. Each entry: vscode,family and optionally an exact id.\\\",\",\n  \"  \\\"glm-copilot.config.agentRoles.research.description\\\": \\\"Models used for the parallel research pre-pass (round-robin). Free models recommended.\\\",\",\n  \"  \\\"glm-copilot.config.agentRoles.review.description\\\": \\\"Optional models that review the diff after implementation.\\\",\"\n].join(\"\\n\");\nup(\"package.nls.json\", \"  \\\"glm-copilot.config.customModels.description\\\":\", nlsEn + \"\\n  \\\"glm-copilot.config.customModels.description\\\":\");\nconst nlsZh = [\n  \"  \\\"glm-copilot.config.agentRoles.description\\\": \\\"@pipeline 对话参与者使用的多智能体角色模型配置。`research` 为并行预研使用的模型列表（轮流分配；建议用免费模型）。`review` 为可选的对 diff 进行二次评审的模型列表。每条：vendor、family，可选 id。\\\",\",\n  \"  \\\"glm-copilot.config.agentRoles.research.description\\\": \\\"用于并行研究预研的模型列表（轮流使用）。建议使用免费模型。\\\",\",\n  \"  \\\"glm-copilot.config.agentRoles.review.description\\\": \\\"实现完成后对 diff 进行评审的可选模型。\\\"\",\n].join(\"\\n\");\nup(\"package.nls.zh-cn.json\", \"  \\\"glm-copilot.config.customModels.description\\\":\", nlsZh + \"\\n  \\\"glm-copilot.config.customModels.description\\\":\");\n\nfs.unlinkSync(\"agents-patch.mjs\");\nconsole.log(\"patch-ok\");\n\"@\nnode agents-patch.mjs"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "probe-pwsh-quote",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Write-Output \"hello world\"; Write-Output 'single ok'"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "probe-cmd2",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"node -e \"console.log(1+1)\""
+			],
+			"isBackground": false
+		},
+		{
+			"label": "apply-big-patch",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"node -e \"const fs=require(\\`fs\\`);function rd(p){return fs.readFileSync(p,\\`utf8\\`);}function wr(p,s){fs.writeFileSync(p,s,\\`utf8\\`);}function rep(p,a,b){let s=rd(p);if(!s.includes(a)){throw new Error(\\`anchor-not-found:\\`+p+\\`::\\`+a.slice(0,60));}wr(p,s.split(a).join(b));}const Q=String.fromCharCode(34);try{fs.unlinkSync(\\`agents-patch.mjs\\`);}catch(e){}rep(\\`src/client/rate-limit.ts\\`,\\`remaining > 2\\`,\\`remaining > 0\\`);rep(\\`src/agents/implement.ts\\`,\\`const MAX_TURNS = 8;\\`,\\`const MAX_TURNS = 12;\\`);let rs=rd(\\`src/agents/research.ts\\`);const st1=\\`export async function runResearch(\\`;const en1=\\`function extractFilePaths(\\`;let i1=rs.indexOf(st1);let i2=rs.indexOf(en1,i1);if(i1<0||i2<0){throw new Error(\\`research-anchor\\`);}const L=[\\`export async function runResearch(\\`,\\`  task: PipelineTask,\\`,\\`  config: AgentRoleConfig,\\`,\\`  tools: vscode.LanguageModelChatTool[],\\`,\\`  token: vscode.CancellationToken,\\`,\\`  progress?: vscode.Progress<{ message: string }>\\`,\\`): Promise<ResearchFinding[]> {\\`,\\`  if (config.research.length === 0) {\\`,\\`    throw new Error(\\x22AgentRoleConfig.research must list at least one model.\\x22);\\`,\\`  }\\`,\\`  const readOnlyTools = selectReadOnlyTools(tools);\\`,\\`  const options = readOnlyTools.length > 0 ? { tools: readOnlyTools } : {};\\`,\\`  // Start decomposition and a whole-task scan together so the fan-out is\\`,\\`  // visibly parallel from the very first request — no sequential prefix.\\`,\\`  const decompose = deriveResearchAreas(task, config, token);\\`,\\`  const overviewCall = researchOneArea(task, task.description, 0, config, options, token, progress);\\`,\\`  const areas = await decompose;\\`,\\`  const narrowAreas = areas.filter(function (area) { return area !== task.description; });\\`,\\`  const narrowCalls = narrowAreas.map(function (area, i) {\\`,\\`    return researchOneArea(task, area, i + 1, config, options, token, progress);\\`,\\`  });\\`,\\`  const [overview, ...narrow] = await Promise.all([overviewCall, ...narrowCalls]);\\`,\\`  return [overview, ...narrow];\\`,\\`}\\`,\\`\\`,\\`async function researchOneArea(\\`,\\`  task: PipelineTask,\\`,\\`  area: string,\\`,\\`  index: number,\\`,\\`  config: AgentRoleConfig,\\`,\\`  options: { tools?: vscode.LanguageModelChatTool[] },\\`,\\`  token: vscode.CancellationToken,\\`,\\`  progress?: vscode.Progress<{ message: string }>\\`,\\`): Promise<ResearchFinding> {\\`,\\`  const modelRef = config.research[index % config.research.length];\\`,\\`  progress?.report({ message: \\`Research area \\${(index + 1)} (\\${modelRef.id ?? modelRef.family})\\` });\\`,\\`  const model = await pickModel(modelRef);\\`,\\`  const messages: vscode.LanguageModelChatMessage[] = [\\`,\\`    vscode.LanguageModelChatMessage.User(RESEARCH_SYSTEM_PROMPT),\\`,\\`    vscode.LanguageModelChatMessage.User(\\x22Task: \\x22 + task.description + \\x22\\nFocus area: \\x22 + area + \\x22\\nWorkspace root: \\x22 + task.workspaceRoot)\\`,\\`  ];\\`,\\`  const response = await model.sendRequest(messages, options, token);\\`,\\`  let text = \\x22\\x22;\\`,\\`  for await (const chunk of response.text) {\\`,\\`    text += chunk;\\`,\\`  }\\`,\\`  return { area, summary: text, relevantFiles: extractFilePaths(text) };\\`,\\`}\\`];const NEW=L.join(\\x22\\n\\x22);rs=rs.slice(0,i1)+NEW+\\x22\\n\\x22+rs.slice(i2);wr(\\`src/agents/research.ts\\`,rs);rep(\\`src/agents/pipeline.ts\\`,\\`runResearch(task, config, tools, token);\\`,\\`runResearch(task, config, tools, token, progress);\\`);let pj=rd(\\`package.json\\`);pj=pj.split(\\`\\x22version\\x22: \\x223.9.0\\x22\\`).join(\\`\\x22version\\x22: \\x223.9.1\\x22\\`);const item={type:\\`object\\`,required:[Q+\\`vendor\\`+Q,Q+\\`family\\`+Q],additionalProperties:false,properties:{vendor:{type:\\`string\\`},family:{type:\\`string\\`},id:{type:\\`string\\`}}};const ao={};ao[\\`glm-copilot.agentRoles\\`]={type:\\`object\\`,default:{},markdownDescription:\\`%glm-copilot.config.agentRoles.description%\\`,properties:{research:{type:\\`array\\`,markdownDescription:\\`%glm-copilot.config.agentRoles.research.description%\\`,items:item},review:{type:\\`array\\`,markdownDescription:\\`%glm-copilot.config.agentRoles.review.description%\\`,items:item}}};const block=JSON.stringify(ao,null,2).split(\\`\\n\\`).map(function(l){return \\`        \\`+l;}).join(\\`\\n\\`)+\\`,\\n\\`;const anc=\\`        \\x22glm-copilot.visionModel\\x22: {\\`;if(!pj.includes(anc)){throw new Error(\\`pkg-anchor\\`);}pj=pj.split(anc).join(block+anc);wr(\\`package.json\\`,pj);function addNls(path,obj){let t=rd(path);const nl=t.includes(\\`\\r\\n\\`)?\\`\\r\\n\\`:\\`\\n\\`;const lines=Object.keys(obj).map(function(k){return \\`  \\x22\\`+k+\\`\\x22: \\`+JSON.stringify(obj[k])+\\`,\\`;}).join(nl);const a=\\`  \\x22glm-copilot.config.customModels.description\\x22:\\`;if(!t.includes(a)){throw new Error(\\`nls-anchor:\\`+path);}t=t.split(a).join(lines+nl+a);wr(path,t);}addNls(\\`package.nls.json\\`,{[\\`glm-copilot.config.agentRoles.description\\`]:\\`Agent pipeline role models for the @pipeline chat participant. \\x60research\\x60 lists models for the parallel pre-pass (round-robin; free models recommended). \\x60review\\x60 lists optional second-opinion models. Each entry: vendor, family, optional id.\\`,[\\`glm-copilot.config.agentRoles.research.description\\`]:\\`Models used for the parallel research pre-pass (round-robin; free models recommended).\\`,[\\`glm-copilot.config.agentRoles.review.description\\`]:\\`Optional models that review the diff after implementation.\\`});addNls(\\`package.nls.zh-cn.json\\`,{[\\`glm-copilot.config.agentRoles.description\\`]:\\`@pipeline 对话参与者使用的多智能体角色模型配置。\\x60research\\x60 为并行预研的模型列表（轮流分配；建议免费模型）。\\x60review\\x60 为实现后评审 diff 的可选模型列表。每项：vendor、family、可选 id。\\`,[\\`glm-copilot.config.agentRoles.research.description\\`]:\\`用于并行研究预研的模型列表（轮流使用；建议免费模型）。\\`,[\\`glm-copilot.config.agentRoles.review.description\\`]:\\`实现完成后评审 diff 的可选模型。\\`});const sp=(process.env.APPDATA||\\`C:/Users/PMLS/AppData/Roaming\\`)+\\`/Code/User/settings.json\\`;let us=rd(sp);const oldE=\\`[ { \\x22vendor\\x22: \\x22glm\\x22, \\x22family\\x22: \\x22deepseek\\x22, \\x22id\\x22: \\x22deepseek-v4-flash-free\\x22 } ]\\`;const newE=\\`[ { \\x22vendor\\x22: \\x22glm\\x22, \\x22family\\x22: \\x22deepseek\\x22, \\x22id\\x22: \\x22deepseek-v4-flash-free\\x22 }, { \\x22vendor\\x22: \\x22glm\\x22, \\x22family\\x22: \\x22mimo\\x22, \\x22id\\x22: \\x22mimo-v2.5-free\\x22 } ]\\`;if(!us.includes(oldE)){throw new Error(\\`settings-anchor\\`);}wr(sp,us.split(oldE).join(newE));console.log(\\`%@\".slice(0,0)+\\`patch-ok\\`);\""
+			],
+			"isBackground": false
+		},
+		{
+			"label": "probe-bt",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"node -e \"console.log(require(\\`fs\\`).existsSync(\\`.\\`))\""
+			],
+			"isBackground": false
+		},
+		{
+			"label": "probe-bt2",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"node -e \"console.log(require(`fs`).existsSync(`.`))\""
+			],
+			"isBackground": false
+		},
+		{
+			"label": "patch-part1",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"node -e \"const fs=require(`fs`);function rd(p){return fs.readFileSync(p,`utf8`);}function wr(p,s){fs.writeFileSync(p,s,`utf8`);}function rep(p,a,b){let s=rd(p);if(!s.includes(a)){throw new Error(`anchor-missing:`+p+`::`+a.slice(0,60));}wr(p,s.split(a).join(b));}rep(`src/client/rate-limit.ts`,`remaining > 2`,`remaining > 0`);rep(`src/agents/implement.ts`,`const MAX_TURNS = 8;`,`const MAX_TURNS = 12;`);rep(`src/agents/pipeline.ts`,`runResearch(task, config, tools, token);`,`runResearch(task, config, tools, token, progress);`);console.log(`patch-part1-ok`);\""
+			],
+			"isBackground": false
+		},
+		{
+			"label": "probe-gt",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"node -e \"console.log(1 \\x3e 0 ? `gt-ok` : `bad`)\""
+			],
+			"isBackground": false
+		},
+		{
+			"label": "probe-args",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"node",
+				"-e",
+				"console.log(`a b c`),console.log(1 > 0 ? `gt-ok` : `bad`)"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "patch-part1",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"node",
+				"-e",
+				"const fs=require(`fs`);function rep(p,a,b){let s=fs.readFileSync(p,`utf8`);if(!s.includes(a)){throw new Error(`anchor-missing:`+p);}fs.writeFileSync(p,s.split(a).join(b));}rep(`src/client/rate-limit.ts`,`remaining > 2`,`remaining > 0`);rep(`src/agents/implement.ts`,`const MAX_TURNS = 8;`,`const MAX_TURNS = 12;`);rep(`src/agents/pipeline.ts`,`runResearch(task, config, tools, token);`,`runResearch(task, config, tools, token, progress);`);console.log(`part1-ok`);"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "apply-p1",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"node",
+				"-e",
+				"const fs=require(`fs`);function rep(p,a,b){let s=fs.readFileSync(p,`utf8`);if(!s.includes(a)){throw new Error(`anchor-missing:`+p);}fs.writeFileSync(p,s.split(a).join(b));}rep(`src/client/rate-limit.ts`,`remaining > 2`,`remaining > 0`);rep(`src/agents/implement.ts`,`const MAX_TURNS = 8;`,`const MAX_TURNS = 12;`);rep(`src/agents/pipeline.ts`,`runResearch(task, config, tools, token);`,`runResearch(task, config, tools, token, progress);`);console.log(`apply-p1-ok`);"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "apply-p2",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"node",
+				"-e",
+				"const fs=require(`fs`);let s=fs.readFileSync(`src/agents/research.ts`,`utf8`);const i1=s.indexOf(`export async function runResearch(`);const i2=s.indexOf(`/**`,i1);if(i1<0||i2<0){throw new Error(`research-anchor`);}const L=[`export async function runResearch(`,`  task: PipelineTask,`,`  config: AgentRoleConfig,`,`  tools: vscode.LanguageModelChatTool[],`,`  token: vscode.CancellationToken,`,`  progress?: vscode.Progress<{ message: string }>`,`): Promise<ResearchFinding[]> {`,`  if (config.research.length === 0) {`,`    throw new Error(\\x27AgentRoleConfig.research must list at least one model.\\x27);`,`  }`,`  const readOnlyTools = selectReadOnlyTools(tools);`,`  const options = readOnlyTools.length > 0 ? { tools: readOnlyTools } : {};`,`  // Decomposition and a whole-task scan start together so the first`,`  // research call is already in flight while decomposing areas.`,`  const decompose = deriveResearchAreas(task, config, token);`,`  const overviewCall = researchOneArea(task, task.description, 0, config, options, token, progress);`,`  const areas = await decompose;`,`  const narrowAreas = areas.filter((area) => area !== task.description);`,`  const narrowCalls = narrowAreas.map((area, i) =>`,`    researchOneArea(task, area, i + 1, config, options, token, progress),`,`  );`,`  const [overview, ...narrow] = await Promise.all([overviewCall, ...narrowCalls]);`,`  return [overview, ...narrow];`,`}`,``,`async function researchOneArea(`,`  task: PipelineTask,`,`  area: string,`,`  index: number,`,`  config: AgentRoleConfig,`,`  options: { tools?: vscode.LanguageModelChatTool[] },`,`  token: vscode.CancellationToken,`,`  progress?: vscode.Progress<{ message: string }>`,`): Promise<ResearchFinding> {`,`  const modelRef = config.research[index % config.research.length];`,`  progress?.report({`,`    message: \\x27Researching (\\x27 + (modelRef.id ?? modelRef.family) + \\x27): \\x27 + area.slice(0, 60),`,`  });`,`  const model = await pickModel(modelRef);`,`  // System prompt as a leading user message — VS Code\\x27s role-3 system`,`  // role is a proposed API (languageModelSystem) and would block the`,`  // packaged extension outside dev mode.`,`  const messages: vscode.LanguageModelChatMessage[] = [`,`    vscode.LanguageModelChatMessage.User(RESEARCH_SYSTEM_PROMPT),`,`    vscode.LanguageModelChatMessage.User(`,`      \\x27Task: \\x27 + task.description + \\x27\\\\nFocus area: \\x27 + area + \\x27\\\\nWorkspace root: \\x27 + task.workspaceRoot`,`    ),`,`  ];`,`  const response = await model.sendRequest(messages, options, token);`,`  let text = \\x27\\x27;`,`  for await (const chunk of response.text) {`,`    text += chunk;`,`  }`,`  return { area, summary: text, relevantFiles: extractFilePaths(text) };`,`}`];const NEW=L.join(`\\n`);s=s.slice(0,i1)+NEW+`\\n\\n`+s.slice(i2);fs.writeFileSync(`src/agents/research.ts`,s);console.log(`apply-p2-ok`);"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "verify-state",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"node",
+				"-e",
+				"const fs=require(`fs`);const chk=(f,sub)=>fs.readFileSync(f,`utf8`).includes(sub);console.log(`research-param=${chk(`src/agents/research.ts`,`progress?: vscode.Progress<{ message: string }>`)}`);console.log(`research-parallel=${chk(`src/agents/research.ts`,`const decompose = deriveResearchAreas(task, config, token);`)}`);console.log(`research-pickModel=${chk(`src/agents/research.ts`,`await pickModel`)}`);console.log(`turns=${chk(`src/agents/implement.ts`,`const MAX_TURNS = 12`)}`);console.log(`call5=${chk(`src/agents/pipeline.ts`,`runResearch(task, config, tools, token, progress)`)}`);console.log(`gate=${chk(`src/client/rate-limit.ts`,`state.remaining > 0`)}`);const s=fs.readFileSync(`src/agents/research.ts`,`utf8`);const a=s.indexOf(`export async function runResearch(`);const b=s.indexOf(`async function deriveResearchAreas`,a);console.log(`---research-section---`);console.log(s.slice(a,b<0?s.length:Math.min(b,a+2600)).slice(0,2600));const p=fs.readFileSync(`package.json`,`utf8`);console.log(`pkg-crlf=${p.includes(`\r\n`)}`);console.log(`pkg-endsNL=${p.endsWith(`\n`)}`);console.log(`pkg-version=${JSON.parse(p).version}`);const nls=fs.readFileSync(`package.nls.json`,`utf8`);console.log(`nls-crlf=${nls.includes(`\r\n`)} nls-custom=${nls.includes(`customModels.description`)}`);const nlsz=fs.readFileSync(`package.nls.zh-cn.json`,`utf8`);console.log(`nlsz-crlf=${nlsz.includes(`\r\n`)} nlsz-custom=${nlsz.includes(`customModels.description`)}`);"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "verify-state2",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"node",
+				"-e",
+				"const fs=require(`fs`);const NR=String.fromCharCode(13)+String.fromCharCode(10);const chk=(f,sub)=>fs.readFileSync(f,`utf8`).includes(sub);console.log(`research-param=${chk(`src/agents/research.ts`,`progress?: vscode.Progress<{ message: string }>`)}`);console.log(`research-parallel=${chk(`src/agents/research.ts`,`const decompose = deriveResearchAreas(task, config, token);`)}`);console.log(`research-pickModel=${chk(`src/agents/research.ts`,`await pickModel`)}`);console.log(`turns=${chk(`src/agents/implement.ts`,`const MAX_TURNS = 12`)}`);console.log(`call5=${chk(`src/agents/pipeline.ts`,`runResearch(task, config, tools, token, progress)`)}`);console.log(`gate=${chk(`src/client/rate-limit.ts`,`state.remaining > 0`)}`);const s=fs.readFileSync(`src/agents/research.ts`,`utf8`);const a=s.indexOf(`export async function runResearch(`);const b=s.indexOf(`async function deriveResearchAreas`,a);console.log(`---research-section---`);console.log(s.slice(a,b<0?s.length:Math.min(b,a+2500)).slice(0,2500));const p=fs.readFileSync(`package.json`,`utf8`);console.log(`pkg-crlf=${p.includes(NR)}`);console.log(`pkg-endsNL=${p.endsWith(String.fromCharCode(10))}`);console.log(`pkg-version=${JSON.parse(p).version}`);const nls=fs.readFileSync(`package.nls.json`,`utf8`);console.log(`nls-crlf=${nls.includes(NR)} nls-custom=${nls.includes(`customModels.description`)}`);const nlsz=fs.readFileSync(`package.nls.zh-cn.json`,`utf8`);console.log(`nlsz-crlf=${nlsz.includes(NR)} nlsz-custom=${nlsz.includes(`customModels.description`)}`);"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "apply-p3",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"node",
+				"-e",
+				"const fs=require(`fs`);const NL=String.fromCharCode(10);const NR=String.fromCharCode(13)+NL;const s=fs.readFileSync(`package.json`,`utf8`);const roleSchema={type:`object`,required:[`vendor`,`family`],additionalProperties:false,properties:{vendor:{type:`string`},family:{type:`string`},id:{type:`string`}}};const agentRoles={type:`object`,default:{},markdownDescription:`%glm-copilot.config.agentRoles.description%`,properties:{research:{type:`array`,markdownDescription:`%glm-copilot.config.agentRoles.research.description%`,items:roleSchema},review:{type:`array`,markdownDescription:`%glm-copilot.config.agentRoles.review.description%`,items:roleSchema}}};const p=JSON.parse(s);const props=p.contributes.configuration.properties;const entries=[[`glm-copilot.agentRoles`,agentRoles],...Object.keys(props).map((k)=>[k,props[k]])];p.contributes.configuration.properties=Object.fromEntries(entries);let out=JSON.stringify(p,null,2);if(s.includes(NR)){out=out.split(NL).join(NR);}fs.writeFileSync(`package.json`,out);console.log(`apply-p3-ok ver=`+p.version+` agentRoles=`+(`glm-copilot.agentRoles` in p.contributes.configuration.properties));"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "apply-p4",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"node",
+				"-e",
+				"const fs=require(`fs`);const NL=String.fromCharCode(10);const NR=String.fromCharCode(13)+NL;const C=String.fromCharCode;const zh1=C(0x6d41,0x6c34,0x7ebf,0x5404,0x4ee3,0x7406,0x89d2,0x8272,0x4f7f,0x7528,0x7684,0x6a21,0x578b,0xff1a)+`research`+C(0xff08,0x5e76,0x884c,0x7814,0x7a76,0x6b65,0x9aa4,0xff09)+C(0x4e0e)+`review`+C(0xff08,0x6700,0x7ec8,0x4ee3,0x7801,0x5ba1,0x67e5,0xff09,0x3002);const zh2=C(0x5e76,0x884c,0x7814,0x7a76,0x6b65,0x9aa4,0x4f7f,0x7528,0x7684,0x6a21,0x578b,0x3002)+C(0x7814,0x7a76,0x9886,0x57df,0x6309,0x8f6e,0x8be2,0x5206,0x914d,0xff0c)+C(0x914d,0x7f6e,0x591a,0x4e2a,0x6a21,0x578b,0x53ef,0x8ba9,0x7814,0x7a76,0x771f,0x6b63,0x5e76,0x884c,0x6267,0x884c,0x3002);const zh3=C(0x6700,0x7ec8,0x4ee3,0x7801,0x5ba1,0x67e5,0x6b65,0x9aa4,0x4f7f,0x7528,0x7684,0x6a21,0x578b,0x3002);const en1=`Models used by the pipeline`+String.fromCharCode(0x27)+`s agent roles: research (parallel research step) and review (final code review).`;const en2=`Models used for the parallel research step. Areas are assigned round-robin across the listed models, so multiple models run research concurrently.`;const en3=`Models used for the final code review step.`;const edit=(f,add,j)=>{const s=fs.readFileSync(f,`utf8`);const o=JSON.parse(s);for(const k in add){o[k]=add[k];}let out=JSON.stringify(o,null,2);if(s.includes(NR)){out=out.split(NL).join(NR);}if(s.endsWith(NL)&&!out.endsWith(NL)){out+=NR;}if(!s.endsWith(NL)&&out.endsWith(NL)){out=out.slice(0,-1*NR.length);}fs.writeFileSync(f,out);console.log(j+`-ok`);};edit(`package.nls.json`,{`glm-copilot.config.agentRoles.description`:en1,`glm-copilot.config.agentRoles.research.description`:en2,`glm-copilot.config.agentRoles.review.description`:en3},`nls-en`);edit(`package.nls.zh-cn.json`,{`glm-copilot.config.agentRoles.description`:zh1,`glm-copilot.config.agentRoles.research.description`:zh2,`glm-copilot.config.agentRoles.review.description`:zh3},`nls-zh`);"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "apply-p4b",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"node",
+				"-e",
+				"const fs=require(`fs`);const NL=String.fromCharCode(10);const NR=String.fromCharCode(13)+NL;const C=String.fromCharCode;const zh1=C(0x6d41,0x6c34,0x7ebf,0x5404,0x4ee3,0x7406,0x89d2,0x8272,0x4f7f,0x7528,0x7684,0x6a21,0x578b,0xff1a)+`research`+C(0xff08,0x5e76,0x884c,0x7814,0x7a76,0x6b65,0x9aa4,0xff09)+C(0x4e0e)+`review`+C(0xff08,0x6700,0x7ec8,0x4ee3,0x7801,0x5ba1,0x67e5,0xff09,0x3002);const zh2=C(0x5e76,0x884c,0x7814,0x7a76,0x6b65,0x9aa4,0x4f7f,0x7528,0x7684,0x6a21,0x578b,0x3002)+C(0x7814,0x7a76,0x9886,0x57df,0x6309,0x8f6e,0x8be2,0x5206,0x914d,0xff0c)+C(0x914d,0x7f6e,0x591a,0x4e2a,0x6a21,0x578b,0x53ef,0x8ba9,0x7814,0x7a76,0x771f,0x6b63,0x5e76,0x884c,0x6267,0x884c,0x3002);const zh3=C(0x6700,0x7ec8,0x4ee3,0x7801,0x5ba1,0x67e5,0x6b65,0x9aa4,0x4f7f,0x7528,0x7684,0x6a21,0x578b,0x3002);const en1=`Models used by the pipeline`+C(0x27)+`s agent roles: research (parallel research step) and review (final code review).`;const en2=`Models used for the parallel research step. Areas are assigned round-robin across the listed models, so multiple models run research concurrently.`;const en3=`Models used for the final code review step.`;function addKeys(o,k1,v1,k2,v2,k3,v3){o[k1]=v1;o[k2]=v2;o[k3]=v3;return o;}function edit(f,obj,j){const s=fs.readFileSync(f,`utf8`);const o=JSON.parse(s);for(const k in obj){o[k]=obj[k];}let out=JSON.stringify(o,null,2);if(s.includes(NR)){out=out.split(NL).join(NR);}if(s.endsWith(NL)&&!out.endsWith(NL)){out+=NR;}if(!s.endsWith(NL)&&out.endsWith(NL)){out=out.slice(0,-NR.length);}fs.writeFileSync(f,out);console.log(j+`-ok`);}const A=`glm-copilot.config.agentRoles.`;edit(`package.nls.json`,addKeys({},A+`description`,en1,A+`research.description`,en2,A+`review.description`,en3),`nls-en`);edit(`package.nls.zh-cn.json`,addKeys({},A+`description`,zh1,A+`research.description`,zh2,A+`review.description`,zh3),`nls-zh`);"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "tsc-check",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"npx",
+				"tsc",
+				"--noEmit"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "inspect-dirs",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"node",
+				"-e",
+				"const fs=require(`fs`);const dirs=[`src/agents`,`src/runtime`];for(const d of dirs){console.log(`---`+d+`---`);try{console.log(fs.readdirSync(d).join(`, `));}catch(e){console.log(`MISSING: `+e.message);}}console.log(`---git---`);const cp=require(`child_process`);console.log(cp.execSync(`git status --short`,{encoding:`utf8`}));"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "dump-pipeline",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"node",
+				"-e",
+				"const fs=require(`fs`);const cp=require(`child_process`);console.log(`===agent-pipeline.ts===`);console.log(fs.readFileSync(`src/runtime/agent-pipeline.ts`,`utf8`));console.log(`===tools.ts head===`);const t=fs.readFileSync(`src/agents/tools.ts`,`utf8`);console.log(t.slice(0,800));console.log(`===grep===\n`);const out=cp.execSync(`git grep -n -e runPipeline -e formatReport -e PipelineTask -e AgentRoleConfig -e ModelRef -- src`,{encoding:`utf8`,stdio:[`ignore`,`pipe`,`ignore`]});console.log(out);"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "write-dump-script",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"node",
+				"-e",
+				"const fs=require(`fs`);const ws=`dumpreport.mjs`;const body=[`import fs from `+String.fromCharCode(39)+`fs`+String.fromCharCode(39)+`;`,`import cp from `+String.fromCharCode(39)+`child_process`+String.fromCharCode(39)+`;`,`console.log(`+String.fromCharCode(96)+`===agent-pipeline.ts===`+String.fromCharCode(96)+`);`,`console.log(fs.readFileSync(`+String.fromCharCode(96)+`src/runtime/agent-pipeline.ts`+String.fromCharCode(96)+`,`+String.fromCharCode(96)+`utf8`+String.fromCharCode(96)+`));`,`console.log(`+String.fromCharCode(96)+`===tools.ts head===`+String.fromCharCode(96)+`);`,`const t=fs.readFileSync(`+String.fromCharCode(96)+`src/agents/tools.ts`+String.fromCharCode(96)+`,`+String.fromCharCode(96)+`utf8`+String.fromCharCode(96)+`);`,`console.log(t.slice(0,900));`,`const out=cp.execSync(`+String.fromCharCode(96)+`git grep -n -e runPipeline -e formatReport -e PipelineTask -e AgentRoleConfig -e ModelRef -- src`+String.fromCharCode(96)+`,{encoding:`+String.fromCharCode(96)+`utf8`+String.fromCharCode(96)+`,stdio:[`+String.fromCharCode(96)+`ignore`+String.fromCharCode(96)+`,`+String.fromCharCode(96)+`pipe`+String.fromCharCode(96)+`,`+String.fromCharCode(96)+`ignore`+String.fromCharCode(96)+`]});`,`console.log(out);`].join(String.fromCharCode(10));fs.writeFileSync(ws,body);console.log(`written`);"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "run-dump",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"node",
+				"dumpreport.mjs"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "write-scanlog",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"node",
+				"-e",
+				"const fs=require(`fs`);const out=[`const fs=require(`+String.fromCharCode(39)+`fs`+String.fromCharCode(39)+`);`,`const T=`+String.fromCharCode(39)+`c:`+String.fromCharCode(92)+`Users`+String.fromCharCode(92)+`PMLS`+String.fromCharCode(92)+`AppData`+String.fromCharCode(92)+`Roaming`+String.fromCharCode(92)+`Code`+String.fromCharCode(92)+`User`+String.fromCharCode(92)+`workspaceStorage`+String.fromCharCode(92)+`8bd0b6d6c3b3a849bcc4676c962a89e9`+String.fromCharCode(92)+`GitHub.copilot-chat`+String.fromCharCode(92)+`transcripts`+String.fromCharCode(92)+`421351b6-6c54-47f3-aa9b-5dbc1972660c.jsonl`+String.fromCharCode(39)+`;`,`const lines=fs.readFileSync(T,`+String.fromCharCode(96)+`utf8`+String.fromCharCode(96)+`).split(String.fromCharCode(10));`,`const needles=[`+String.fromCharCode(96)+`src/agents/pipeline.ts`+String.fromCharCode(96)+`,`+String.fromCharCode(96)+`src/agents/implement.ts`+String.fromCharCode(96)+`,`+String.fromCharCode(96)+`src/agents/research.ts`+String.fromCharCode(96)+`,`+String.fromCharCode(96)+`src/agents/review.ts`+String.fromCharCode(96)+`,`+String.fromCharCode(96)+`src/agents/modelSelect.ts`+String.fromCharCode(96)+`,`+String.fromCharCode(96)+`src/agents/types.ts`+String.fromCharCode(96)+`];`,`for(let i=0;i<lines.length;i++){const ln=lines[i];let hit=null;for(const n of needles){if(ln.includes(n)){hit=n;break;}}if(hit){console.log(`+String.fromCharCode(96)+`---L`+String.fromCharCode(96)+`+i+` (hit: `+String.fromCharCode(96)+`+hit+`)`);const m=ln.indexOf(hit);console.log(ln.slice(Math.max(0,m-200),m+2200));}}`].join(String.fromCharCode(10));fs.writeFileSync(`scanlog.mjs`,out);console.log(`scanlog written`);"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "scan-transcript",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"node",
+				"-e",
+				"const fs=require(`fs`);const NL=String.fromCharCode(10);const P=process.argv.slice(2).join(NL);fs.writeFileSync(`scanlog.mjs`,P);console.log(`scanlog written `+P.length+` chars`);",
+				"const fs=require(`fs`);",
+				"const os=require(`os`);",
+				"const home=os.homedir();",
+				"const T=home+`/AppData/Roaming/Code/User/workspaceStorage/8bd0b6d6c3b3a849bcc4676c962a89e9/GitHub.copilot-chat/transcripts/421351b6-6c54-47f3-aa9b-5dbc1972660c.jsonl`;",
+				"const lines=fs.readFileSync(T,`utf8`).split(String.fromCharCode(10));",
+				"const needles=[`src/agents/pipeline.ts`,`src/agents/implement.ts`,`src/agents/research.ts`,`src/agents/review.ts`,`src/agents/modelSelect.ts`,`src/agents/types.ts`];",
+				"let shown=0;",
+				"for(let i=0;i<lines.length;i++){",
+				"  const ln=lines[i];",
+				"  let hit=null;",
+				"  for(const n of needles){if(ln.includes(n)){hit=n;break;}}",
+				"  if(!hit){continue;}",
+				"  const m=ln.indexOf(hit);",
+				"  console.log(`---L`+i+` hit=`+hit+` m=`+m);",
+				"  console.log(ln.slice(Math.max(0,m-300),m+3000));",
+				"  shown++;",
+				"  if(shown>=25){break;}",
+				"}",
+				"console.log(`total matches shown: `+shown);"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "recover-scan",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"node",
+				"-e",
+				"const fs=require(`fs`);const os=require(`os`);const T=os.homedir()+`/AppData/Roaming/Code/User/workspaceStorage/8bd0b6d6c3b3a849bcc4676c962a89e9/GitHub.copilot-chat/transcripts/421351b6-6c54-47f3-aa9b-5dbc1972660c.jsonl`;const lines=fs.readFileSync(T,`utf8`).split(String.fromCharCode(10));const needles=[`src/agents/pipeline.ts`,`src/agents/implement.ts`,`src/agents/research.ts`,`src/agents/review.ts`,`src/agents/modelSelect.ts`,`src/agents/types.ts`];let shown=0;for(let i=0;i<lines.length;i++){const ln=lines[i];let hit=null;for(const n of needles){if(ln.includes(n)){hit=n;break;}}if(!hit){continue;}const m=ln.indexOf(hit);console.log(`---L`+i+` hit=`+hit+` m=`+m);console.log(ln.slice(Math.max(0,m-300),m+2000));shown++;if(shown>=12){break;}}console.log(`transcript-shown=`+shown);const H=os.homedir()+`/AppData/Roaming/Code/User/History`;console.log(`history-dirs=`+fs.readdirSync(H).length);for(const d of fs.readdirSync(H)){try{const ej=JSON.parse(fs.readFileSync(H+`/`+d+`/entries.json`,`utf8`));for(const e of ej){let r=String(e.resource||`x`);for(const want of needles){if(r.includes(want)){const f=H+`/`+d+`/`+e.id;let sz=0;try{sz=fs.statSync(f).size;}catch(x){}console.log(`HISTORY res=`+r+` ts=`+e.timestamp+` size=`+sz+` f=`+f);}}}}catch(x){}}"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "read-scan-1",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"node",
+				"-e",
+				"const fs=require(`fs`);const f=`c:/Users/PMLS/AppData/Roaming/Code/User/workspaceStorage/8bd0b6d6c3b3a849bcc4676c962a89e9/GitHub.copilot-chat/chat-session-resources/421351b6-6c54-47f3-aa9b-5dbc1972660c/call_1e64486064e9468a959d9cac__vscode-1786283747650/content.txt`;const s=fs.readFileSync(f,`utf8`);console.log(`LEN=`+s.length);console.log(s.slice(0,11000));"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "read-scan-2",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"node",
+				"-e",
+				"const fs=require(`fs`);const f=`c:/Users/PMLS/AppData/Roaming/Code/User/workspaceStorage/8bd0b6d6c3b3a849bcc4676c962a89e9/GitHub.copilot-chat/chat-session-resources/421351b6-6c54-47f3-aa9b-5dbc1972660c/call_1e64486064e9468a959d9cac__vscode-1786283747650/content.txt`;const s=fs.readFileSync(f,`utf8`);console.log(s.slice(11000,23000));"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "read-scan-tail",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"node",
+				"-e",
+				"const fs=require(`fs`);const f=`c:/Users/PMLS/AppData/Roaming/Code/User/workspaceStorage/8bd0b6d6c3b3a849bcc4676c962a89e9/GitHub.copilot-chat/chat-session-resources/421351b6-6c54-47f3-aa9b-5dbc1972660c/call_1e64486064e9468a959d9cac__vscode-1786283747650/content.txt`;const s=fs.readFileSync(f,`utf8`);console.log(`LEN=`+s.length);console.log(s.slice(22000));"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "list-builds",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"node",
+				"-e",
+				"const fs=require(`fs`);for(const d of [`dist`,`out`,`.vite`]){console.log(`---`+d+`---`);try{const items=fs.readdirSync(d);for(const it of items){const st=fs.statSync(d+`/`+it);console.log((st.isDirectory()?`DIR `:`FILE`)+` `+it+` `+st.size);}}catch(e){console.log(`missing`);}}"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "grep-bundle",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"node",
+				"-e",
+				"const fs=require(`fs`);const s=fs.readFileSync(`out/extension.js`,`utf8`);const markers=[`runPipeline`,`formatReport`,`Research covered`,`Implementation finished`,`Tests passed`,`runTests`,`MAX_TURNS`,`deriveResearchAreas`,`extractFilePaths`,`Researching (`,`Implementing and running tests`,`Reviewing the result`,`pickModel`,`IMPLEMENT_SYSTEM_PROMPT`,`RESEARCH_SYSTEM_PROMPT`,`DECOMPOSE_PROMPT`,`shouldResearch`,`MAX_RESEARCH_AREAS`];for(const m of markers){let i=0,c=0;while((i=s.indexOf(m,i))>=0&&c<4){console.log(`[`+m+` @`+i+`] `+s.slice(Math.max(0,i-60),i+160).replace(String.fromCharCode(10),` `));i+=m.length;c++;}if(c===0){console.log(`[`+m+`] NOT FOUND`);}}"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "cat-grep",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"node",
+				"-e",
+				"const fs=require(`fs`);const f=`c:/Users/PMLS/AppData/Roaming/Code/User/workspaceStorage/8bd0b6d6c3b3a849bcc4676c962a89e9/GitHub.copilot-chat/chat-session-resources/421351b6-6c54-47f3-aa9b-5dbc1972660c/call_00_Kd8sS57K2NDhotHBGN0L3002__vscode-1786283747655/content.txt`;console.log(fs.readFileSync(f,`utf8`));"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "grep-a",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"node",
+				"-e",
+				"const fs=require(`fs`);const f=`c:/Users/PMLS/AppData/Roaming/Code/User/workspaceStorage/8bd0b6d6c3b3a849bcc4676c962a89e9/GitHub.copilot-chat/chat-session-resources/421351b6-6c54-47f3-aa9b-5dbc1972660c/call_00_Kd8sS57K2NDhotHBGN0L3002__vscode-1786283747655/content.txt`;const s=fs.readFileSync(f,`utf8`);console.log(s.slice(0,5500));"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "extract-regions",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"node",
+				"-e",
+				"const fs=require(`fs`);const s=fs.readFileSync(`out/extension.js`,`utf8`);const files=[`pipeline`,`implement`,`research`,`review`,`modelSelect`,`types`];fs.mkdirSync(`extracted`,{recursive:true});for(const f of files){const start=`//#region src/agents/`+f+`.ts`;const a=s.indexOf(start);if(a<0){console.log(f+` MISSING`);continue;}const b=s.indexOf(`//#endregion`,a);const body=s.slice(a+start.length,b);fs.writeFileSync(`extracted/`+f+`.txt`,body);console.log(f+` = `+body.length+` chars, starts: `+body.slice(0,80).replace(String.fromCharCode(10),` `));}"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "read-pipe-impl",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"node",
+				"-e",
+				"const fs=require(`fs`);for(const f of [`pipeline`,`implement`]){console.log(`##### `+f+` #####`);const s=fs.readFileSync(`extracted/`+f+`.txt`,`utf8`);for(let i=0;i<s.length;i+=3800){console.log(s.slice(i,i+3800));}}"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "read-rest",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"node",
+				"-e",
+				"const fs=require(`fs`);for(const f of [`research`,`review`,`modelSelect`]){console.log(`##### `+f+` #####`);const s=fs.readFileSync(`extracted/`+f+`.txt`,`utf8`);for(let i=0;i<s.length;i+=3800){console.log(s.slice(i,i+3800));}}"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "inspect-state",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Write-Host '=== src/agents ==='; Get-ChildItem src/agents -Name -ErrorAction SilentlyContinue; Write-Host '=== extracted ==='; Get-ChildItem extracted -Name -ErrorAction SilentlyContinue; Write-Host '=== git status ==='; git status --short; Write-Host '=== out ==='; Get-ChildItem out -Name -ErrorAction SilentlyContinue | Select-Object -First 5"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "check-bundle-regions",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"$s = Get-Content out/extension.js -Raw; foreach ($f in @('pipeline','implement','research','review','modelSelect','types')) { $m = [regex]::Match($s, '//#region src/agents/' + $f + '.ts'); if ($m.Success) { $idx = $s.IndexOf('//#endregion', $m.Index); $len = $idx - $m.Index; Write-Host ($f + ' FOUND length=' + $len) } else { Write-Host ($f + ' MISSING') } }"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "tsc-errors",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"npx tsc --noEmit -p tsconfig.json 2>&1 | Select-String 'error TS' | Select-Object -First 30"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "extract-regions",
+			"type": "shell",
+			"command": "node",
+			"args": [
+				"extracted/inspect.cjs"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "tsc-log",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"npx tsc --noEmit -p tsconfig.json > extracted/tsc.log 2>&1 & findstr /C:\"error TS\" extracted/tsc.log"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "read-extracted",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"type extracted\\pipeline.txt && echo ===PIPELINE-END=== && type extracted\\implement.txt && echo ===IMPLEMENT-END=== && type extracted\\research.txt && echo ===RESEARCH-END=== && type extracted\\review.txt && echo ===REVIEW-END=== && type extracted\\modelSelect.txt && echo ===MODELSELECT-END==="
+			],
+			"isBackground": false
+		},
+		{
+			"label": "cat-extracted",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"type c:\\Users\\PMLS\\AppData\\Roaming\\Code\\User\\workspaceStorage\\8bd0b6d6c3b3a849bcc4676c962a89e9\\GitHub.copilot-chat\\chat-session-resources\\421351b6-6c54-47f3-aa9b-5dbc1972660c\\call_00_3hqGDohf8tsZo9kGqXFl6821__vscode-1786477506978\\content.txt"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "find-vscode-types",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"node -e \"const fs=require(`fs`);for(const p of [`node_modules/@types/vscode/index.d.ts`,`node_modules/vscode/vscode.d.ts`]){try{const s=fs.readFileSync(p,`utf8`);const i=s.indexOf(`toolInvocationToken`);console.log(p+` LEN=`+s.length+` i=`+i);console.log(s.slice(Math.max(0,i-400),i+400));}catch(e){console.log(p+` MISSING`);}}\""
+			],
+			"isBackground": false
+		},
+		{
+			"label": "run-find-vscode",
+			"type": "shell",
+			"command": "node",
+			"args": [
+				"extracted/find-vscode.cjs"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "dump-vscode-api",
+			"type": "shell",
+			"command": "node",
+			"args": [
+				"extracted/dump-vscode-api.cjs"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "check-pkg",
+			"type": "shell",
+			"command": "node",
+			"args": [
+				"extracted/check-pkg.cjs"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "check-token-type",
+			"type": "shell",
+			"command": "node",
+			"args": [
+				"extracted/check-token-type.cjs"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "tsc-check",
+			"type": "shell",
+			"command": "npx",
+			"args": [
+				"tsc",
+				"--noEmit",
+				"-p",
+				"tsconfig.json"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "tsc-exit-check",
+			"type": "shell",
+			"command": "npx tsc --noEmit -p tsconfig.json && echo TSC-OK",
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "tsc-exit-code",
+			"type": "shell",
+			"command": "npx",
+			"args": [
+				"tsc",
+				"--noEmit",
+				"-p",
+				"tsconfig.json"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "run-tests",
+			"type": "shell",
+			"command": "pnpm",
+			"args": [
+				"test"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "pnpm-compile",
+			"type": "shell",
+			"command": "pnpm",
+			"args": [
+				"compile"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "run-tests-2",
+			"type": "shell",
+			"command": "pnpm",
+			"args": [
+				"test"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "tsc-final",
+			"type": "shell",
+			"command": "npx",
+			"args": [
+				"tsc",
+				"--noEmit",
+				"-p",
+				"tsconfig.json"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "pnpm-compile-final",
+			"type": "shell",
+			"command": "pnpm",
+			"args": [
+				"compile"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "verify-bundle",
+			"type": "shell",
+			"command": "node",
+			"args": [
+				"-e",
+				"const s=require('fs').readFileSync('out/extension.js','utf8'); console.log('spin-guard:', s.includes('Stop looping')); console.log('research-parallel:', s.includes('Research covered')); console.log('max-turns-12:', s.includes('MAX_TURNS = 12') || /turnLimit/.test(s));"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "verify-bundle-2",
+			"type": "shell",
+			"command": "node",
+			"args": [
+				"extracted/verify-bundle.cjs"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "list-extracted",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Get-ChildItem extracted | Select-Object Name, Length"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "git-status",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"status",
+				"--short"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "test-cjs-files",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"foreach ($f in @('inspect','find-vscode','check-pkg','check-token-type','dump-vscode-api','verify-bundle')) { Write-Host \"--- $f ---\"; node \"extracted/$f.cjs\" 2>&1 | Select-Object -First 3 }"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "run-all-cjs",
+			"type": "shell",
+			"command": "node",
+			"args": [
+				"extracted/run-all.cjs"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "tsc-check-now",
+			"type": "shell",
+			"command": "npx",
+			"args": [
+				"tsc",
+				"--noEmit",
+				"-p",
+				"tsconfig.json"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "cleanup-extracted",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Remove-Item extracted/inspect.cjs, extracted/find-vscode.cjs, extracted/check-pkg.cjs, extracted/check-token-type.cjs, extracted/dump-vscode-api.cjs, extracted/run-all.cjs; Get-ChildItem extracted | Select-Object Name, Length"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "pnpm-compile-dist",
+			"type": "shell",
+			"command": "pnpm",
+			"args": [
+				"compile"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "verify-bundle-final",
+			"type": "shell",
+			"command": "node",
+			"args": [
+				"extracted/verify-bundle.cjs"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "tsc-check-swarm",
+			"type": "shell",
+			"command": "npx tsc --noEmit -p tsconfig.json",
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "tsc-check-swarm-2",
+			"type": "shell",
+			"command": "npx tsc --noEmit -p tsconfig.json",
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "run-tests-swarm",
+			"type": "shell",
+			"command": "pnpm test",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "tsc-check-swarm",
+			"type": "shell",
+			"command": "npx tsc --noEmit -p tsconfig.json",
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "run-tests-swarm-2",
+			"type": "shell",
+			"command": "pnpm test",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "pnpm-compile-swarm",
+			"type": "shell",
+			"command": "pnpm compile",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "tsc-check-swarm",
+			"type": "shell",
+			"command": "npx tsc --noEmit -p tsconfig.json",
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "run-tests-swarm",
+			"type": "shell",
+			"command": "pnpm test",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "tsc-check-swarm",
+			"type": "shell",
+			"command": "npx tsc --noEmit -p tsconfig.json",
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "git-diff-implement",
+			"type": "shell",
+			"command": "git diff src/agents/implement.ts",
+			"isBackground": false,
+			"group": "none"
+		},
+		{
+			"label": "git-status",
+			"type": "shell",
+			"command": "git status --short && git log --oneline -3",
+			"isBackground": false,
+			"group": "none"
+		},
+		{
+			"label": "tsc-check-swarm",
+			"type": "shell",
+			"command": "npx tsc --noEmit -p tsconfig.json",
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "run-tests-swarm",
+			"type": "shell",
+			"command": "pnpm test",
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "run-tests-swarm-2",
+			"type": "shell",
+			"command": "pnpm test",
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "run-tests-swarm-3",
+			"type": "shell",
+			"command": "pnpm test",
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "pnpm-compile-swarm",
+			"type": "shell",
+			"command": "pnpm compile",
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "noop",
+			"type": "shell",
+			"command": "powershell -NoProfile -Command \"$p='.copilot/repo/agents-pipeline.md'; $c=Get-Content $p -Raw; $c=$c -replace [regex]::Escape('old guard only caught *identical consecutive* calls (`lastCallKey`/`consecutiveIdentical`, SPIN_LIMIT=2) — oscillation slipped through and burned all 12 turns, leaving \"Tests were not run by the agent — verify manually\".'), 'old guard only caught *identical consecutive* calls (`lastCallKey`/`consecutiveIdentical`, SPIN_LIMIT=2) — oscillation slipped through and burned all 12 turns, leaving \"Tests were not run by the agent — verify manually\".'; Set-Content $p $c -NoNewline\"",
+			"isBackground": false,
+			"group": "none"
+		},
+		{
+			"label": "update-memory",
+			"type": "shell",
+			"command": "powershell -NoProfile -Command \"$c = @'\nconst fs = require('fs');\nconst path = require('path');\nconst file = path.join(__dirname, '..', '.copilot', 'repo', 'agents-pipeline.md');\nconst oldBlock = '## Loop root cause (bug fixed)\\nAgent repeated similar tool calls (grep/read oscillation) and never called \\u0060runTests\\u0060; old guard only caught *identical consecutive* calls (\\u0060lastCallKey\\u0060/\\u0060consecutiveIdentical\\u0060, SPIN_LIMIT=2) — oscillation slipped through and burned all 12 turns, leaving \"Tests were not run by the agent — verify manually\".';\nconst newBlock = '## Loop hardening in \\u0060src/agents/implement.ts\\u0060 (v3.9.0, 2026-02)\\nThree layers stop the implementer from burning all 12 turns without running tests:\\n1. **Windowed spin guard** (\\u0060SPIN_WINDOW=4\\u0060, \\u0060EDIT_TOOL_NAMES\\u0060): suppresses exact repeats (A,A,A — 3rd call) AND oscillation (A,B,A,B — repeat with no edit in between). Repeats around a real edit tool are legitimate re-reads and allowed.\\n2. **Deadline nudge**: at \\u0060turn >= MAX_TURNS - 2\\u0060 with no test run, injects a user message forcing \\u0060runTests\\u0060 + conclude.\\n3. **Safety-net test run**: if the loop exits (cap OR conclusion) with \\u0060!ranTests\\u0060, the pipeline invokes \\u0060runTests\\u0060 itself once so the report carries a real verdict — never \"verify manually\". \\u0060testsPassed\\u0060 from \\u0060/pass/i && !/fail/i\\u0060.\\n\\nConclusion path: text-only reply breaks the loop; trusts \\u0060/tests? (?:pass|passed)/i\\u0060 only when \\u0060!ranTests\\u0060.\\n\\n## Loop root cause (the bug that motivated this)\\nAgent repeated similar tool calls (grep/read oscillation) and never called \\u0060runTests\\u0060; old guard only caught *identical consecutive* calls (\\u0060lastCallKey\\u0060/\\u0060consecutiveIdentical\\u0060, SPIN_LIMIT=2), so oscillation slipped through and burned all 12 turns.';\nlet content = fs.readFileSync(file, 'utf8');\nif (!content.includes(oldBlock)) { console.error('anchor not found'); console.log(content); process.exit(1); }\ncontent = content.replace(oldBlock, newBlock);\ncontent = content.replace('139/139 (21 files)', '143/143 (21 files)');\ncontent = content.replace('~420KB', '~422KB');\nfs.writeFileSync(file, content);\nconsole.log('memory updated');\n'@ | Set-Content -Path extracted/update-memory.cjs -Encoding UTF8; node extracted/update-memory.cjs\"",
+			"isBackground": false,
+			"group": "none"
+		},
+		{
+			"label": "update-memory-simple",
+			"type": "shell",
+			"command": "powershell -NoProfile -Command \"$content = 'const fs = require(0x22fs0x22);' + [char]10 + 'const path = require(0x22path0x22);' + [char]10 + 'const file = path.join(__dirname, 0x220x2e0x2e0x220x2c 0x220x2ecopilot0x22 0x2c 0x220x2erepo0x22 0x2c 0x220x2eagents-pipeline0x2emd0x22);' + [char]10 + 'let c = fs.readFileSync(file, 0x220x757466380x22);' + [char]10 + 'c = c.replace(0x2213932f313339202832312066696c6573290x22 0x2c 0x223134332f313433202832312066696c6573290x22);' + [char]10 + 'fs.writeFileSync(file, c);' + [char]10 + 'console.log(0x226d656d6f727920757064617465640x22);' + [char]10; Set-Content -Path extracted/update-memory.cjs -Value $content -Encoding UTF8; node extracted/update-memory.cjs\"",
+			"isBackground": false,
+			"group": "none"
+		},
+		{
+			"label": "cleanup-memory-helper",
+			"type": "shell",
+			"command": "powershell -NoProfile -Command \"Remove-Item extracted/update-memory.cjs -ErrorAction SilentlyContinue; Get-ChildItem extracted | Select-Object Name\"",
+			"isBackground": false,
+			"group": "none"
+		},
+		{
+			"label": "tsc-check-swarm",
+			"type": "shell",
+			"command": "npx tsc --noEmit -p tsconfig.json",
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "run-tests-swarm",
+			"type": "shell",
+			"command": "pnpm test",
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "pnpm-compile-swarm",
+			"type": "shell",
+			"command": "pnpm compile",
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "git-status",
+			"type": "shell",
+			"command": "git status --short",
+			"isBackground": false,
+			"group": "none"
+		},
+		{
+			"label": "git-info",
+			"type": "shell",
+			"command": "git branch --show-current; git remote -v; echo ---; cat .gitignore 2>/dev/null || echo no-gitignore; echo ---; git log --oneline -5",
+			"isBackground": false,
+			"group": "none"
+		},
+		{
+			"label": "git-info",
+			"type": "shell",
+			"command": "git branch --show-current; git remote -v; echo ---; Get-Content .gitignore -ErrorAction SilentlyContinue; echo ---; git log --oneline -5",
+			"isBackground": false,
+			"group": "none"
+		},
+		{
+			"label": "git-branch",
+			"type": "shell",
+			"command": "git branch --show-current",
+			"isBackground": false,
+			"group": "none"
+		},
+		{
+			"label": "git-remote",
+			"type": "shell",
+			"command": "git remote -v",
+			"isBackground": false,
+			"group": "none"
+		},
+		{
+			"label": "git-add",
+			"type": "shell",
+			"command": "git add -A",
+			"isBackground": false,
+			"group": "none"
+		}
+	]
 }

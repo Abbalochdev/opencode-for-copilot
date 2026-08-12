@@ -99,6 +99,16 @@ API Key 存储在 VS Code 的 `SecretStorage` 中（macOS 钥匙串 / Windows �
 
 启用后 Ponytail 会自动降为**轻量**模式以确保兼容——Ponytail 保持响应的简洁与复用导向，而代码精简器确保已编写的内容干净易读。可通过命令面板关闭：**OpenCode: 切换代码精简器**，或将 `glm-copilot.codeSimplifier` 设为 `false`。
 
+### Agent Swarm（`@swarm`）
+
+在 Copilot Chat 中输入 `@swarm`，即可将任务交给 **Agent Swarm**——一个完整的多 Agent 系统，每个阶段都由自主 Agent 执行，并在进入下一阶段前汇报结果：
+
+1. **研究群（并行）**——分解调用将任务拆成最多 3 个关注领域；每个领域分配一个研究 Agent，拥有只读工具（读文件、搜索）和独立工具循环，真正探索代码库后返回精简结论。多个研究模型按轮询分配以规避限流。
+2. **评审群（并行，写代码之前）**——评审 Agent 拿到任务与研究结论，并可用只读工具对照代码核验结论，标记实现前必须解决的缺口、矛盾与风险。
+3. **实现**——一个 Agent 使用你在聊天中选择的模型，在收到研究结论与评审反馈后开始编辑、运行测试，并在同一连续工具循环中自我修正（防重复调用的自旋保护、工具结果截断以控制上下文、通过/失败结论以真实 `runTests` 输出为准）。
+
+某个研究或评审 Agent 失败只会降级为一条标注，不会中止整个运行——一次限流不会击沉整个 Swarm。各角色模型可通过 `glm-copilot.agentRoles` 配置；研究默认使用免费 DeepSeek V4 Flash Free，评审默认使用免费 Big Pickle，实现始终使用聊天中选择的模型。
+
 ### 零运行时依赖
 
 纯 VS Code API + Node.js 内置模块。无需 Python、Docker 或本地代理进程。
@@ -194,6 +204,7 @@ API Key 存储在 VS Code 的 `SecretStorage` 中（macOS 钥匙串 / Windows �
 | `glm-copilot.visionPrompt`                   | _(内置)_         | 用于描述图片附件的提示词                                                                                                                                                                                                                                                                                                                              |
 | `glm-copilot.ponytailMode`                   | `full`           | Ponytail 编程准则系统指令级别。`off` = 不注入指令；`lite` = 简要提醒；`full` = 完整的 7 级阶梯及所有规则；`ultra` = 严格模式，优先保证边界情况正确性。可通过 `OpenCode: 设置 Ponytail 模式` 随时切换                                                                                                                         |
 | `glm-copilot.codeSimplifier`                 | `true`           | 代码精简器自主优化代理（默认开启）。主动检查修改的代码，简化结构、改善可读性与可维护性。启用时 Ponytail 自动降为轻量模式。可通过 `OpenCode: 切换代码精简器` 切换                                                                                                                                                |
+| `glm-copilot.agentRoles`                     | `{}`             | Agent Swarm 各角色的模型：`research`（列表，轮询分配，默认免费 DeepSeek V4 Flash Free）、`implement`（始终为聊天中选择的模型）、可选 `review`（列表，默认免费 Big Pickle）。每项为 `{ "vendor", "family", "id"? }`                                                                                                            |
 | `glm-copilot.experimental.stabilizeToolList` | `false`          | 实验性设置。尝试预先激活 VS Code/Copilot 的虚拟工具，让传给 GLM API 的 `tools` 参数在多轮对话中更完整、更稳定。当已启用工具跨轮次变化时，可能提高上下文缓存命中率。代价是 input tokens 可能增加；缓存命中的 input tokens 单价更低，但仍会计入用量。64 个或更少已启用工具时通常无需开启，除非工具列表仍在跨轮次变化；超过 128 个已启用工具时不建议开启 |
 
 思考深度可通过 Copilot Chat 的模型选择器对每个模型单独设置。

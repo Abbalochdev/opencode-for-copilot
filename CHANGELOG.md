@@ -1,5 +1,20 @@
 # Changelog
 
+## [3.9.0](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.8.3...v3.9.0) (2026-08-09)
+
+### Features
+
+* **agents:** add the Agent Swarm chat participant (`@swarm` in Copilot Chat, displayed as **OpenCode Agent Swarm**) — a full multi-agent system where every stage runs autonomous agents that report back before the next stage starts: a decomposition call splits the task into up to 3 focus areas; parallel research agents (read-only tools, own tool loop, round-robin across the configured research models) explore the codebase and return condensed findings; parallel review agents then verify the research plan against the code **before any code is written**; finally the implementer runs on the chat-selected model, receives the reviewer feedback in its prompt, and self-corrects via the tool loop (spin-guard against repeated identical calls, 6K-char tool-result truncation, pass/fail verdict taken from the actual `runTests` output)
+* **agents:** sub-agent failures degrade instead of sinking the run — a research agent that hits an error or rate limit becomes a marked finding and the swarm continues with the surviving areas
+* **agents:** system prompts travel as leading user messages — the extension avoids the proposed `languageModelSystem` API so the packaged vsix works in normal VS Code without `--enable-proposed-api` — and tool-call history is preserved as proper assistant tool-call parts with `LanguageModelToolResultPart` results so the GLM backend can correlate them
+* **agents:** agent roles are configurable via the `glm-copilot.agentRoles` setting (`research` list, `implement`, optional `review` list) with free-model defaults (DeepSeek V4 Flash Free for research, Big Pickle for review); implementation always uses the chat-selected model
+* **agents:** rename the participant from `@pipeline` to `@swarm` and update the display title, description, and localized strings
+
+### Chores
+
+* **test:** add 15 tests covering the swarm engine — the sub-agent tool loop (turn cap, tool-failure recovery, empty-result marking, truncation), the review verdict logic (incl. `incorrect` not being treated as an approval), and research fan-out with decomposition fallback and single-agent degradation
+* **chore:** bump version to 3.9.0
+
 ## [3.8.3](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.8.2...v3.8.3) (2026-08-02)
 
 ### Fixes
