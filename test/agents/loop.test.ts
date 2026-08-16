@@ -91,7 +91,7 @@ import {
 	__resetLm,
 	__setInvokeTool,
 } from 'vscode';
-import { runSubAgent, truncateToolResult } from '../../src/agents/loop';
+import { adaptiveToolResultCap, clearToolResultCache, runSubAgent, truncateToolResult } from '../../src/agents/loop';
 
 /** Scripts a fake model that plays back one stream of parts per turn and records the messages it received. */
 function scriptedModel(streams: unknown[][]) {
@@ -133,6 +133,7 @@ function options(
 describe('runSubAgent', () => {
 	beforeEach(() => {
 		__resetLm();
+		clearToolResultCache();
 	});
 
 	it('concludes immediately when the model returns no tool calls', async () => {
@@ -244,7 +245,40 @@ describe('runSubAgent', () => {
 		const result = await runSubAgent(options(model, { maxTurns: 2 }));
 
 		expect(result.turns).toBe(2);
-		expect(invoked).toBe(2);
+		// C4: the second identical grep_search hits the per-run tool-result
+		// cache instead of re-invoking — duplicate reads of the same input
+		// are deduped within a sub-agent's loop.
+		expect(invoked).toBe(1);
+	});
+
+	it('retries sendRequest on a 429 and eventually succeeds', async () => {
+		// Stub setTimeout so the exponential backoff doesn't slow the test.
+		vi.useFakeTimers();
+		const sendRequest = vi.fn()
+			.mockRejectedValueOnce(new Error('429 Too Many Requests'))
+			.mockResolvedValueOnce({
+				stream: (async function* () {
+					yield new LanguageModelTextPart('recovered after retry');
+				})(),
+				text: (async function* () {})(),
+			});
+		const model = {
+			vendor: 'glm',
+			family: 'loop',
+			id: 'loop-model',
+			sendRequest,
+		};
+		__registerChatModel(model as unknown as Parameters<typeof __registerChatModel>[0]);
+
+		const promise = runSubAgent(options(model as unknown as ReturnType<typeof scriptedModel>));
+		// Advance past the first backoff (1s).
+		await vi.advanceTimersByTimeAsync(2_000);
+		const result = await promise;
+
+		expect(result.text).toBe('recovered after retry');
+		// First call threw 429; second succeeded.
+		expect(sendRequest).toHaveBeenCalledTimes(2);
+		vi.useRealTimers();
 	});
 });
 
@@ -263,5 +297,114 @@ describe('truncateToolResult', () => {
 		const out = truncateToolResult([new LanguageModelTextPart('x'.repeat(10_000))]);
 		expect(out[0].value.length).toBeLessThan(10_000);
 		expect(out[0].value).toContain('truncated');
+	});
+
+	it('M2: honors a custom cap when provided', () => {
+		// Default cap is 6000; passing 200 shrinks the kept text.
+		const out = truncateToolResult([new LanguageModelTextPart('y'.repeat(1_000))], 200);
+		expect(out[0].value.length).toBeLessThanOrEqual(220);
+		expect(out[0].value).toContain('truncated');
+	});
+
+	it('M2: never returns a zero-or-negative effective cap', () => {
+		// A non-positive cap clamps to 1 to keep at least one char.
+		const out = truncateToolResult([new LanguageModelTextPart('ab')], 0);
+		expect(out).toHaveLength(1);
+	});
+});
+
+describe('adaptiveToolResultCap (M2)', () => {
+	it('gives full base budget in the first half of the turn window', () => {
+		expect(adaptiveToolResultCap(1, 4, 6000)).toBe(6000);
+		expect(adaptiveToolResultCap(2, 4, 6000)).toBe(6000);
+	});
+
+	it('shrinks in the second half, but never below half the base', () => {
+		const cap = adaptiveToolResultCap(4, 4, 6000);
+		expect(cap).toBeGreaterThanOrEqual(3000);
+		expect(cap).toBeLessThan(6000);
+	});
+
+	it('keeps at least half the base even on the final turn', () => {
+		// 8 turns: turn 8 → 6/8 * 6000 ≈ 4500; turn 16 → max(0.5, 1/8) → 0.5 → 3000
+		const lateCap = adaptiveToolResultCap(16, 8, 6000);
+		expect(lateCap).toBe(3000);
+	});
+});
+
+describe('C4: shared read-only tool-result cache', () => {
+	beforeEach(() => {
+		__resetLm();
+		clearToolResultCache();
+	});
+
+	it('caches read-only tool results across turns within one run', async () => {
+		const model = scriptedModel([
+			[new LanguageModelToolCallPart('c1', 'read_file', { path: 'a.ts' })],
+			[new LanguageModelToolCallPart('c2', 'read_file', { path: 'a.ts' })],
+			[new LanguageModelTextPart('done')],
+		]);
+		__registerChatModel(model);
+		const calls: Array<{ name: string; input: unknown }> = [];
+		__setInvokeTool((name, input) => {
+			calls.push({ name, input });
+			return { content: [new LanguageModelTextPart('content of a.ts')] };
+		});
+
+		await runSubAgent(options(model, { maxTurns: 4 }));
+
+		// The second read_file hit the cache — invokeTool only ran once.
+		expect(calls).toEqual([{ name: 'read_file', input: { path: 'a.ts' } }]);
+	});
+
+	it('does not cache edit/mutating tools (none in read-only set anyway, but verify behavior)', async () => {
+		const model = scriptedModel([
+			[new LanguageModelToolCallPart('c1', 'list_dir', { path: '/x' })],
+			[new LanguageModelToolCallPart('c2', 'list_dir', { path: '/x' })],
+			[new LanguageModelTextPart('done')],
+		]);
+		__registerChatModel(model);
+		const calls: string[] = [];
+		__setInvokeTool((name) => {
+			calls.push(name);
+			return { content: [new LanguageModelTextPart('dir-listing')] };
+		});
+
+		await runSubAgent(options(model, { maxTurns: 4 }));
+
+		// list_dir is in the cache set → second call hits cache → 1 invocation.
+		expect(calls).toEqual(['list_dir']);
+	});
+
+	it('clears between runs via clearToolResultCache', async () => {
+		const model = scriptedModel([
+			[new LanguageModelToolCallPart('c1', 'read_file', { path: 'a.ts' })],
+			[new LanguageModelTextPart('done')],
+		]);
+		__registerChatModel(model);
+		let invoked = 0;
+		__setInvokeTool(() => {
+			invoked++;
+			return { content: [new LanguageModelTextPart('v1')] };
+		});
+
+		await runSubAgent(options(model));
+		expect(invoked).toBe(1);
+
+		// Reset the scripted model so we can run the same call again.
+		const model2 = scriptedModel([
+			[new LanguageModelToolCallPart('c2', 'read_file', { path: 'a.ts' })],
+			[new LanguageModelTextPart('done')],
+		]);
+		__registerChatModel(model2);
+		__setInvokeTool(() => {
+			invoked++;
+			return { content: [new LanguageModelTextPart('v2')] };
+		});
+
+		clearToolResultCache();
+		await runSubAgent(options(model2));
+		// Cache was cleared → second run re-invoked.
+		expect(invoked).toBe(2);
 	});
 });

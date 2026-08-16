@@ -1,5 +1,50 @@
 # Changelog
 
+## [3.9.3]
+
+### Features
+
+* **agents:** the swarm now sees the context users attach in Copilot Chat — pinned files/folders, URLs, symbol ranges from `ChatRequest.references`, plus the active editor selection — via an optional `contextPreamble` field on `PipelineTask`. Every sub-agent prompt (research, review, implement) prepends an `Attached context:` block when the preamble is non-empty; when nothing is attached, the prompt shape is unchanged (cache-stable prefix preserved). File / Location references are resolved to workspace-relative paths so they slot cleanly into the existing `read_file` / `list_dir` tool inputs. New pure helper `formatChatContext` (`src/runtime/chat-context.ts`); wiring in `src/runtime/agent-pipeline.ts`; sub-agent prompt builder `joinTaskPrompt` exported from `src/agents/loop.ts`.
+* **agents:** `extractFilePaths` regex tightened per the M4 note (earlier loose `[\w./-]+\.\w+` leaked bare version strings like `v2.0`, `v22.1` as paths) — the new regex requires either a `./` prefix or a path separator (`/` or `\`) somewhere in the candidate, plus a known alphanumeric extension, so `src/auth.ts` and `./config.ts` survive while bare dotted words are filtered out.
+
+### Fixes
+
+* **test:** `test/agents/research.test.ts` mock factory updated to preserve the real `joinTaskPrompt` (only `runSubAgent` is now stubbed) — earlier `vi.mock('../../src/agents/loop', () => ({ runSubAgent: vi.fn() }))` made `joinTaskPrompt` `undefined`, which silently swallowed all research sub-agent calls.
+
+### Tests
+
+* **test:** add `test/runtime/chat-context.test.ts` (10 cases — formatter handles string/Uri/Location refs, drops unknown shapes, keeps input order, combines with selection, skips empty URIs; selection helper covers no-editor / empty-selection / no-path / happy paths) and `test/agents/loop-context-prompt.test.ts` (4 cases — `joinTaskPrompt` preserves the historical `Task: …\n<rest>` shape when no preamble, interpolates the preamble block, treats whitespace-only preamble as absent).
+
+### Chores
+
+* **chore:** bump version to 3.9.3
+
+## [3.9.2]
+
+### Features
+
+* **provider:** add a `glm-copilot.rules` setting — a `string[]` of project conventions (e.g. `Always use TypeScript rather than JavaScript`, `Keep responses concise`) injected as a `### USER RULES` block at the top of the system message for every coding request. Empty/whitespace entries are dropped automatically, and the block is stripped entirely on utility chats (chat-title, git-commit, …) so the prompt-cache prefix stays shared with utility requests. Rules are stacked UNDER Ponytail / Code Simplifier so the existing coding-posture defaults keep priority; rules express *project policy*. Inspired by Continue's `rules:` block. New module `src/provider/rules.ts`; wired in `src/provider/request.ts`.
+* **agents:** add an experimental `glm-copilot.allowExtraTools` boolean to release the agent swarm's curated tool-name whitelist. By default research/review/implement agents only see curated built-in tools (so the request stays under GLM's 128-tool cap and prompts stay small). With this on, MCP-discovered tools and other Copilot-registered external tools (`vscode.lm.tools`) are forwarded to the agents too — curated tools first, extras appended, hard cap preserved. Read-only extras (names containing `read`/`query`/`search`/`list`/`fetch`/`get`/`resolve`/`describe`) also enter the read-only research/review pool; mutators stay in the implementer pool only. Closes the latent gap where MCP tools the user configured in Copilot were silently dropped by `selectPipelineTools`'s name whitelist. Changes in `src/agents/tools.ts`; getter in `src/config.ts`.
+
+### Tests
+
+* **test:** add `test/provider/rules.test.ts` (8 cases — formatter + injector contract, no-op on empty/whitespace, immutability, ordering) and `test/agents/tools-allow-extra.test.ts` (8 cases — default whitelist enforcement, curated-first ordering under pass-through, 100-tool cap after pass-through, read-only name heuristic case-insensitivity). Extend `test/provider/system-instructions.test.ts` with 5 cases covering rules injection, utility-chat skip, and the simplifier→ponytail→rules stacking order.
+
+## [3.9.1](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.9.0...v3.9.1) (2026-08-12)
+
+### Fixes
+
+* **agents:** add retry with exponential backoff (1s→2s→4s, cap 8s) for research decomposition, implementer `sendRequest`, and review calls — 429/5xx/network errors no longer silently kill a swarm stage (C1)
+* **agents:** thread a per-run `PipelineCostTracker` through every stage (research, review, implement) and report cumulative token usage in the final `@swarm` report (C2)
+* **agents:** cap tool-result cache to read-only tools (`read_file`/`list_dir`/`file_search`/`grep_search`) and add `clearToolResultCache()` so results are scoped to a single run — deduped identical calls are now reported instead of re-invoked, and cross-test leakage is gone (C4, C5)
+* **agents:** tighten research file-path extraction so only repo-relative paths (prefix `/`, `\`, or `./`) are collected, avoiding false hits on prose like `src/foo` tokens (M4)
+* **agents:** normalize implementer spin-guard keys so path-shaped inputs collapse to a stable call signature, and parse the test verdict from real `runTests` output (`N passed` / `N failed` markers) instead of keyword guessing (M1, M5)
+* **agents:** add `clearModelCache()` and reset the model picker cache at the start of each pipeline run so model selection reflects current configuration (C5)
+
+### Chores
+
+* **chore:** bump version to 3.9.1
+
 ## [3.9.0](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.8.3...v3.9.0) (2026-08-09)
 
 ### Features

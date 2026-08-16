@@ -63,12 +63,20 @@ vi.mock('vscode', async (importOriginal) => {
 	};
 });
 
-vi.mock('../../src/agents/loop', () => ({
-	runSubAgent: vi.fn(),
-}));
+vi.mock('../../src/agents/loop', async (importOriginal) => {
+	const original = (await importOriginal()) as typeof import('../../src/agents/loop');
+	return {
+		...original,
+		// Preserve the real joinTaskPrompt (used by researchOneArea to build the
+		// prompt) so test assertions on `prompt.includes('Auth flow')` keep
+		// working; only runSubAgent needs to be a vi.fn for call-counting.
+		runSubAgent: vi.fn(),
+	};
+});
 
 import { __registerChatModel, __resetLm } from 'vscode';
 import { runSubAgent } from '../../src/agents/loop';
+import { clearModelCache } from '../../src/agents/modelSelect';
 import { runResearch } from '../../src/agents/research';
 import type { AgentRoleConfig, PipelineTask } from '../../src/agents/types';
 
@@ -110,6 +118,7 @@ function failingDecomposeModel() {
 describe('runResearch swarm', () => {
 	beforeEach(() => {
 		__resetLm();
+		clearModelCache();
 		vi.mocked(runSubAgent).mockReset();
 		vi.mocked(runSubAgent).mockResolvedValue({ text: 'findings', turns: 1 });
 	});
@@ -156,5 +165,23 @@ describe('runResearch swarm', () => {
 		expect(findings[1].summary).toContain('research agent failed');
 		expect(findings[1].relevantFiles).toEqual([]);
 		expect(findings[2].summary).toBe('findings');
+	});
+
+	it('M4: extracts real file paths but not bare version strings', async () => {
+		// Previously, /[\w./-]+\.\w+/g matched "v2.0" and "node v22.1" as
+		// paths. The tighter regex requires a path separator or leading "./".
+		__registerChatModel(decomposeModel(['1. Auth flow']));
+		vi.mocked(runSubAgent).mockResolvedValue({
+			text: 'See src/auth.ts and ./config.ts. Uses node v22.1 and lib v2.0.',
+			turns: 1,
+		});
+
+		const findings = await runResearch(task, config, [] as unknown as LanguageModelChatTool[], undefined);
+
+		expect(findings[0].relevantFiles).toContain('src/auth.ts');
+		expect(findings[0].relevantFiles).toContain('./config.ts');
+		// Version strings must NOT leak as "paths".
+		expect(findings[0].relevantFiles).not.toContain('v22.1');
+		expect(findings[0].relevantFiles).not.toContain('v2.0');
 	});
 });

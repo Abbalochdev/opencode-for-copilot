@@ -2,14 +2,15 @@ import vscode from 'vscode';
 import { AuthManager } from '../auth';
 import { GLMClient } from '../client';
 import {
-	findModelDefinition,
-	getApiModelId,
-	getApiProtocol,
-	getBaseUrl,
-	getBaseUrlOverride,
-	getCodeSimplifierEnabled,
-	getMaxTokens,
-	getPonytailMode,
+    findModelDefinition,
+    getApiModelId,
+    getApiProtocol,
+    getBaseUrl,
+    getBaseUrlOverride,
+    getCodeSimplifierEnabled,
+    getMaxTokens,
+    getPonytailMode,
+    getRules
 } from '../config';
 import { isOfficialGLMBaseUrl, resolveEndpointBaseUrl, resolveEndpointProtocol } from '../endpoint';
 import { t } from '../i18n';
@@ -22,6 +23,7 @@ import { injectPonytailSystemMessage } from './ponytail';
 import { getPricingCurrencyForBaseUrl } from './pricing/currency';
 import type { ReplayMarkerMetadata } from './replay';
 import { shouldForceThinkingNone, type RequestKind } from './routing';
+import { injectRulesSystemMessage } from './rules';
 import type { ConversationSegment } from './segment';
 import { REQUEST_KINDS_ELIGIBLE_FOR_TOOL_TRIMMING } from './tools/consts';
 import { collectTrailingToolResultIds, prepareRequestTools } from './tools/request';
@@ -140,9 +142,18 @@ export async function prepareChatRequest({
 	// rename, classifiers) wastes tokens, pollutes the prompt cache, and adds
 	// off-task noise — so gate on the same set tool-trimming already uses.
 	const isCodingRequest = REQUEST_KINDS_ELIGIBLE_FOR_TOOL_TRIMMING.has(requestKind);
+	// Each injector prepends to the first system message, so calling order is
+	// bottom-up: rules first (deepest), then Ponytail, then Code Simplifier.
+	// Final top-to-bottom order in the prompt: simplifier, ponytail, rules,
+	// Copilot's dynamic content. Rules express project policy; Ponytail /
+	// Code Simplifier express coding posture, so stacking posture above rules
+	// is intentional.
 	let glmMessagesWithPonytail = isCodingRequest
-		? injectPonytailSystemMessage(glmMessages, ponytailMode)
+		? injectRulesSystemMessage(glmMessages, getRules())
 		: glmMessages;
+	glmMessagesWithPonytail = isCodingRequest
+		? injectPonytailSystemMessage(glmMessagesWithPonytail, ponytailMode)
+		: glmMessagesWithPonytail;
 
 	// Code Simplifier runs on top of (downgraded) Ponytail for clean, refined output.
 	if (isCodingRequest && getCodeSimplifierEnabled()) {

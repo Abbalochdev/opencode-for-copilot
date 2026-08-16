@@ -93,4 +93,40 @@ describe('system instruction injection (Ponytail + Code Simplifier)', () => {
 		const prepared = await prepare('main-agent');
 		expect(systemContent(prepared)).not.toContain('lazy senior developer');
 	});
+
+	it('injects USER RULES into a coding chat when rules are set', async () => {
+		__setConfigurationValue('glm-copilot.ponytailMode', 'off');
+		__setConfigurationValue('glm-copilot.rules', ['Always TypeScript', 'Be concise']);
+		const prepared = await prepare('main-agent');
+		const content = systemContent(prepared);
+		expect(content).toContain('### USER RULES');
+		expect(content).toContain('- Always TypeScript');
+		expect(content).toContain('- Be concise');
+	});
+
+	it('does NOT inject USER RULES into utility chats even when rules are set', async () => {
+		__setConfigurationValue('glm-copilot.rules', ['Always TypeScript']);
+		const prepared = await prepare('chat-title');
+		expect(systemContent(prepared)).not.toContain('USER RULES');
+	});
+
+	it('stacks USER RULES under Ponytail and Code Simplifier (priority order)', async () => {
+		__setConfigurationValue('glm-copilot.ponytailMode', 'full');
+		__setConfigurationValue('glm-copilot.codeSimplifier', true);
+		__setConfigurationValue('glm-copilot.rules', ['Always TypeScript']);
+		const content = systemContent(await prepare('main-agent'));
+		const simplifierIdx = content.indexOf('CODE SIMPLIFIER');
+		const ponytailIdx = content.indexOf('PONYTAIL');
+		const rulesIdx = content.indexOf('USER RULES');
+		expect(simplifierIdx).toBeGreaterThan(-1);
+		expect(ponytailIdx).toBeGreaterThan(simplifierIdx);
+		expect(rulesIdx).toBeGreaterThan(ponytailIdx);
+	});
+
+	it('drops empty rules entries and does not inject an empty block', async () => {
+		__setConfigurationValue('glm-copilot.ponytailMode', 'off');
+		__setConfigurationValue('glm-copilot.rules', ['   ', '']);
+		const prepared = await prepare('main-agent');
+		expect(systemContent(prepared)).not.toContain('USER RULES');
+	});
 });

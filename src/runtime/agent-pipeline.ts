@@ -3,6 +3,7 @@ import { formatReport, runPipeline } from '../agents/pipeline';
 import { selectPipelineTools } from '../agents/tools';
 import { AgentRoleConfig, ModelRef, PipelineTask } from '../agents/types';
 import { logger } from '../logger';
+import { formatChatContext } from './chat-context';
 
 const CONFIG_SECTION = 'glm-copilot';
 const AGENT_ROLES_KEY = 'agentRoles';
@@ -51,23 +52,57 @@ response.markdown('Describe the task for the agent swarm.');
 return;
 }
 
-const config = buildConfig(request.model);
-const task: PipelineTask = { id: String(Date.now()), description, workspaceRoot };
+	// Surface attached chat context (@-references: pinned files/folders, URLs,
+	// symbol ranges) and the active editor selection so the swarm actually
+	// receives what the user attached. Pre-3.x the swarm silently dropped
+	// these. We resolve Uri / Location fsPaths to workspace-relative paths to
+	// keep prompts short and to match the agent's existing workspace-relative
+	// tool inputs (`read_file`, `list_dir`, …).
+	const selectionUris = resolveSelectionUris();
+	const preamble = formatChatContext(request.references, selectionUris);
 
-const progress: vscode.Progress<{ message: string }> = {
-report: (p) => response.progress(p.message),
-};
+	const config = buildConfig(request.model);
+	const task: PipelineTask = {
+		id: String(Date.now()),
+		description,
+		workspaceRoot,
+		...(preamble ? { contextPreamble: preamble } : {}),
+	};
 
-const result = await runPipeline(
-task,
-config,
-selectPipelineTools(vscode.lm.tools),
-token,
-progress,
-request.toolInvocationToken,
-);
+	const progress: vscode.Progress<{ message: string }> = {
+		report: (p) => response.progress(p.message),
+	};
 
-response.markdown(formatReport(result));
+	const result = await runPipeline(
+		task,
+		config,
+		selectPipelineTools(vscode.lm.tools),
+		token,
+		progress,
+		request.toolInvocationToken,
+	);
+
+	response.markdown(formatReport(result));
+}
+
+/**
+ * Resolve the active editor's selection (if any) to a workspace-relative
+ * path. Returns `[]` when nothing useful is selected, mirroring the no-op
+ * baseline of "no attached context". Kept as a separate function so the
+ * side-effecting `vscode.window.*` lookup stays out of the pure formatter
+ * and out of `runPipelineInChat`'s synchronous body.
+ */
+function resolveSelectionUris(): string[] {
+	const editor = vscode.window.activeTextEditor;
+	if (!editor || editor.selection.isEmpty) {
+		return [];
+	}
+	try {
+		const relative = vscode.workspace.asRelativePath(editor.document.uri, false);
+		return [relative];
+	} catch {
+		return [];
+	}
 }
 
 /**

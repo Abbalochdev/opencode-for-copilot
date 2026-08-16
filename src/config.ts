@@ -334,6 +334,44 @@ export function getCodeSimplifierEnabled(): boolean {
 	return config.get<boolean>('codeSimplifier', false);
 }
 
+/**
+ * User-defined rules, verbatim, injected into the system message for every
+ * coding request. Empty / whitespace entries are dropped before injection
+ * (see {@link injectRulesSystemMessage}). Returns `[]` by default so the
+ * prompt shape is unchanged for users who don't set this.
+ *
+ * Inspired by Continue's `rules:` block — keeps a small, declarative way to
+ * enforce project conventions ("always TypeScript", "concise responses")
+ * without code changes or a separate system-message-setting surface.
+ */
+export function getRules(): string[] {
+	const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
+	const value = config.get<unknown>('rules');
+	if (!Array.isArray(value)) {
+		return [];
+	}
+	return value.filter((r): r is string => typeof r === 'string');
+}
+
+/**
+ * Opt-in flag that releases the agent swarm's curated tool-name whitelist.
+ *
+ * When `true`, {@link selectPipelineTools} / {@link selectReadOnlyTools}
+ * additionally forward tools whose names are NOT in the curated set, so
+ * MCP-discovered tools and other Copilot-registered external tools become
+ * visible to the swarm. Off by default to preserve the curated-tool behaviour
+ * and 128-entry GLM request cap the whitelist was designed for. The hard cap
+ * (MAX_TOOLS) still applies after pass-through.
+ *
+ * Inspired by Continue's first-class MCP support — Copilot already surfaces
+ * MCP tools via {@link vscode.lm.tools}, but with the whitelist active they
+ * are silently dropped before the swarm sees them. This setting unblocks them.
+ */
+export function getAllowExtraTools(): boolean {
+	const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
+	return config.get<boolean>('allowExtraTools', false);
+}
+
 function getConfiguredDebugMode(config: vscode.WorkspaceConfiguration): DebugMode | undefined {
 	const mode = config.inspect<unknown>('debugMode');
 	return (

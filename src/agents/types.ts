@@ -17,9 +17,24 @@ export interface AgentRoleConfig {
 
 /** A task handed to the pipeline by the chat participant. */
 export interface PipelineTask {
-	id: string;
-	description: string;
-	workspaceRoot: string;
+  id: string;
+  /**
+   * The user's task description (Copilot's `ChatRequest.prompt`, trimmed).
+   * Used both as the user instruction to the sub-agents AND as a research-area
+   * label, so don't pollute it with attached-context text — put that in
+   * {@link contextPreamble} instead.
+   */
+  description: string;
+  workspaceRoot: string;
+  /**
+   * Optional chat-context preamble (attached @-references: files, folders,
+   * selection, URLs; resolved via Copilot's `ChatRequest.references`).
+   *
+   * When non-empty, every sub-agent user prompt prepends this block so the
+   * swarm actually sees the files/selection the user attached. By default it
+   * is empty, so the prompt shape is unchanged for users who attach nothing.
+   */
+  contextPreamble?: string;
 }
 
 /** One parallel research area's condensed findings. */
@@ -44,4 +59,16 @@ export interface PipelineResult {
 	turns: number;
 	researchAreas: number;
 	reviewNote?: string;
+	/** Estimated token usage across all stages — input + output. */
+	cost: PipelineCost;
+}
+
+/** Token usage estimate across a pipeline run, broken down by stage. */
+export interface PipelineCost {
+	/** Total estimated input tokens sent to all models. */
+	inputTokens: number;
+	/** Total estimated output tokens produced by all models. */
+	outputTokens: number;
+	/** Number of model requests made. */
+	requests: number;
 }

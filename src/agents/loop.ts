@@ -1,11 +1,48 @@
 import * as vscode from 'vscode';
+import type { PipelineCostTracker } from './cost';
 import { resultToTextParts } from './modelSelect';
+import { withRetry } from './retry';
+import type { PipelineTask } from './types';
+
+/**
+ * Per-run read-only tool-result cache (C4). Parallel sub-agents often read
+ * the same file during research — without a cache every agent re-reads it
+ * from disk and burns duplicate tokens. Cache is keyed by `name::inputJson`
+ * and survives across turns of one pipeline run; cleared per run via
+ * `clearToolResultCache()`. Only applied to read-only tools (`selectReadOnlyTools`).
+ */
+const toolResultCache = new Map<string, vscode.LanguageModelToolResult>();
+
+/** Clears the per-run tool-result cache — call at the start of each pipeline run. */
+export function clearToolResultCache(): void {
+	toolResultCache.clear();
+}
+
+/** Read-only tool names eligible for the shared result cache. */
+const CACHED_TOOL_NAMES = new Set(['read_file', 'list_dir', 'file_search', 'grep_search']);
 
 /** Hard cap on a sub-agent's tool loop — probes conclude fast, only the implementer gets a long leash. */
 const MAX_SUBAGENT_TURNS = 4;
 
 /** Longest single tool result fed back to a sub-agent, keeps history small over multiple turns. */
 const MAX_TOOL_RESULT_CHARS = 6_000;
+/**
+ * Scales truncation for sub-agots by turn budget — early turns have more
+ * budget to read complete results, later turns trim harder to leave room.
+ * Returns the effective char cap for a given turn and turn cap.
+ */
+export function adaptiveToolResultCap(turn: number, maxTurns: number, base = MAX_TOOL_RESULT_CHARS): number {
+	// First half of the budget: full base budget. After that, linearly shrink
+	// to half the base by the final turn. Keeps early investigation rich and
+	// ensures a near-cap search doesn't blow the whole history.
+	const halfway = Math.ceil(maxTurns / 2);
+	if (turn <= halfway) {
+		return base;
+	}
+	const remaining = maxTurns - turn + 1;
+	const fraction = Math.max(0.5, remaining / halfway);
+	return Math.floor(base * fraction);
+}
 
 /** Matches tool-call markup some models write as plain text (e.g. `<｜tool_calls｜><｜invoke name="Browse"｜>`) instead of emitting real tool-call parts. */
 const TOOL_CALL_MARKUP_RE =
@@ -14,6 +51,27 @@ const TOOL_CALL_MARKUP_RE =
 /** Removes tool-call markup written as text so it never leaks into agent reports. */
 export function stripToolCallMarkup(text: string): string {
 	return text.replace(TOOL_CALL_MARKUP_RE, '').trim();
+}
+
+/**
+ * Build the user-prompt **prefix** for a sub-agent — `Task: <description>`
+ * plus the optional chat-context preamble ({@link PipelineTask.contextPreamble}),
+ * so the agent actually sees attached @-references: files, folders, selection,
+ * URLs the user attached in Copilot Chat. When the preamble is empty or
+ * whitespace-only, the returned string is exactly `Task: <description>\n<rest>`,
+ * preserving the historical prompt shape (and the stable prefix used for
+ * server-side prompt caching).
+ *
+ * Used by research / review sub-agents — the implementer builds its own
+ * larger inline message and prepends the preamble in place.
+ */
+export function joinTaskPrompt(task: PipelineTask, rest: string): string {
+	const head = `Task: ${task.description}`;
+	const preamble = task.contextPreamble?.trim();
+	if (!preamble) {
+		return `${head}\n${rest}`;
+	}
+	return `${head}\n\nAttached context:\n${preamble}\n\n${rest}`;
 }
 
 export interface SubAgentOptions {
@@ -25,6 +83,8 @@ export interface SubAgentOptions {
 	maxTurns?: number;
 	/** Called with the turn number before each model request (for progress reporting). */
 	onTurn?: (turn: number) => void;
+	/** Optional cost tracker — counts input/output tokens per turn. */
+	costTracker?: PipelineCostTracker;
 }
 
 export interface SubAgentResult {
@@ -52,7 +112,11 @@ export async function runSubAgent(options: SubAgentOptions): Promise<SubAgentRes
 	while (turn < maxTurns) {
 		turn++;
 		options.onTurn?.(turn);
-		const response = await options.model.sendRequest(messages, requestOptions, options.token);
+		options.costTracker?.countInput(messages);
+		const response = await withRetry(
+			() => options.model.sendRequest(messages, requestOptions, options.token),
+			options.token,
+		);
 		const textParts: vscode.LanguageModelTextPart[] = [];
 		const toolCalls: vscode.LanguageModelToolCallPart[] = [];
 		for await (const part of response.stream) {
@@ -67,6 +131,7 @@ export async function runSubAgent(options: SubAgentOptions): Promise<SubAgentRes
 		if (cleanText) {
 			lastAssistantText = cleanText;
 		}
+		options.costTracker?.countOutput(assistantText.length);
 		if (textParts.length > 0 || toolCalls.length > 0) {
 			messages.push(vscode.LanguageModelChatMessage.Assistant([...textParts, ...toolCalls]));
 		}
@@ -85,11 +150,20 @@ export async function runSubAgent(options: SubAgentOptions): Promise<SubAgentRes
 		}
 		for (const call of toolCalls) {
 			let result: vscode.LanguageModelToolResult;
+		const cacheKey = call.name + '::' + JSON.stringify(call.input);
+		const isCacheable = CACHED_TOOL_NAMES.has(call.name);
+		const cached = isCacheable ? toolResultCache.get(cacheKey) : undefined;
+		if (cached) {
+			result = cached;
+		} else {
 			try {
 				result = await vscode.lm.invokeTool(call.name, {
 					input: call.input,
 					toolInvocationToken: undefined,
 				}, options.token);
+				if (isCacheable) {
+					toolResultCache.set(cacheKey, result);
+				}
 			} catch (err) {
 				const detail = err instanceof Error ? err.message : String(err);
 				messages.push(vscode.LanguageModelChatMessage.User([
@@ -101,23 +175,31 @@ export async function runSubAgent(options: SubAgentOptions): Promise<SubAgentRes
 				]));
 				continue;
 			}
-			messages.push(vscode.LanguageModelChatMessage.User([
-				new vscode.LanguageModelToolResultPart(call.callId, truncateToolResult(resultToTextParts(result))),
-			]));
 		}
+		messages.push(vscode.LanguageModelChatMessage.User([
+			new vscode.LanguageModelToolResultPart(
+				call.callId,
+				truncateToolResult(resultToTextParts(result), adaptiveToolResultCap(turn, maxTurns)),
+			),
+		]));
+	}
 	}
 	return { text: lastAssistantText, turns: turn };
 }
 
-/** Feed back at most MAX_TOOL_RESULT_CHARS of text per tool result, so history stays small. */
-export function truncateToolResult(parts: vscode.LanguageModelTextPart[]): vscode.LanguageModelTextPart[] {
+/** Feed back at most `cap` (default MAX_TOOL_RESULT_CHARS) of text per tool result, so history stays small. */
+export function truncateToolResult(
+	parts: vscode.LanguageModelTextPart[],
+	cap: number = MAX_TOOL_RESULT_CHARS,
+): vscode.LanguageModelTextPart[] {
 	if (parts.length === 0) {
 		return [new vscode.LanguageModelTextPart('Tool returned no text output.')];
 	}
+	const effectiveCap = Math.max(1, cap);
 	let total = 0;
 	const kept: vscode.LanguageModelTextPart[] = [];
 	for (const part of parts) {
-		const room = MAX_TOOL_RESULT_CHARS - total;
+		const room = effectiveCap - total;
 		if (room <= 0) {
 			break;
 		}
