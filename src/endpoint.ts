@@ -184,6 +184,22 @@ export function isOpencodeBaseUrl(baseUrl: string): boolean {
 	}
 }
 
+/** The two OpenCode plans with separate API keys and model catalogs. */
+export type OpencodePlan = 'go' | 'zen';
+
+/** Which OpenCode plan a base URL serves — `undefined` for non-OpenCode hosts. */
+export function resolveOpencodePlanForBaseUrl(baseUrl: string): OpencodePlan | undefined {
+	if (!isOpencodeBaseUrl(baseUrl)) {
+		return undefined;
+	}
+	return baseUrl.includes('/zen/go') ? 'go' : 'zen';
+}
+
+/** Endpoint preset used when nothing is explicitly configured. */
+export function resolvePlanDefaultEndpoint(plan: OpencodePlan): EndpointPreset {
+	return plan === 'zen' ? 'opencode-zen' : 'opencode-go';
+}
+
 export function normalizeBaseUrl(baseUrl: string): string {
 	return baseUrl.trim().replace(/\/+$/u, '');
 }

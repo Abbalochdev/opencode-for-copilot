@@ -1,4 +1,5 @@
 import vscode from 'vscode';
+import { migrateLegacySettings } from '../config';
 import { t } from '../i18n';
 import { logger } from '../logger';
 import { GLMChatProvider } from '../provider';
@@ -13,6 +14,7 @@ import { showWelcomeIfNeeded } from './welcome';
 let activeProvider: GLMChatProvider | undefined;
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
+	await migrateLegacySettings(context);
 	await initializeDiagnostics(context);
 	await seedChatLanguageModelDefaults(context);
 	registerCommands(context);

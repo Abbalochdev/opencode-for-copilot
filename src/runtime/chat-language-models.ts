@@ -5,7 +5,8 @@ import { logger } from '../logger';
 
 const CHAT_LANGUAGE_MODELS_MIGRATION_KEY =
 	'glm-copilot.chatLanguageModels.defaultReasoningEffort.version';
-const CHAT_LANGUAGE_MODELS_MIGRATION_VERSION = 1;
+// v2: vendor renamed glm -> opencode; re-seed defaults under the new vendor group.
+const CHAT_LANGUAGE_MODELS_MIGRATION_VERSION = 2;
 const DEFAULT_REASONING_EFFORT = 'max';
 
 interface ChatLanguageModelGroup {
@@ -79,7 +80,7 @@ async function upsertGLMDefaults(filePath: string): Promise<boolean> {
 
 	// Fix group name if missing — this mutation must also be persisted.
 	if (glmGroup.name === undefined) {
-		glmGroup.name = 'GLM';
+		glmGroup.name = 'OpenCode';
 		changed = true;
 	}
 
@@ -127,14 +128,14 @@ async function readExistingChatLanguageModels(filePath: string): Promise<string 
 }
 
 function getOrCreateGLMGroup(groups: ChatLanguageModelGroup[]): ChatLanguageModelGroup {
-	const existing = groups.find((group) => group.vendor === 'glm');
+	const existing = groups.find((group) => group.vendor === 'opencode');
 	if (existing) {
 		return existing;
 	}
 
 	const created: ChatLanguageModelGroup = {
-		name: 'GLM',
-		vendor: 'glm',
+		name: 'OpenCode',
+		vendor: 'opencode',
 		settings: {},
 	};
 	groups.push(created);

@@ -24,4 +24,4 @@ First, open VS Code's Tools configuration and check how many tools are enabled f
 
 This setting may improve cache hits by making the GLM API `tools` parameter more complete and stable across turns. It may also increase input tokens because more function definitions can be included in each request.
 
-[Open GLM setting](command:workbench.action.openSettings?%5B%22%40id%3Aglm-copilot.experimental.stabilizeToolList%22%5D)
+[Open GLM setting](command:workbench.action.openSettings?%5B%22%40id%3Aopencode-for-copilot.experimental.stabilizeToolList%22%5D)

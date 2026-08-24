@@ -4,13 +4,13 @@ import { selectPipelineTools } from '../agents/tools';
 import { AgentRoleConfig, ModelRef, PipelineTask } from '../agents/types';
 import { logger } from '../logger';
 
-const CONFIG_SECTION = 'glm-copilot';
+const CONFIG_SECTION = 'opencode-for-copilot';
 const AGENT_ROLES_KEY = 'agentRoles';
 
 /** Free model used for the research pre-pass when `agentRoles.research` is unset. */
-const DEFAULT_RESEARCH: ModelRef = { vendor: 'glm', family: 'deepseek', id: 'deepseek-v4-flash-free' };
+const DEFAULT_RESEARCH: ModelRef = { vendor: 'opencode', family: 'deepseek', id: 'deepseek-v4-flash-free' };
 /** Free model used as reviewer when `agentRoles.review` is unset. */
-const DEFAULT_REVIEW: ModelRef = { vendor: 'glm', family: 'pickle', id: 'big-pickle' };
+const DEFAULT_REVIEW: ModelRef = { vendor: 'opencode', family: 'pickle', id: 'big-pickle' };
 
 /**
  * Registers the agent swarm as a chat participant (`@swarm` in Copilot
@@ -19,7 +19,7 @@ const DEFAULT_REVIEW: ModelRef = { vendor: 'glm', family: 'pickle', id: 'big-pic
  */
 export function registerAgentPipeline(context: vscode.ExtensionContext): void {
 const participant = vscode.chat.createChatParticipant(
-'glm-copilot.pipeline',
+'opencode-for-copilot.pipeline',
 async (request, _chatContext, response, token) => {
 try {
 await runPipelineInChat(request, response, token);
@@ -72,7 +72,7 @@ response.markdown(formatReport(result));
 
 /**
  * Implementation always runs on the model the user selected in the chat.
- * Research/review come from the `glm-copilot.agentRoles` setting, defaulting
+ * Research/review come from the `opencode-for-copilot.agentRoles` setting, defaulting
  * to free models (DeepSeek V4 Flash Free for research, Big Pickle for review).
  */
 function buildConfig(chatModel: vscode.LanguageModelChat): AgentRoleConfig {

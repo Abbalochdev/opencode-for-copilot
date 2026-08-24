@@ -6,8 +6,8 @@ import { prepareChatRequest } from '../../src/provider/request';
 import type { ConversationSegment } from '../../src/provider/segment';
 import type { VisionDescriber } from '../../src/provider/vision';
 import {
-	IMAGE_DESCRIPTION_PREFIX,
-	IMAGE_DESCRIPTION_SUFFIX,
+    IMAGE_DESCRIPTION_PREFIX,
+    IMAGE_DESCRIPTION_SUFFIX,
 } from '../../src/provider/vision/consts';
 import { __clearConfigurationValues, __setConfigurationValue } from '../support/vscode.mock';
 
@@ -46,7 +46,7 @@ describe('request preparation', () => {
 	});
 
 	it('uses custom model capabilities and still resolves images through the Vision Proxy', async () => {
-		__setConfigurationValue('glm-copilot.customModels', [
+		__setConfigurationValue('opencode-for-copilot.customModels', [
 			{
 				id: 'team-coder',
 				name: 'Team Coder',
@@ -54,7 +54,7 @@ describe('request preparation', () => {
 				thinking: false,
 			},
 		]);
-		__setConfigurationValue('glm-copilot.modelIdOverrides', {
+		__setConfigurationValue('opencode-for-copilot.modelIdOverrides', {
 			'team-coder': 'provider-team-coder',
 		});
 		const describe = vi.fn().mockResolvedValue('a screenshot description');
@@ -65,7 +65,10 @@ describe('request preparation', () => {
 		};
 
 		const prepared = await prepareChatRequest({
-			authManager: { getApiKey: async () => 'test-key' } as unknown as AuthManager,
+			authManager: {
+				getApiKey: async () => 'test-key',
+				getApiKeyForEndpoint: async () => 'test-key',
+			} as unknown as AuthManager,
 			globalStorageUri: vscode.Uri.file('/tmp/glm-request-test'),
 			modelInfo: { id: 'team-coder' } as vscode.LanguageModelChatInformation,
 			segment,

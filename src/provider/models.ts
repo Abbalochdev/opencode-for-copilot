@@ -1,5 +1,6 @@
 import vscode from 'vscode';
 import { getShowProviderPrefix } from '../config';
+import type { OpencodePlan } from '../endpoint';
 import { t } from '../i18n';
 import type { ModelDefinition, PricingCurrency } from '../types';
 import { toModelCostInfo, type ModelCostInformation } from './pricing/costs';
@@ -51,6 +52,11 @@ export function toChatInfo(
 		detail = tooltip = t('auth.apiKeyRequiredDetail');
 	} else if (deprecated) {
 		detail = tooltip = t('model.deprecated');
+	} else if (isZenOnlyModel(m)) {
+		// Go subscribers otherwise only find out via a cryptic 401 after picking.
+		const note = t('model.zenPaygOnly');
+		detail = detail ? `${detail} · ${note}` : note;
+		tooltip = tooltip ? `${tooltip}\n\n${note}` : note;
 	}
 	return {
 		id: m.id,
@@ -76,6 +82,25 @@ export function toChatInfo(
 /** @returns `false` for internal utility models so they stay out of the picker. */
 function isUserSelectableModel(modelId: string): boolean {
 	return modelId !== 'copilot-utility' && modelId !== 'copilot-utility-small';
+}
+
+/** Zen-only models are billed per use and are not part of the OpenCode Go subscription. */
+function isZenOnlyModel(m: ModelDefinition): boolean {
+	return m.endpointPreset === 'opencode-zen' || m.endpointPreset === 'opencode-zen-anthropic';
+}
+
+/**
+ * Model list for the active OpenCode plan: the Go subscription catalog hides
+ * Zen-only (pay-as-you-go) models; the Zen plan serves the full catalog.
+ */
+export function filterModelsForPlan(
+	models: readonly ModelDefinition[],
+	plan: OpencodePlan,
+): ModelDefinition[] {
+	if (plan !== 'go') {
+		return [...models];
+	}
+	return models.filter((m) => !isZenOnlyModel(m));
 }
 
 const PROVIDER_LABELS: Record<string, string> = {

@@ -3,12 +3,82 @@ import * as vscode from 'vscode';
 import { listProviderModels } from '../../src/config';
 import { MODELS } from '../../src/consts';
 import {
-	getConfiguredThinkingEffort,
-	providerLabel,
-	toChatInfo,
+    filterModelsForPlan,
+    getConfiguredThinkingEffort,
+    providerLabel,
+    toChatInfo,
 } from '../../src/provider/models';
-import { findModelsDevEntry, mergeWithModelsDev, type ModelsDevModel } from '../../src/provider/models-dev';
+import { findModelsDevEntry, invalidateModelsDevCache, mergeWithModelsDev, type ModelsDevModel } from '../../src/provider/models-dev';
+import {
+    getDynamicModels,
+    invalidateModelCache,
+} from '../../src/provider/opencode-models';
 import { __clearConfigurationValues, __setConfigurationValue } from '../support/vscode.mock';
+
+describe('filterModelsForPlan', () => {
+	beforeEach(() => {
+		__clearConfigurationValues();
+	});
+
+	it('hides Zen-only models from the Go plan and shows the full catalog on Zen', () => {
+		const go = filterModelsForPlan(MODELS, 'go');
+		const zen = filterModelsForPlan(MODELS, 'zen');
+
+		// Zen pay-as-you-go-only models (Claude, free tier) must not be offered
+		// to Go subscribers — picking them fails with 401 insufficient balance.
+		expect(go.some((m) => m.id === 'claude-fable-5')).toBe(false);
+		expect(go.some((m) => m.id === 'deepseek-v4-flash-free')).toBe(false);
+		// Go-subscription models stay selectable.
+		expect(go.some((m) => m.id === 'glm-5.2')).toBe(true);
+		expect(go.some((m) => m.id === 'kimi-k3')).toBe(true);
+		// Zen plan serves the full catalog unchanged.
+		expect(zen.some((m) => m.id === 'claude-fable-5')).toBe(true);
+		expect(zen.length).toBe(MODELS.length);
+	});
+});
+
+describe('go catalog pipeline (real captured IDs)', () => {
+	const GO_IDS = [
+		'minimax-m3', 'minimax-m2.7', 'minimax-m2.5', 'kimi-k3', 'kimi-k2.7-code',
+		'kimi-k2.6', 'longcat-2.0', 'kimi-k2.5', 'glm-5.2', 'glm-5.3', 'ox-alpha-free',
+		'glm-5.1', 'glm-5', 'deepseek-v4-pro', 'deepseek-v4-flash',
+		'deepseek-v4-flash-vision-exp', 'qwen3.7-max', 'qwen3.8-max', 'qwen3.7-plus',
+		'qwen3.6-plus', 'qwen3.5-plus', 'mimo-v2-pro', 'mimo-v2-omni', 'mimo-v2.5-pro',
+		'mimo-v2.5', 'hy3', 'hy3-preview', 'gpt-5.6-luna', 'grok-4.5',
+		'muse-spark-1.2-contributor',
+	];
+
+	it('surfaces catalog-only models (gpt-5.6-luna) as selectable picker entries', async () => {
+		const realFetch = globalThis.fetch;
+		// Serve the captured Go catalog for the models endpoint; fail everything
+		// else (models.dev) so enrichment stays a no-op.
+		globalThis.fetch = (async (input: RequestInfo | URL) => {
+			if (String(input).includes('/zen/go/v1/models')) {
+				return new Response(JSON.stringify({ data: GO_IDS.map((id) => ({ id })) }));
+			}
+			throw new Error('offline');
+		}) as typeof fetch;
+
+		try {
+			invalidateModelCache();
+			invalidateModelsDevCache();
+			const models = await getDynamicModels([], MODELS, 'go');
+			const picker = filterModelsForPlan(models, 'go').map((m) => toChatInfo(m, true));
+
+			const luna = picker.find((m) => m.id === 'gpt-5.6-luna');
+			expect(luna).toBeDefined();
+			expect(luna?.isUserSelectable).toBe(true);
+			expect(luna?.name).toContain('Luna');
+			// Other catalog-only newcomers surface too.
+			expect(picker.some((m) => m.id === 'hy3')).toBe(true);
+			expect(picker.some((m) => m.id === 'longcat-2.0')).toBe(true);
+		} finally {
+			globalThis.fetch = realFetch;
+			invalidateModelCache();
+			invalidateModelsDevCache();
+		}
+	});
+});
 
 describe('model metadata helpers', () => {
 	beforeEach(() => {
@@ -64,7 +134,7 @@ describe('model metadata helpers', () => {
 	});
 
 	it('prefixes picker names with the provider label when enabled', () => {
-		__setConfigurationValue('glm-copilot.showProviderPrefix', true);
+		__setConfigurationValue('opencode-for-copilot.showProviderPrefix', true);
 		const info = toChatInfo(MODELS[0], true, 'USD');
 
 		expect(info.name).toBe(`GLM · ${MODELS[0].name}`);
@@ -93,7 +163,7 @@ describe('model metadata helpers', () => {
 	});
 
 	it('includes custom models in picker metadata with Vision Proxy image support', () => {
-		__setConfigurationValue('glm-copilot.customModels', [
+		__setConfigurationValue('opencode-for-copilot.customModels', [
 			'team-coder',
 			{ id: 'no-thinking', thinking: false },
 		]);

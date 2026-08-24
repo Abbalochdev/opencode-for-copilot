@@ -7,18 +7,18 @@ import { buildRuntimeDiagnosticsReport } from './diagnostics';
 
 export function registerCommands(context: vscode.ExtensionContext): void {
 	context.subscriptions.push(
-		vscode.commands.registerCommand('glm-copilot.showLogs', () => logger.show()),
-		vscode.commands.registerCommand('glm-copilot.showDiagnostics', () =>
+		vscode.commands.registerCommand('opencode-for-copilot.showLogs', () => logger.show()),
+		vscode.commands.registerCommand('opencode-for-copilot.showDiagnostics', () =>
 			showRuntimeDiagnostics(context),
 		),
-		vscode.commands.registerCommand('glm-copilot.openRequestDumpsFolder', () =>
+		vscode.commands.registerCommand('opencode-for-copilot.openRequestDumpsFolder', () =>
 			openRequestDumpsFolder(context),
 		),
-		vscode.commands.registerCommand('glm-copilot.getApiKey', () =>
+		vscode.commands.registerCommand('opencode-for-copilot.getApiKey', () =>
 			vscode.env.openExternal(vscode.Uri.parse(getApiKeyUrl())),
 		),
-		vscode.commands.registerCommand('glm-copilot.openSettings', () =>
-			vscode.commands.executeCommand('workbench.action.openSettings', 'glm-copilot'),
+		vscode.commands.registerCommand('opencode-for-copilot.openSettings', () =>
+			vscode.commands.executeCommand('workbench.action.openSettings', 'opencode-for-copilot'),
 		),
 	);
 }

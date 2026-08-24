@@ -5,10 +5,10 @@ import { GLM_CN_CODING_BASE_URL } from '../../endpoint';
 import { t } from '../../i18n';
 import { DEFAULT_GLM_VISION_MODEL_ID } from './consts';
 import {
-	logAutomaticGLMVisionFallback,
-	logAutomaticGLMVisionModelSelected,
-	logInvalidVisionProxyApiEndpointConfig,
-	logVisionApiEndpointSelected,
+    logAutomaticGLMVisionFallback,
+    logAutomaticGLMVisionModelSelected,
+    logInvalidVisionProxyApiEndpointConfig,
+    logVisionApiEndpointSelected,
 } from './log';
 import { isVisionProxyError, VisionProxyError } from './protocols/errors';
 import { createEndpointVisionDescriber } from './sources/endpoint';
@@ -39,7 +39,7 @@ export function createVisionService(
 
 	context.subscriptions.push(
 		vscode.workspace.onDidChangeConfiguration((event) => {
-			if (event.affectsConfiguration('glm-copilot.visionModel')) {
+			if (event.affectsConfiguration('opencode-for-copilot.visionModel')) {
 				reset();
 			}
 		}),
@@ -82,7 +82,7 @@ export function createVisionService(
 			}
 
 			const config = createAutomaticGLMVisionConfig();
-			const apiKey = await authManager.getApiKey();
+			const apiKey = await authManager.getApiKeyForEndpoint(config.url);
 			const primary = createEndpointVisionDescriber(config, apiKey);
 			logAutomaticGLMVisionModelSelected(primary.id, config.url);
 			return new AutomaticVisionDescriber(primary, () => vscodeLm.get());

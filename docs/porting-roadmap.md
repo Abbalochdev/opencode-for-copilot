@@ -247,7 +247,7 @@ Verified against the fork's `extension.ts` spec:
   - **Environment:** extension + VS Code versions, app host, remote, UI kind, extension mode, workspace trust, platform/arch, Node version, Windows integrity level (`whoami.exe /groups`)
   - **Configuration:** endpoint preset, resolved base URL, API mode/protocol, debug mode, ponytail mode, code-simplifier state, model count in overlay
   - Never includes the API key or prompt content
-- `glm-copilot.showDiagnostics` command opens the report as an untitled markdown document (`commands.ts`)
+- `opencode-for-copilot.showDiagnostics` command opens the report as an untitled markdown document (`commands.ts`)
 
 **Test:** Manual (command opens the report). Thin VS Code glue over a string builder — no unit test.
 

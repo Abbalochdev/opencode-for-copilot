@@ -1,5 +1,42 @@
 # Changelog
 
+## [3.11.0](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.10.1...v3.11.0) (2026-08-25)
+
+### Features
+
+* **coexistence:** fully independent settings from the upstream *GLM for VS Code Copilot* extension — all settings move to the new `opencode-for-copilot.*` section (the old `glm-copilot.*` section is shared with the upstream extension, so configuring one extension used to change the other's behaviour). Existing user-set values are migrated once on activation and the legacy section is never read again; both extensions can now be installed side by side with completely separate configuration. Also in this release: the log channel is renamed `GLM` → `OpenCode` (the two extensions' logs no longer interleave in one output channel), and the `@swarm` participant ID moves to `opencode-for-copilot.pipeline` (re-type `@swarm` once after updating).
+
+## [3.10.1](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.10.0...v3.10.1) (2026-08-25)
+
+### Fixes
+
+* **commands:** drop the ambiguous `Set API Key` command — with separate Go/Zen keys it was unclear which slot it wrote; error-notice URIs and the walkthrough button now open the key prompt for the active plan. `Get API Key` is retitled **Open API Key Page** (it opens the website, it does not read the stored key) and `Clear API Key` is retitled **Clear All API Keys** (it clears both slots).
+* **models:** the catalog now re-fetches when stale — opening the model picker past the 5-minute TTL triggers a background refresh (covers VPN/network changes mid-session without a window reload), a failed fetch retries after 60 s instead of serving the static fallback list for a full TTL (covers startup before the network is up, which made the list diverge from the website), and a new **OpenCode: Refresh Model List** command forces an immediate re-fetch.
+
+## [3.10.0](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.9.3...v3.10.0) (2026-08-25)
+
+### Features
+
+* **auth:** separate API keys per OpenCode plan — new `OpenCode: Set Go API Key` / `OpenCode: Set Zen API Key` commands store the Go-subscription and Zen pay-as-you-go keys in their own secret slots, and a new `glm-copilot.opencodePlan` setting (`go` | `zen`, default `go`) picks the active plan. The plan drives the model catalog (Go shows only Go-subscription models; Zen shows the full catalog including Claude and the free tier), the default endpoint when nothing else is configured (`opencode-go` / `opencode-zen` — explicit `endpoint` settings and explicitly-configured legacy region/apiMode tuples still win), and which slot `Set API Key` writes. Requests select the key by endpoint URL, so a Zen-only model automatically uses the Zen key. Existing stored keys keep working as the Go fallback; `Clear API Key` now removes all stored keys.
+
+## [3.9.3](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.9.2...v3.9.3) (2026-08-25)
+
+### Fixes
+
+* **models:** make the Go/Zen split visible — models only served on the OpenCode Zen pay-as-you-go endpoint (Claude, Grok Build, the free-tier models) now carry a "Zen pay-as-you-go only (not in the Go subscription)" note in the picker, and a 401 "Insufficient balance" from those models appends an explanation that the model — not the API key — is the problem, listing Go-subscription alternatives. Previously a Go subscriber picking one of these models got only a bare billing link.
+
+## [3.9.2](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.9.1...v3.9.2) (2026-08-25)
+
+### Fixes
+
+* **models:** register the language-model provider under a unique `opencode` vendor (was `glm`) — model IDs are `vendor/id`, so with the upstream *GLM for Copilot* extension also installed under vendor `glm`, both extensions' models collided in the Copilot Chat picker: entries could be attributed to the wrong extension and selections could route to the other extension's provider. Model IDs now read `opencode/glm-5`, `opencode/kimi-k2`, …; re-select your model once in the picker after updating. The chat-model defaults seeding now targets the matching `opencode` group in `chatLanguageModels.json` (migration re-runs once), the agent-swarm default model refs select the new vendor, and the vision-proxy picker excludes our own `opencode` models instead of `glm`.
+
+## [3.9.1](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.9.0...v3.9.1) (2026-08-25)
+
+### Fixes
+
+* **commands:** move all commands to a unique `opencode-for-copilot.*` namespace (was `glm-copilot.*`) — VS Code command IDs are global, so installing this extension alongside the upstream *GLM for Copilot* extension made whichever extension activated last own the shared IDs (notably *Set API Key*): the key was then stored in the other extension's SecretStorage (which is isolated per extension) and this extension kept reporting that no API key was configured. The settings section, stored secrets, and model vendor are unchanged, so existing configurations keep working.
+
 ## [3.9.0](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.8.3...v3.9.0) (2026-08-09)
 
 ### Features

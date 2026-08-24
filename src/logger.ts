@@ -4,7 +4,7 @@ let channel: vscode.LogOutputChannel | undefined;
 
 function getChannel(): vscode.LogOutputChannel {
 	if (!channel) {
-		channel = vscode.window.createOutputChannel('GLM', { log: true });
+		channel = vscode.window.createOutputChannel('OpenCode', { log: true });
 	}
 	return channel;
 }

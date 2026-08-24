@@ -2,14 +2,14 @@ import vscode from 'vscode';
 import { AuthManager } from '../auth';
 import { GLMClient } from '../client';
 import {
-	findModelDefinition,
-	getApiModelId,
-	getApiProtocol,
-	getBaseUrl,
-	getBaseUrlOverride,
-	getCodeSimplifierEnabled,
-	getMaxTokens,
-	getPonytailMode,
+    findModelDefinition,
+    getApiModelId,
+    getApiProtocol,
+    getBaseUrl,
+    getBaseUrlOverride,
+    getCodeSimplifierEnabled,
+    getMaxTokens,
+    getPonytailMode,
 } from '../config';
 import { isOfficialGLMBaseUrl, resolveEndpointBaseUrl, resolveEndpointProtocol } from '../endpoint';
 import { t } from '../i18n';
@@ -92,11 +92,6 @@ export async function prepareChatRequest({
 	getVisionDescriber,
 	requestKind,
 }: PrepareChatRequestOptions): Promise<PreparedChatRequest> {
-	const apiKey = await authManager.getApiKey();
-	if (!apiKey) {
-		throw new Error(t('auth.notConfigured'));
-	}
-
 	const modelDef = findModelDefinition(modelInfo.id);
 	// Per-model endpoint pinning: OpenCode Go models that are only reachable
 	// through a specific wire protocol (Anthropic for MiniMax/Qwen, OpenAI for
@@ -118,6 +113,12 @@ export async function prepareChatRequest({
 	} else {
 		baseUrl = getBaseUrl();
 		apiProtocol = getApiProtocol();
+	}
+	// Key follows the endpoint: Go URLs use the Go-subscription key, Zen URLs
+	// the Zen pay-as-you-go key, everything else the legacy single key.
+	const apiKey = await authManager.getApiKeyForEndpoint(baseUrl);
+	if (!apiKey) {
+		throw new Error(t('auth.notConfigured'));
 	}
 	const client = getCachedClient(baseUrl, apiKey, apiProtocol);
 	const isThinkingModel = modelDef?.capabilities.thinking ?? false;

@@ -1,14 +1,15 @@
 import vscode from 'vscode';
 import { setErrorActionUrl, type ErrorActionUrls } from '../client';
+import { getOpencodePlan } from '../config';
 import {
-	CONFIGURE_API_KEY_URI_PATH,
-	SET_VISION_MODEL_URI_PATH,
-	SHOW_LOGS_URI_PATH,
+    CONFIGURE_API_KEY_URI_PATH,
+    SET_VISION_MODEL_URI_PATH,
+    SHOW_LOGS_URI_PATH,
 } from '../consts';
 import { logger } from '../logger';
 import {
-	setProviderNoticeShowLogsUrl,
-	setVisionProxyConfigurationUrl,
+    setProviderNoticeShowLogsUrl,
+    setVisionProxyConfigurationUrl,
 } from '../provider/tools/notices';
 
 interface ActionUrlDefinition {
@@ -24,7 +25,12 @@ const ACTION_URLS: readonly ActionUrlDefinition[] = [
 	{
 		key: 'configureApiKey',
 		path: CONFIGURE_API_KEY_URI_PATH,
-		handle: () => vscode.commands.executeCommand('glm-copilot.setApiKey'),
+		handle: () =>
+			vscode.commands.executeCommand(
+				getOpencodePlan() === 'zen'
+					? 'opencode-for-copilot.setZenApiKey'
+					: 'opencode-for-copilot.setGoApiKey',
+			),
 		resolveFailureMessage: 'Failed to resolve GLM set API key URI',
 	},
 	{
@@ -36,7 +42,7 @@ const ACTION_URLS: readonly ActionUrlDefinition[] = [
 	},
 	{
 		path: SET_VISION_MODEL_URI_PATH,
-		handle: () => vscode.commands.executeCommand('glm-copilot.setVisionModel'),
+		handle: () => vscode.commands.executeCommand('opencode-for-copilot.setVisionModel'),
 		resolveFailureMessage: 'Failed to resolve GLM set vision model URI',
 		setUrl: setVisionProxyConfigurationUrl,
 	},

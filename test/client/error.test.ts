@@ -79,6 +79,32 @@ describe('createHttpError', () => {
 		expect(error.userSummary).toContain('503');
 	});
 
+	it('explains the Go/Zen split on a Zen-only model 401 insufficient-balance', async () => {
+		// Go-subscription key hitting a Zen pay-as-you-go-only model (Claude,
+		// Grok Build, free tier): opencode.ai answers 401 with a billing link.
+		const response = buildResponse(
+			401,
+			{
+				error: {
+					type: 'insufficient_balance',
+					message:
+						'Insufficient balance. Manage your billing here: https://opencode.ai/workspace/wrk_test/billing',
+				},
+			},
+			'Unauthorized',
+		);
+
+		const error = await createHttpError(response, {
+			baseUrl: 'https://opencode.ai/zen/v1',
+			request: buildRequest(),
+		});
+
+		// Server message stays visible (it carries the billing link) …
+		expect(error.userSummary).toContain('Insufficient balance');
+		// … and the summary explains the model choice is the problem.
+		expect(error.userSummary).toContain('Go subscription');
+	});
+
 	it('surfaces the raw server message for unknown business codes on official endpoints', async () => {
 		// A code we don't have a dictionary entry for yet — should still surface
 		// the server-provided message instead of falling back to HTTP-only text.
