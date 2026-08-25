@@ -1,7 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import vscode from 'vscode';
 import {
-	getApiMode,
 	getApiProtocol,
 	getBaseUrl,
 	getCodeSimplifierEnabled,
@@ -11,7 +10,6 @@ import {
 } from '../config';
 import { CONFIG_SECTION } from '../consts';
 import { logger } from '../logger';
-import { getOverlayModels } from '../provider/opencode-models';
 
 export async function initializeDiagnostics(context: vscode.ExtensionContext): Promise<void> {
 	logger.info(
@@ -63,12 +61,10 @@ export function buildRuntimeDiagnosticsReport(context: vscode.ExtensionContext):
 		'## Configuration',
 		`- Endpoint preset: ${getEndpoint()}`,
 		`- Base URL: ${getBaseUrl()}`,
-		`- API mode: ${getApiMode()}`,
 		`- API protocol: ${getApiProtocol()}`,
 		`- Debug mode: ${getDebugMode()}`,
 		`- Ponytail mode: ${getPonytailMode()}`,
 		`- Code simplifier: ${getCodeSimplifierEnabled() ? 'on' : 'off'}`,
-		`- Models in overlay: ${getOverlayModels().length}`,
 	];
 	return lines.join('\n');
 }

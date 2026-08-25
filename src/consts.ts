@@ -1,4 +1,4 @@
-import { getOverlayModels } from './provider/opencode-models';
+import { getFallbackModels } from './provider/opencode-models';
 import type { ModelDefinition } from './types';
 
 /**
@@ -64,10 +64,11 @@ export const WALKTHROUGH_ID = 'abbalochdev.opencode-for-copilot#glmGettingStarte
 
 // ---- Model registry ----
 //
-// Single source of truth: the metadata overlay in `provider/opencode-models.ts`.
-// `getOverlayModels()` returns the full static catalogue that acts as both the
-// initial fallback (before the async API fetch completes) and the metadata
-// source for all known models.
+// Live source of truth: the OpenCode catalogs fetched at runtime
+// (`provider/opencode-models.ts`), merged with user custom models. The static
+// list below is only a minimal offline baseline (before the first fetch
+// completes, or if both catalog endpoints become unreachable) — it covers
+// every billing path and wire protocol with four models.
 
 /** Available models exposed through the language model provider. */
-export const MODELS: ModelDefinition[] = [...getOverlayModels()];
+export const MODELS: ModelDefinition[] = [...getFallbackModels()];

@@ -32,12 +32,8 @@ const zh: Translations = {
 	// API Key
 	'model.deprecated': '提供商已弃用此模型——仅为已有会话保留，请选择其他模型。',
 	'auth.apiKeyRequiredDetail': '请先配置 API Key',
-	'auth.prompt': '请输入 OpenCode Go API Key 或兼容服务令牌。',
-	'auth.placeholder': 'OpenCode Go API Key',
-	'auth.prompt.go': '请输入 OpenCode Go 订阅 API Key。',
-	'auth.placeholder.go': 'OpenCode Go API Key',
-	'auth.prompt.zen': '请输入 OpenCode Zen 按量付费 API Key。',
-	'auth.placeholder.zen': 'OpenCode Zen API Key',
+	'auth.prompt': '请输入 OpenCode API Key（Go 订阅与 Zen 按量付费共用同一个 Key）。',
+	'auth.placeholder': 'OpenCode API Key',
 	'auth.emptyValidation': 'API Key 不能为空',
 	'auth.saved': 'OpenCode API Key 已安全保存。',
 	'auth.removed': 'OpenCode API Key 已移除。',
@@ -180,13 +176,7 @@ const zh: Translations = {
 		'⚠️ 工具列表不稳定，缓存命中率可能下降。[了解更多](https://github.com/abbalochdev/opencode-for-copilot/blob/main/docs/notices/tool-drift.zh.md)',
 
 	// Usage
-	'usage.notConfigured': '请先配置 API Key，再查询 GLM Coding Plan 用量。',
-	'usage.unsupportedBaseUrl':
-		'当前 baseUrl 不属于 GLM 国内版或国际版官方端点，无法查询 Coding Plan 用量。',
 	'usage.opencodeConsole': '正在打开 OpenCode Go 用量控制台...',
-	'usage.queryStarted': '正在查询 GLM Coding Plan 用量...',
-	'usage.querySucceeded': 'GLM Coding Plan 用量已写入输出面板。',
-	'usage.queryFailed': 'GLM Coding Plan 用量查询失败：{0}',
 
 	// Errors
 	'error.http.400': '[{0}] 请求体格式错误。请根据错误信息提示修改请求体。',
@@ -288,12 +278,8 @@ const en: Translations = {
 	// API Key
 	'model.deprecated': 'Deprecated by the provider — kept for existing chats; pick another model.',
 	'auth.apiKeyRequiredDetail': 'Please run OpenCode: Set API Key to configure.',
-	'auth.prompt': 'Enter your OpenCode Go API key or compatible provider token.',
-	'auth.placeholder': 'OpenCode Go API key',
-	'auth.prompt.go': 'Enter your OpenCode Go subscription API key.',
-	'auth.placeholder.go': 'OpenCode Go API key',
-	'auth.prompt.zen': 'Enter your OpenCode Zen pay-as-you-go API key.',
-	'auth.placeholder.zen': 'OpenCode Zen API key',
+	'auth.prompt': 'Enter your OpenCode API key (one key works for both Go subscriptions and Zen pay-as-you-go).',
+	'auth.placeholder': 'OpenCode API key',
 	'auth.emptyValidation': 'API key cannot be empty',
 	'auth.saved': 'OpenCode API key saved.',
 	'auth.removed': 'OpenCode API key removed.',
@@ -454,13 +440,7 @@ const en: Translations = {
 		'⚠️ Tool list is unstable; cache hit rate may drop. [Learn more](https://github.com/abbalochdev/opencode-for-copilot/blob/main/docs/notices/tool-drift.en.md)',
 
 	// Usage
-	'usage.notConfigured': 'Configure an API key before querying GLM Coding Plan usage.',
-	'usage.unsupportedBaseUrl':
-		'The current baseUrl is not an official domestic or international GLM endpoint, so Coding Plan usage cannot be queried.',
 	'usage.opencodeConsole': 'Opening the OpenCode Go usage console...',
-	'usage.queryStarted': 'Querying GLM Coding Plan usage...',
-	'usage.querySucceeded': 'GLM Coding Plan usage has been written to the output panel.',
-	'usage.queryFailed': 'GLM Coding Plan usage query failed: {0}',
 
 	// Errors
 	'error.http.400':

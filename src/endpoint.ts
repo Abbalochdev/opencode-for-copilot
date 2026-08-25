@@ -1,15 +1,11 @@
-import type { ApiMode, ApiRegion, EndpointPreset } from './types';
+import type { ApiProtocol, EndpointPreset } from './types';
 
+// Hosts of the GLM/Z.ai platforms. No longer used as first-class endpoint
+// presets, but still sniffed so users who point `baseUrl` at them manually
+// get the right error mapping, request flags, and CNY pricing.
 export const GLM_CN_API_HOST = 'open.bigmodel.cn';
 export const GLM_CN_LEGACY_API_HOST = 'dev.bigmodel.cn';
 export const GLM_INTERNATIONAL_API_HOST = 'api.z.ai';
-
-export const GLM_CN_CODING_BASE_URL = `https://${GLM_CN_API_HOST}/api/coding/paas/v4`;
-export const GLM_CN_GENERAL_BASE_URL = `https://${GLM_CN_API_HOST}/api/paas/v4`;
-export const GLM_CN_ANTHROPIC_BASE_URL = `https://${GLM_CN_API_HOST}/api/anthropic`;
-export const GLM_INTERNATIONAL_CODING_BASE_URL = `https://${GLM_INTERNATIONAL_API_HOST}/api/coding/paas/v4`;
-export const GLM_INTERNATIONAL_GENERAL_BASE_URL = `https://${GLM_INTERNATIONAL_API_HOST}/api/paas/v4`;
-export const GLM_INTERNATIONAL_ANTHROPIC_BASE_URL = `https://${GLM_INTERNATIONAL_API_HOST}/api/anthropic`;
 
 // ---- OpenCode Go (https://opencode.ai/docs/go) ----
 //
@@ -38,37 +34,14 @@ export const OPENCODE_ZEN_ANTHROPIC_BASE_URL = `https://${OPENCODE_GO_API_HOST}/
 export const OPENCODE_ZEN_API_KEY_URL = 'https://opencode.ai/auth';
 
 /**
- * Default endpoint preset — domestic Coding Plan over the OpenAI protocol.
- */
-export const DEFAULT_ENDPOINT_PRESET: EndpointPreset = 'china-coding';
-
-export const GLM_CN_CODING_API_KEY_URL = 'https://bigmodel.cn/coding-plan/personal/overview';
-export const GLM_CN_GENERAL_API_KEY_URL = 'https://open.bigmodel.cn/usercenter/proj-mgmt/apikeys';
-export const GLM_INTERNATIONAL_CODING_API_KEY_URL = 'https://z.ai/manage-apikey/subscription';
-export const GLM_INTERNATIONAL_GENERAL_API_KEY_URL = 'https://z.ai/manage-apikey/apikey-list';
-
-export type OfficialGLMPlatform = 'zhipu' | 'zai';
-
-/**
  * Resolve the base URL for a single `endpoint` preset value.
  *
- * The preset encodes region + mode + protocol in one enum, removing the
- * combinatorial confusion of the legacy region/apiMode/apiProtocol trio.
+ * The preset encodes plan + protocol in one enum: the base URL plus the
+ * client-appended `/chat/completions` (OpenAI) or `/v1/messages` (Anthropic)
+ * must line up exactly with the OpenCode docs.
  */
 export function resolveEndpointBaseUrl(preset: EndpointPreset): string {
 	switch (preset) {
-		case 'china-coding':
-			return GLM_CN_CODING_BASE_URL;
-		case 'china-standard':
-			return GLM_CN_GENERAL_BASE_URL;
-		case 'china-anthropic':
-			return GLM_CN_ANTHROPIC_BASE_URL;
-		case 'international-coding':
-			return GLM_INTERNATIONAL_CODING_BASE_URL;
-		case 'international-standard':
-			return GLM_INTERNATIONAL_GENERAL_BASE_URL;
-		case 'international-anthropic':
-			return GLM_INTERNATIONAL_ANTHROPIC_BASE_URL;
 		case 'opencode-go':
 			return OPENCODE_GO_OPENAI_BASE_URL;
 		case 'opencode-go-anthropic':
@@ -84,70 +57,22 @@ export function resolveEndpointBaseUrl(preset: EndpointPreset): string {
  * Resolve the "request an API key" landing page for a single preset value.
  */
 export function resolveEndpointApiKeyUrl(preset: EndpointPreset): string {
-	switch (preset) {
-		case 'china-coding':
-			return GLM_CN_CODING_API_KEY_URL;
-		case 'china-standard':
-			return GLM_CN_GENERAL_API_KEY_URL;
-		case 'china-anthropic':
-			return GLM_CN_CODING_API_KEY_URL;
-		case 'international-coding':
-			return GLM_INTERNATIONAL_CODING_API_KEY_URL;
-		case 'international-standard':
-			return GLM_INTERNATIONAL_GENERAL_API_KEY_URL;
-		case 'international-anthropic':
-			return GLM_INTERNATIONAL_CODING_API_KEY_URL;
-		case 'opencode-go':
-		case 'opencode-go-anthropic':
-			return OPENCODE_GO_API_KEY_URL;
-		case 'opencode-zen':
-		case 'opencode-zen-anthropic':
-			return OPENCODE_ZEN_API_KEY_URL;
-	}
+	return preset === 'opencode-go' || preset === 'opencode-go-anthropic'
+		? OPENCODE_GO_API_KEY_URL
+		: OPENCODE_ZEN_API_KEY_URL;
 }
 
 /**
  * The wire protocol implied by a preset value.
  */
-export function resolveEndpointProtocol(preset: EndpointPreset): 'openai' | 'anthropic' {
-	return preset === 'china-anthropic' ||
-		preset === 'international-anthropic' ||
-		preset === 'opencode-go-anthropic' ||
-		preset === 'opencode-zen-anthropic'
+export function resolveEndpointProtocol(preset: EndpointPreset): ApiProtocol {
+	return preset === 'opencode-go-anthropic' || preset === 'opencode-zen-anthropic'
 		? 'anthropic'
 		: 'openai';
 }
 
-/**
- * Map the legacy (region, apiMode, apiProtocol) tuple onto the closest
- * `endpoint` preset. Used to migrate existing user settings transparently.
- *
- * `apiProtocol === "anthropic"` wins over `apiMode` because the protocol
- * uniquely implies the Anthropic endpoint path, while `apiMode` only varies
- * the OpenAI-style path.
- */
-export function deriveEndpointPreset(
-	region: ApiRegion,
-	apiMode: ApiMode,
-	apiProtocol: 'openai' | 'anthropic',
-): EndpointPreset {
-	if (apiProtocol === 'anthropic') {
-		return region === 'international' ? 'international-anthropic' : 'china-anthropic';
-	}
-	if (region === 'international') {
-		return apiMode === 'standard' ? 'international-standard' : 'international-coding';
-	}
-	return apiMode === 'standard' ? 'china-standard' : 'china-coding';
-}
-
-export function resolveApiKeyUrl(apiMode: ApiMode, region: ApiRegion): string {
-	if (region === 'international') {
-		return apiMode === 'standard'
-			? GLM_INTERNATIONAL_GENERAL_API_KEY_URL
-			: GLM_INTERNATIONAL_CODING_API_KEY_URL;
-	}
-	return apiMode === 'standard' ? GLM_CN_GENERAL_API_KEY_URL : GLM_CN_CODING_API_KEY_URL;
-}
+/** The GLM/Z.ai platforms still recognized for manual `baseUrl` overrides. */
+export type OfficialGLMPlatform = 'zhipu' | 'zai';
 
 export function identifyOfficialGLMPlatform(baseUrl: string): OfficialGLMPlatform | undefined {
 	try {
@@ -184,7 +109,7 @@ export function isOpencodeBaseUrl(baseUrl: string): boolean {
 	}
 }
 
-/** The two OpenCode plans with separate API keys and model catalogs. */
+/** The two OpenCode plans sharing one API key; the URL path picks billing. */
 export type OpencodePlan = 'go' | 'zen';
 
 /** Which OpenCode plan a base URL serves — `undefined` for non-OpenCode hosts. */
@@ -195,7 +120,7 @@ export function resolveOpencodePlanForBaseUrl(baseUrl: string): OpencodePlan | u
 	// Go endpoints live under `/zen/go` (OpenAI and Anthropic). Zen endpoints
 	// use `/zen/v1` or `/zen`. Anchor the check so a Zen URL containing
 	// `/zen/go` as a substring (e.g. `/zen/v1/models/zen/grok-x`) is not
-	// misclassified as Go and routed to the wrong key.
+	// misclassified as Go and billed on the wrong plan.
 	try {
 		const path = new URL(normalizeBaseUrl(baseUrl)).pathname;
 		return path === '/zen/go' || path.startsWith('/zen/go/') ? 'go' : 'zen';

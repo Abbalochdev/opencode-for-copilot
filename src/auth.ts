@@ -1,11 +1,16 @@
 import vscode from 'vscode';
 import { API_KEY_GO_SECRET, API_KEY_SECRET, API_KEY_ZEN_SECRET, CONFIG_SECTION } from './consts';
-import { resolveOpencodePlanForBaseUrl, type OpencodePlan } from './endpoint';
 import { t } from './i18n';
 
 /**
  * Manages GLM API key via VS Code SecretStorage (secure) with
  * fallback to extension settings (less secure, for CI/automation).
+ *
+ * OpenCode Go and Zen share one credential: a single key from
+ * opencode.ai/auth authenticates both the Go subscription endpoints and the
+ * Zen pay-as-you-go endpoints; entitlement is decided server-side. The two
+ * per-plan slots below exist only to read/clean up keys stored by older
+ * versions that modeled them as separate secrets.
  */
 export class AuthManager {
 	private readonly secretStorage: vscode.SecretStorage;
@@ -16,11 +21,18 @@ export class AuthManager {
 
 	/**
 	 * Get API key. Tries SecretStorage first, then falls back to settings.
+	 * Legacy per-plan slots are consulted so users of versions that split the
+	 * key keep working without re-entering it.
 	 */
 	async getApiKey(): Promise<string | undefined> {
-		const secretKey = await this.secretStorage.get(API_KEY_SECRET);
-		if (secretKey) {
-			return secretKey;
+		for (const secretKey of [
+			await this.secretStorage.get(API_KEY_SECRET),
+			await this.secretStorage.get(API_KEY_GO_SECRET),
+			await this.secretStorage.get(API_KEY_ZEN_SECRET),
+		]) {
+			if (secretKey) {
+				return secretKey;
+			}
 		}
 
 		const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
@@ -47,46 +59,10 @@ export class AuthManager {
 		await clearSettingsApiKey();
 	}
 
-	/**
-	 * API key for an OpenCode plan. Falls back to the legacy single key so
-	 * existing users keep working after the split.
-	 */
-	async getPlanApiKey(plan: OpencodePlan): Promise<string | undefined> {
-		const secretKey = await this.secretStorage.get(
-			plan === 'go' ? API_KEY_GO_SECRET : API_KEY_ZEN_SECRET,
-		);
-		if (secretKey) {
-			return secretKey;
-		}
-		return this.getApiKey();
-	}
-
-	async setPlanApiKey(plan: OpencodePlan, apiKey: string): Promise<void> {
-		await this.secretStorage.store(
-			plan === 'go' ? API_KEY_GO_SECRET : API_KEY_ZEN_SECRET,
-			apiKey.trim(),
-		);
-	}
-
-	async deletePlanApiKey(plan: OpencodePlan): Promise<void> {
-		await this.secretStorage.delete(plan === 'go' ? API_KEY_GO_SECRET : API_KEY_ZEN_SECRET);
-	}
-
-	async hasPlanApiKey(plan: OpencodePlan): Promise<boolean> {
-		const key = await this.getPlanApiKey(plan);
-		return key !== undefined && key.length > 0;
-	}
-
-	/** Key for a request URL: Go URLs → Go key, Zen URLs → Zen key, else legacy. */
-	async getApiKeyForEndpoint(baseUrl: string): Promise<string | undefined> {
-		const plan = resolveOpencodePlanForBaseUrl(baseUrl);
-		return plan ? this.getPlanApiKey(plan) : this.getApiKey();
-	}
-
-	/** Remove every stored API key (Go + Zen + legacy) and the settings fallback. */
+	/** Remove every stored API key (current + legacy per-plan slots) and the settings fallback. */
 	async deleteAllApiKeys(): Promise<void> {
-		await this.deletePlanApiKey('go');
-		await this.deletePlanApiKey('zen');
+		await this.secretStorage.delete(API_KEY_GO_SECRET);
+		await this.secretStorage.delete(API_KEY_ZEN_SECRET);
 		await this.deleteApiKey();
 	}
 
@@ -99,13 +75,12 @@ export class AuthManager {
 	}
 
 	/**
-	 * Prompt user to enter an API key via input box. With a plan, stores the
-	 * key in that plan's slot; without, stores the legacy single key.
+	 * Prompt user to enter an API key via input box.
 	 */
-	async promptForApiKey(plan?: OpencodePlan): Promise<boolean> {
+	async promptForApiKey(): Promise<boolean> {
 		const apiKey = await vscode.window.showInputBox({
-			prompt: t(plan ? `auth.prompt.${plan}` : 'auth.prompt'),
-			placeHolder: t(plan ? `auth.placeholder.${plan}` : 'auth.placeholder'),
+			prompt: t('auth.prompt'),
+			placeHolder: t('auth.placeholder'),
 			password: true,
 			ignoreFocusOut: true,
 			validateInput: (value: string) => {
@@ -117,11 +92,7 @@ export class AuthManager {
 		});
 
 		if (apiKey) {
-			if (plan) {
-				await this.setPlanApiKey(plan, apiKey);
-			} else {
-				await this.setApiKey(apiKey);
-			}
+			await this.setApiKey(apiKey);
 			vscode.window.showInformationMessage(t('auth.saved'));
 			return true;
 		}

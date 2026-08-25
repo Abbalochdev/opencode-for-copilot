@@ -70,7 +70,7 @@ return;
 	// Audit the free-tier models once at the start of a run so `buildConfig`
 	// can populate the research/review/implementFallback rotations from the
 	// *actually-alive* free models instead of hardcoded defaults. Skipped
-	// entirely when the user has pinned `glm-copilot.agentRoles.*` — see
+	// entirely when the user has pinned `Opencode-copilot.agentRoles.*` — see
 	// `buildConfig`. The audit returns immediately-without-throwing on
 	// cancellation, so an Esc'd run doesn't waste probe time.
 	const audit = await auditFreeModels(

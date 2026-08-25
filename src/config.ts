@@ -1,32 +1,26 @@
 import vscode from 'vscode';
 import { CONFIG_SECTION, LEGACY_CONFIG_SECTION, MODELS } from './consts';
 import {
-	deriveEndpointPreset,
-	normalizeBaseUrl,
-	resolveEndpointApiKeyUrl,
-	resolveEndpointBaseUrl,
-	resolveEndpointProtocol,
-	resolvePlanDefaultEndpoint,
-	type OpencodePlan
+    normalizeBaseUrl,
+    resolveEndpointApiKeyUrl,
+    resolveEndpointBaseUrl,
+    resolveEndpointProtocol,
+    resolvePlanDefaultEndpoint,
+    type OpencodePlan
 } from './endpoint';
 import {
-	getDynamicModels
+    getDynamicModels
 } from './provider/opencode-models';
 import type { PonytailMode } from './provider/ponytail';
 import type {
-	ApiMode,
-	ApiProtocol,
-	ApiRegion,
-	CustomModelConfig,
-	EndpointPreset,
-	ModelDefinition,
+    ApiProtocol,
+    CustomModelConfig,
+    EndpointPreset,
+    ModelDefinition,
 } from './types';
 
 export type DebugMode = 'minimal' | 'metadata' | 'verbose';
 
-const DEFAULT_API_MODE: ApiMode = 'coding-plan';
-const DEFAULT_API_REGION: ApiRegion = 'china';
-const DEFAULT_API_PROTOCOL: ApiProtocol = 'openai';
 const CUSTOM_MODEL_DETAIL = 'Custom GLM-compatible model';
 const CUSTOM_MODEL_MAX_INPUT_TOKENS = 200_000;
 const CUSTOM_MODEL_MAX_OUTPUT_TOKENS = 131_072;
@@ -36,9 +30,8 @@ const CUSTOM_MODEL_MAX_OUTPUT_TOKENS = 131_072;
  *
  * Resolution order:
  *   1. `baseUrl` override (highest priority — covers advanced/proxy use cases)
- *   2. `endpoint` preset (new single-value selector)
- *   3. Legacy (region, apiMode, apiProtocol) tuple — transparently mapped to
- *      a preset so existing user settings keep working without migration.
+ *   2. `endpoint` preset
+ *   3. The active OpenCode plan's default endpoint (`opencode-go` / `opencode-zen`)
  */
 export function getBaseUrl(): string {
 	const override = getBaseUrlOverride();
@@ -58,34 +51,17 @@ export function getBaseUrlOverride(): string | undefined {
 	return normalized || undefined;
 }
 
-export function getApiMode(): ApiMode {
-	const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
-	return normalizeApiMode(config.get<string>('apiMode'), DEFAULT_API_MODE) ?? DEFAULT_API_MODE;
-}
-
-export function getRegion(): ApiRegion {
-	const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
-	return normalizeApiRegion(config.get<string>('region'), DEFAULT_API_REGION) ?? DEFAULT_API_REGION;
-}
-
 /**
  * Get the single-value endpoint preset.
  *
  * Resolution order:
  *   1. Explicit `endpoint` setting (always wins)
- *   2. Explicitly configured legacy (region, apiMode, apiProtocol) tuple
- *   3. The active OpenCode plan's default endpoint (`opencode-go` / `opencode-zen`)
+ *   2. The active OpenCode plan's default endpoint (`opencode-go` / `opencode-zen`)
  */
 export function getEndpoint(): EndpointPreset {
 	const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
 	const explicit = normalizeEndpointPreset(config.get<string>('endpoint'));
-	if (explicit) {
-		return explicit;
-	}
-	if (hasExplicitLegacyEndpointConfig()) {
-		return deriveEndpointFromLegacy();
-	}
-	return resolvePlanDefaultEndpoint(getOpencodePlan());
+	return explicit ?? resolvePlanDefaultEndpoint(getOpencodePlan());
 }
 
 /** Which OpenCode plan's key and model catalog to use — `opencodePlan` setting. */
@@ -102,7 +78,6 @@ const LEGACY_SETTING_KEYS = [
 	'baseUrl',
 	'endpoint',
 	'maxTokens',
-	'showProviderPrefix',
 	'experimental.stabilizeToolList',
 	'modelIdOverrides',
 	'customModels',
@@ -114,10 +89,6 @@ const LEGACY_SETTING_KEYS = [
 	'stripThinkTags',
 	// Legacy keys no longer contributed but still read for backward compatibility.
 	'apiKey',
-	'region',
-	'apiMode',
-	'apiProtocol',
-	'debug',
 ] as const;
 
 const SETTINGS_MIGRATION_KEY = 'opencode-for-copilot.settingsMigratedFromLegacy.version';
@@ -158,68 +129,30 @@ export async function migrateLegacySettings(context: vscode.ExtensionContext): P
 	await context.globalState.update(SETTINGS_MIGRATION_KEY, SETTINGS_MIGRATION_VERSION);
 }
 
-function hasExplicitLegacyEndpointConfig(): boolean {
-	const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
-	return (['region', 'apiMode', 'apiProtocol'] as const).some((key) => {
-		const inspection = config.inspect<string>(key);
-		return (
-			inspection?.globalValue !== undefined ||
-			inspection?.workspaceValue !== undefined ||
-			inspection?.workspaceFolderValue !== undefined
-		);
-	});
-}
-
 /**
  * Get the wire protocol implied by the active endpoint preset.
  *
  * `baseUrl` override does not change the protocol — users pointing at a
  * custom gateway still pick the protocol shape explicitly via `endpoint`.
+ * A leftover explicit `apiProtocol` value (pre-3.10 escape hatch, no longer
+ * contributed) still wins when `endpoint` is unset so custom-baseUrl users
+ * keep their chosen request shape.
  */
 export function getApiProtocol(): ApiProtocol {
-	const preset = getEndpoint();
-	const protocol = resolveEndpointProtocol(preset);
-	// Preserve the legacy explicit `apiProtocol` override path: when a user has
-	// NOT set the new `endpoint` but DID set `apiProtocol`, that intent still
-	// wins so custom-baseUrl users keep their chosen protocol shape.
+	const protocol = resolveEndpointProtocol(getEndpoint());
 	const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
-	const explicitEndpoint = normalizeEndpointPreset(config.get<string>('endpoint'));
-	if (explicitEndpoint) {
+	if (normalizeEndpointPreset(config.get<string>('endpoint'))) {
 		return protocol;
 	}
-	const legacyProtocol = normalizeApiProtocol(config.get<string>('apiProtocol'), protocol);
-	return legacyProtocol ?? protocol;
+	return normalizeApiProtocol(config.get<string>('apiProtocol'), protocol) ?? protocol;
 }
 
 export function getApiKeyUrl(): string {
-	// Follows the same resolution as getEndpoint(): explicit preset, then
-	// explicitly-configured legacy tuple, then the active OpenCode plan.
 	return resolveEndpointApiKeyUrl(getEndpoint());
-}
-
-function deriveEndpointFromLegacy(): EndpointPreset {
-	const region = getRegion();
-	const apiMode = getApiMode();
-	const apiProtocol = getApiProtocolLegacy();
-	return deriveEndpointPreset(region, apiMode, apiProtocol);
-}
-
-function getApiProtocolLegacy(): ApiProtocol {
-	const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
-	return (
-		normalizeApiProtocol(config.get<string>('apiProtocol'), DEFAULT_API_PROTOCOL) ??
-		DEFAULT_API_PROTOCOL
-	);
 }
 
 function normalizeEndpointPreset(value: unknown): EndpointPreset | undefined {
 	if (
-		value === 'china-coding' ||
-		value === 'china-standard' ||
-		value === 'china-anthropic' ||
-		value === 'international-coding' ||
-		value === 'international-standard' ||
-		value === 'international-anthropic' ||
 		value === 'opencode-go' ||
 		value === 'opencode-go-anthropic' ||
 		value === 'opencode-zen' ||
@@ -308,7 +241,7 @@ export function listProviderModels(): ModelDefinition[] {
 export async function refreshDynamicModels(): Promise<void> {
 	const customModels = getCustomModels();
 	const fallback = dynamicModelsOverride ?? MODELS;
-	dynamicModelsOverride = await getDynamicModels(customModels, fallback, getOpencodePlan());
+	dynamicModelsOverride = await getDynamicModels(customModels, fallback);
 }
 
 export function findModelDefinition(modelId: string): ModelDefinition | undefined {
@@ -358,15 +291,6 @@ export function getRequestDumpEnabled(): boolean {
 export function getStabilizeToolListEnabled(): boolean {
 	const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
 	return config.get<boolean>('experimental.stabilizeToolList', false);
-}
-
-/**
- * Prefix model picker names with their provider (e.g. "Kimi · Kimi K3") so
- * models stay identifiable when the picker truncates long names.
- */
-export function getShowProviderPrefix(): boolean {
-	const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
-	return config.get<boolean>('showProviderPrefix', false);
 }
 
 export type StripThinkTagsMode = 'auto' | 'always' | 'never';
@@ -489,22 +413,11 @@ function normalizeDebugMode(value: unknown): DebugMode | undefined {
 	return undefined;
 }
 
-function normalizeApiMode(value: unknown, fallback: ApiMode | undefined): ApiMode | undefined {
-	return value === 'coding-plan' || value === 'standard' ? value : fallback;
-}
-
 function normalizeApiProtocol(
 	value: unknown,
 	fallback: ApiProtocol | undefined,
 ): ApiProtocol | undefined {
 	return value === 'openai' || value === 'anthropic' ? value : fallback;
-}
-
-function normalizeApiRegion(
-	value: unknown,
-	fallback: ApiRegion | undefined,
-): ApiRegion | undefined {
-	return value === 'china' || value === 'international' ? value : fallback;
 }
 
 function normalizeCustomModel(entry: unknown): ModelDefinition | undefined {

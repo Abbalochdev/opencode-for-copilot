@@ -3,41 +3,60 @@ import * as vscode from 'vscode';
 import { listProviderModels } from '../../src/config';
 import { MODELS } from '../../src/consts';
 import {
-    filterModelsForPlan,
-    getConfiguredThinkingEffort,
-    providerLabel,
-    toChatInfo,
+	getConfiguredThinkingEffort,
+	toChatInfo,
 } from '../../src/provider/models';
 import { findModelsDevEntry, invalidateModelsDevCache, mergeWithModelsDev, type ModelsDevModel } from '../../src/provider/models-dev';
 import {
-    getDynamicModels,
-    invalidateModelCache,
+	displayNameFromId,
+	getDynamicModels,
+	invalidateModelCache,
 } from '../../src/provider/opencode-models';
 import { __clearConfigurationValues, __setConfigurationValue } from '../support/vscode.mock';
 
-describe('filterModelsForPlan', () => {
+describe('displayNameFromId (generic placeholder until models.dev enrichment)', () => {
+	it('title-cases words and joins version segments', () => {
+		// Official casing (DeepSeek, MiMo, …) comes from the models.dev merge;
+		// this generator only needs stable, readable placeholders.
+		expect(displayNameFromId('claude-opus-4-8')).toBe('Claude Opus 4.8');
+		expect(displayNameFromId('glm-5.3')).toBe('Glm 5.3');
+		expect(displayNameFromId('qwen3.8-max')).toBe('Qwen3.8 Max');
+		expect(displayNameFromId('mimo-v2.5')).toBe('Mimo V2.5');
+		expect(displayNameFromId('nemotron-3.5-lightning-free')).toBe(
+			'Nemotron 3.5 Lightning Free',
+		);
+	});
+});
+
+describe('offline fallback baseline', () => {
 	beforeEach(() => {
 		__clearConfigurationValues();
 	});
 
-	it('hides Zen-only models from the Go plan and shows the full catalog on Zen', () => {
-		const go = filterModelsForPlan(MODELS, 'go');
-		const zen = filterModelsForPlan(MODELS, 'zen');
+	it('ships four models covering every plan and wire protocol', () => {
+		// Minimal offline set used before the first catalog fetch (or if both
+		// /models endpoints become unreachable). Live catalog always extends it.
+		const models = listProviderModels();
 
-		// Zen pay-as-you-go-only models (Claude, free tier) must not be offered
-		// to Go subscribers — picking them fails with 401 insufficient balance.
-		expect(go.some((m) => m.id === 'claude-fable-5')).toBe(false);
-		expect(go.some((m) => m.id === 'deepseek-v4-flash-free')).toBe(false);
-		// Go-subscription models stay selectable.
-		expect(go.some((m) => m.id === 'glm-5.2')).toBe(true);
-		expect(go.some((m) => m.id === 'kimi-k3')).toBe(true);
-		// Zen plan serves the full catalog unchanged.
-		expect(zen.some((m) => m.id === 'claude-fable-5')).toBe(true);
-		expect(zen.length).toBe(MODELS.length);
+		expect(models.map((m) => m.id)).toEqual([
+			'glm-5.2', // Go · OpenAI
+			'minimax-m3', // Go · Anthropic
+			'claude-sonnet-4-5', // Zen · Anthropic
+			'deepseek-v4-flash-free', // Zen · OpenAI (free — works with zero balance)
+		]);
+		const presets = models.map((m) => m.endpointPreset ?? '');
+		expect(presets.some((p) => p.startsWith('opencode-go'))).toBe(true);
+		expect(presets.some((p) => p.startsWith('opencode-zen'))).toBe(true);
+	});
+
+	it('serves the whole baseline regardless of the plan toggle', () => {
+		__setConfigurationValue('opencode-for-copilot.opencodePlan', 'go');
+		const infos = listProviderModels().map((m) => toChatInfo(m, true));
+		expect(infos.every((m) => m.isUserSelectable)).toBe(true);
 	});
 });
 
-describe('go catalog pipeline (real captured IDs)', () => {
+describe('dual catalog pipeline (real captured IDs)', () => {
 	const GO_IDS = [
 		'minimax-m3', 'minimax-m2.7', 'minimax-m2.5', 'kimi-k3', 'kimi-k2.7-code',
 		'kimi-k2.6', 'longcat-2.0', 'kimi-k2.5', 'glm-5.2', 'glm-5.3', 'ox-alpha-free',
@@ -47,14 +66,21 @@ describe('go catalog pipeline (real captured IDs)', () => {
 		'mimo-v2.5', 'hy3', 'hy3-preview', 'gpt-5.6-luna', 'grok-4.5',
 		'muse-spark-1.2-contributor',
 	];
+	const ZEN_ONLY_IDS = ['claude-fable-5', 'claude-opus-5', 'big-pickle'];
+	// Fallback entries absent from both fetched sets must survive the merge.
+	const FALLBACK_ONLY_IDS = ['claude-sonnet-4-5', 'deepseek-v4-flash-free'];
 
-	it('surfaces catalog-only models (gpt-5.6-luna) as selectable picker entries', async () => {
+	it('merges both catalogs; unknown IDs pin to the catalog they came from', async () => {
 		const realFetch = globalThis.fetch;
-		// Serve the captured Go catalog for the models endpoint; fail everything
-		// else (models.dev) so enrichment stays a no-op.
+		// Serve both model endpoints; fail everything else (models.dev) so
+		// enrichment stays a no-op.
 		globalThis.fetch = (async (input: RequestInfo | URL) => {
-			if (String(input).includes('/zen/go/v1/models')) {
+			const url = String(input);
+			if (url.includes('/zen/go/v1/models')) {
 				return new Response(JSON.stringify({ data: GO_IDS.map((id) => ({ id })) }));
+			}
+			if (url.includes('/zen/v1/models')) {
+				return new Response(JSON.stringify({ data: ZEN_ONLY_IDS.map((id) => ({ id })) }));
 			}
 			throw new Error('offline');
 		}) as typeof fetch;
@@ -62,16 +88,46 @@ describe('go catalog pipeline (real captured IDs)', () => {
 		try {
 			invalidateModelCache();
 			invalidateModelsDevCache();
-			const models = await getDynamicModels([], MODELS, 'go');
-			const picker = filterModelsForPlan(models, 'go').map((m) => toChatInfo(m, true));
+			const models = await getDynamicModels([], MODELS);
 
-			const luna = picker.find((m) => m.id === 'gpt-5.6-luna');
-			expect(luna).toBeDefined();
-			expect(luna?.isUserSelectable).toBe(true);
+			// Both catalogs merge, plus the two copilot-utility models and the
+			// fallback entries missing from the captured sets.
+			expect(models.length).toBe(
+				GO_IDS.length + ZEN_ONLY_IDS.length + FALLBACK_ONLY_IDS.length + 2,
+			);
+			for (const id of FALLBACK_ONLY_IDS) {
+				expect(models.some((m) => m.id === id)).toBe(true);
+			}
+			// Catalog-only newcomers surface as selectable picker entries.
+			const luna = models.find((m) => m.id === 'gpt-5.6-luna');
+			expect(luna?.endpointPreset).toBe('opencode-go');
 			expect(luna?.name).toContain('Luna');
-			// Other catalog-only newcomers surface too.
-			expect(picker.some((m) => m.id === 'hy3')).toBe(true);
-			expect(picker.some((m) => m.id === 'longcat-2.0')).toBe(true);
+			// Zen-only newcomer: known IDs keep their overlay pin (Claude is
+			// Anthropic-style), unknown IDs get a plain zen pin.
+			const fable = models.find((m) => m.id === 'claude-fable-5');
+			expect(fable?.endpointPreset?.startsWith('opencode-zen')).toBe(true);
+			// …and known IDs keep their overlay pin (Claude is Anthropic-style).
+			const opus = models.find((m) => m.id === 'claude-opus-5');
+			expect(opus?.endpointPreset).toBe('opencode-zen-anthropic');
+		} finally {
+			globalThis.fetch = realFetch;
+			invalidateModelCache();
+			invalidateModelsDevCache();
+		}
+	});
+
+	it('falls back to the static list only when BOTH catalogs are unreachable', async () => {
+		const realFetch = globalThis.fetch;
+		globalThis.fetch = (async () => {
+			throw new Error('offline');
+		}) as typeof fetch;
+
+		try {
+			invalidateModelCache();
+			invalidateModelsDevCache();
+			const models = await getDynamicModels([], MODELS);
+
+			expect(models.map((m) => m.id)).toEqual(MODELS.map((m) => m.id));
 		} finally {
 			globalThis.fetch = realFetch;
 			invalidateModelCache();
@@ -133,22 +189,30 @@ describe('model metadata helpers', () => {
 		);
 	});
 
-	it('prefixes picker names with the provider label when enabled', () => {
-		__setConfigurationValue('opencode-for-copilot.showProviderPrefix', true);
-		const info = toChatInfo(MODELS[0], true, 'USD');
+	it('prefixes picker names with the go/zen billing path', () => {
+		const infos = listProviderModels().map((model) => toChatInfo(model, true, 'USD'));
+		const byId = new Map(infos.map((info) => [info.id, info]));
 
-		expect(info.name).toBe(`GLM · ${MODELS[0].name}`);
+		// Go-billing models carry the `go/` prefix...
+		const goModel = MODELS.find((m) => m.endpointPreset?.startsWith('opencode-go'))!;
+		expect(byId.get(goModel.id)?.name).toBe(`go/${goModel.name}`);
+		// ...Zen-billing models the `zen/` prefix.
+		const zenModel = MODELS.find((m) => m.endpointPreset?.startsWith('opencode-zen'))!;
+		expect(byId.get(zenModel.id)?.name).toBe(`zen/${zenModel.name}`);
 	});
 
-	it('maps families to provider labels', () => {
-		expect(providerLabel('kimi')).toBe('Kimi');
-		expect(providerLabel('deepseek')).toBe('DeepSeek');
-		expect(providerLabel('minimax')).toBe('MiniMax');
-		expect(providerLabel('unknown-family')).toBe('unknown-family');
+	it('leaves custom models without an endpoint pin unprefixed', () => {
+		__setConfigurationValue('opencode-for-copilot.customModels', ['team-coder']);
+
+		const info = listProviderModels()
+			.map((model) => toChatInfo(model, true, 'USD'))
+			.find((entry) => entry.id === 'team-coder');
+
+		expect(info?.name).toBe('team-coder');
 	});
 
 	it('reports capabilities, thinking configuration, and price metadata when unlocked', () => {
-		const info = toChatInfo(MODELS[0], true, 'CNY');
+		const info = toChatInfo(MODELS[0], true, 'USD');
 
 		expect(info.statusIcon).toBeUndefined();
 		expect(info.capabilities).toEqual({
@@ -156,9 +220,9 @@ describe('model metadata helpers', () => {
 			imageInput: true,
 		});
 		expect(info.configurationSchema?.properties.reasoningEffort.default).toBe('max');
-		expect(info.inputCost).toBe(8);
-		expect(info.outputCost).toBe(28);
-		expect(info.cacheCost).toBe(2);
+		expect(info.inputCost).toBe(1.4);
+		expect(info.outputCost).toBe(4.4);
+		expect(info.cacheCost).toBe(0.26);
 		expect(info.priceCategory).toBe('high');
 	});
 
@@ -264,11 +328,11 @@ describe('mergeWithModelsDev', () => {
 		expect(merged.maxOutputTokens).toBe(384_000);
 	});
 
-	it('uses the models.dev description only when the overlay has no detail', () => {
+	it('never surfaces the models.dev paragraph description as the picker detail', () => {
 		const merged = mergeWithModelsDev({ ...base, detail: '' }, {
 			id: 'deepseek/deepseek-v4-flash',
-			description: 'Fallback description text',
+			description: 'Fallback description text that would wrap into a paragraph in the picker',
 		});
-		expect(merged.detail).toBe('Fallback description text');
+		expect(merged.detail).toBe('');
 	});
 });

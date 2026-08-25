@@ -1,11 +1,12 @@
 /**
  * models.dev metadata integration.
  *
- * Fetches model metadata from https://models.dev/api.json and merges it with
- * the local overlay. The overlay remains the source of truth for
- * endpoint-preset pinning and CNY pricing; models.dev provides accurate
- * context windows, output limits, capabilities, reasoning options, and USD
- * pricing — eliminating the need to manually update these per release.
+ * Fetches model metadata from https://models.dev/api.json and merges it into
+ * the locally-defined models. The local definitions (fallback baselines plus
+ * family-rule defaults) remain the source of truth for endpoint-preset
+ * pinning and requiresThinkingParam; models.dev provides accurate context
+ * windows, output limits, capabilities, reasoning options, and USD pricing —
+ * eliminating the need to manually update these per release.
  *
  * The snapshot is cached in memory (30-min TTL) and, when storage is wired
  * in via `setModelsDevSnapshotStorage`, persisted for cold-start reuse and
@@ -211,17 +212,24 @@ async function doFetch(): Promise<Map<string, ModelsDevModel>> {
 	const body = (await response.json()) as ModelsDevResponse;
 
 	const index = new Map<string, ModelsDevModel>();
-	for (const provider of Object.values(body)) {
+	// Several providers expose the same bare model ID (opencode-go, opencode
+	// Zen, plus upstream mirrors). Prefer OpenCode-owned entries for names and
+	// pricing deterministically — JSON key order must not decide the winner.
+	const PROVIDER_PRIORITY: Record<string, number> = { 'opencode-go': 0, opencode: 1 };
+	const entryPriority = new Map<string, number>();
+	for (const [providerKey, provider] of Object.entries(body)) {
 		if (!provider?.models) continue;
+		const priority = PROVIDER_PRIORITY[providerKey] ?? Number.MAX_SAFE_INTEGER;
 		for (const model of Object.values(provider.models)) {
-			if (model?.id) {
-				// First occurrence wins — opencode-go and opencode (Zen) may
-				// both list the same model ID; the Go entry is typically
-				// listed first and is the one we care about for Go models.
-				if (!index.has(model.id)) {
-					index.set(model.id, model);
-				}
+			if (!model?.id) {
+				continue;
 			}
+			const existingPriority = entryPriority.get(model.id);
+			if (existingPriority !== undefined && existingPriority <= priority) {
+				continue;
+			}
+			index.set(model.id, model);
+			entryPriority.set(model.id, priority);
 		}
 	}
 
@@ -244,11 +252,10 @@ export function invalidateModelsDevCache(): void {
 /**
  * Merge models.dev metadata into a model definition.
  *
- * The overlay wins for: endpointPreset, requiresThinkingParam,
- * supportsReasoningEffort, priceCategory, CNY pricing, preferredToolLimit,
- * and the short `detail` blurb (models.dev's `description` is a long
- * paragraph that renders poorly in the model picker — it's only used when
- * the overlay has no `detail` at all).
+ * The local definition wins for: endpointPreset, requiresThinkingParam,
+ * priceCategory, preferredToolLimit, and any hand-tuned short `detail` blurb
+ * (models.dev's `description` is a long paragraph that renders poorly in the
+ * model picker — it's only used when the local definition has no `detail`).
  * models.dev wins for: maxInputTokens, maxOutputTokens, imageInput,
  * toolCalling, thinking, USD pricing, name.
  */
@@ -262,14 +269,14 @@ export function mergeWithModelsDev(
 
 	const merged: ModelDefinition = { ...base };
 
-	// Display name (short title) — models.dev wins. The long description
-	// only fills `detail` when the overlay ships no curated blurb.
+	// Display name (short title) — models.dev wins.
 	if (devModel.name) {
 		merged.name = devModel.name;
 	}
-	if (!base.detail && devModel.description) {
-		merged.detail = devModel.description;
-	}
+	// NOTE: models.dev `description` is a full paragraph that wraps badly in
+	// the Copilot model picker, so it is deliberately NOT surfaced as `detail`.
+	// Only the curated overlay blurb (base.detail) is shown; models without one
+	// simply render with their proper title and no subtitle.
 
 	// Context and output limits
 	if (devModel.limit?.context) {
@@ -300,8 +307,8 @@ export function mergeWithModelsDev(
 		}
 	}
 
-	// USD pricing — only set if models.dev provides cost data and the overlay
-	// doesn't already have USD pricing (overlay CNY pricing is preserved).
+	// USD pricing — only set if models.dev provides cost data and the local
+	// definition doesn't already have USD pricing.
 	if (devModel.cost && !base.pricing?.USD) {
 		const usdPricing = extractPricing(devModel.cost);
 		if (usdPricing) {

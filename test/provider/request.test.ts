@@ -6,8 +6,8 @@ import { prepareChatRequest } from '../../src/provider/request';
 import type { ConversationSegment } from '../../src/provider/segment';
 import type { VisionDescriber } from '../../src/provider/vision';
 import {
-    IMAGE_DESCRIPTION_PREFIX,
-    IMAGE_DESCRIPTION_SUFFIX,
+	IMAGE_DESCRIPTION_PREFIX,
+	IMAGE_DESCRIPTION_SUFFIX,
 } from '../../src/provider/vision/consts';
 import { __clearConfigurationValues, __setConfigurationValue } from '../support/vscode.mock';
 
@@ -67,7 +67,7 @@ describe('request preparation', () => {
 		const prepared = await prepareChatRequest({
 			authManager: {
 				getApiKey: async () => 'test-key',
-				getApiKeyForEndpoint: async () => 'test-key',
+				getApiKey: async () => 'test-key',
 			} as unknown as AuthManager,
 			globalStorageUri: vscode.Uri.file('/tmp/glm-request-test'),
 			modelInfo: { id: 'team-coder' } as vscode.LanguageModelChatInformation,

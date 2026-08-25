@@ -2,23 +2,20 @@ import { createHash } from 'crypto';
 import vscode from 'vscode';
 import { AuthManager } from '../auth';
 import {
-    getBaseUrl,
-    getOpencodePlan,
-    getPonytailMode,
-    getStabilizeToolListEnabled,
-    listProviderModels,
-    refreshDynamicModels,
+	getBaseUrl,
+	getPonytailMode,
+	getStabilizeToolListEnabled,
+	listProviderModels,
+	refreshDynamicModels,
 } from '../config';
 import { API_KEY_GO_SECRET, API_KEY_SECRET, API_KEY_ZEN_SECRET, CONFIG_SECTION } from '../consts';
 import {
-    isOpencodeBaseUrl,
-    OPENCODE_GO_USAGE_CONSOLE_URL,
-    type OpencodePlan,
+	OPENCODE_GO_USAGE_CONSOLE_URL
 } from '../endpoint';
 import { t } from '../i18n';
 import { logger } from '../logger';
 import { createCacheDiagnosticsRecorder, dumpProviderInput } from './debug';
-import { filterModelsForPlan, toChatInfo } from './models';
+import { toChatInfo } from './models';
 import { setModelsDevSnapshotStorage } from './models-dev';
 import { invalidateModelCache, isDynamicModelsStale } from './opencode-models';
 import { getPricingCurrencyForBaseUrl } from './pricing/currency';
@@ -29,7 +26,6 @@ import { resolveConversationSegment } from './segment';
 import { streamChatCompletion } from './stream';
 import { estimateTokenCount } from './tokens';
 import { processToolFlow } from './tools/flow';
-import { formatGLMPlanUsageForLog, queryGLMPlanUsage, supportsGLMPlanUsage } from './usage';
 import { createVisionService } from './vision';
 
 // ---- Request deduplication for utility kinds ----
@@ -163,8 +159,8 @@ export class GLMChatProvider implements vscode.LanguageModelChatProvider {
 
 	// ---- Public commands ----
 
-	async configureApiKey(plan: OpencodePlan = getOpencodePlan()): Promise<void> {
-		const saved = await this.authManager.promptForApiKey(plan);
+	async configureApiKey(): Promise<void> {
+		const saved = await this.authManager.promptForApiKey();
 		if (saved) {
 			this.refreshModelPicker();
 		}
@@ -184,36 +180,10 @@ export class GLMChatProvider implements vscode.LanguageModelChatProvider {
 	}
 
 	async queryUsage(): Promise<void> {
-		const apiKey = await this.authManager.getApiKey();
-		if (!apiKey) {
-			void vscode.window.showWarningMessage(t('usage.notConfigured'));
-			return;
-		}
-
-		const baseUrl = getBaseUrl();
-		// OpenCode Go does not expose the GLM monitor API; point subscribers at
-		// the OpenCode console where Go usage limits are tracked.
-		if (isOpencodeBaseUrl(baseUrl)) {
-			void vscode.window.showInformationMessage(t('usage.opencodeConsole'));
-			await vscode.env.openExternal(vscode.Uri.parse(OPENCODE_GO_USAGE_CONSOLE_URL));
-			return;
-		}
-		if (!supportsGLMPlanUsage(baseUrl)) {
-			void vscode.window.showWarningMessage(t('usage.unsupportedBaseUrl'));
-			return;
-		}
-
-		logger.show();
-		logger.info(t('usage.queryStarted'));
-		try {
-			const usage = await queryGLMPlanUsage(baseUrl, apiKey);
-			logger.info(formatGLMPlanUsageForLog(usage));
-			void vscode.window.showInformationMessage(t('usage.querySucceeded'));
-		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
-			logger.warn('Failed to query GLM Coding Plan usage', error);
-			void vscode.window.showErrorMessage(t('usage.queryFailed', message));
-		}
+		// OpenCode has no monitor API — Go limits and Zen spend live in the
+		// web console at opencode.ai/auth.
+		void vscode.window.showInformationMessage(t('usage.opencodeConsole'));
+		await vscode.env.openExternal(vscode.Uri.parse(OPENCODE_GO_USAGE_CONSOLE_URL));
 	}
 
 	async hasApiKey(): Promise<boolean> {
@@ -255,7 +225,6 @@ export class GLMChatProvider implements vscode.LanguageModelChatProvider {
 			return [];
 		}
 
-		const plan = getOpencodePlan();
 		// Stale catalog → refresh in the background and re-notify, so VPN /
 		// network changes surface the next time the picker opens without a
 		// window reload. The change event re-queries us; by then the cache is
@@ -263,11 +232,12 @@ export class GLMChatProvider implements vscode.LanguageModelChatProvider {
 		if (isDynamicModelsStale()) {
 			void refreshDynamicModels().then(() => this.refreshModelPicker());
 		}
-		const hasKey = await this.authManager.hasPlanApiKey(plan);
+		// One shared credential gates the whole picker — Go and Zen endpoints
+		// accept the same key. The full catalog is always shown; entitlement
+		// (Go subscription vs Zen credit) is decided server-side per request.
+		const hasKey = await this.authManager.hasApiKey();
 		const pricingCurrency = getPricingCurrencyForBaseUrl(getBaseUrl());
-		return filterModelsForPlan(listProviderModels(), plan).map((model) =>
-			toChatInfo(model, hasKey, pricingCurrency),
-		);
+		return listProviderModels().map((model) => toChatInfo(model, hasKey, pricingCurrency));
 	}
 
 	async provideLanguageModelChatResponse(

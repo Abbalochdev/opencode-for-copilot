@@ -97,7 +97,7 @@ API Key 存储在 VS Code 的 `SecretStorage` 中（macOS 钥匙串 / Windows �
 
 **它不会做什么：** 改变行为或导出的 API 签名、移除错误处理或安全检查、引入新依赖、重写整个文件。
 
-启用后 Ponytail 会自动降为**轻量**模式以确保兼容——Ponytail 保持响应的简洁与复用导向，而代码精简器确保已编写的内容干净易读。可通过命令面板关闭：**OpenCode: 切换代码精简器**，或将 `glm-copilot.codeSimplifier` 设为 `false`。
+启用后 Ponytail 会自动降为**轻量**模式以确保兼容——Ponytail 保持响应的简洁与复用导向，而代码精简器确保已编写的内容干净易读。可通过命令面板关闭：**OpenCode: 切换代码精简器**，或将 `opencode-for-copilot.codeSimplifier` 设为 `false`。
 
 ### Agent Swarm（`@swarm`）
 
@@ -107,7 +107,7 @@ API Key 存储在 VS Code 的 `SecretStorage` 中（macOS 钥匙串 / Windows �
 2. **评审群（并行，写代码之前）**——评审 Agent 拿到任务与研究结论，并可用只读工具对照代码核验结论，标记实现前必须解决的缺口、矛盾与风险。
 3. **实现**——一个 Agent 使用你在聊天中选择的模型，在收到研究结论与评审反馈后开始编辑、运行测试，并在同一连续工具循环中自我修正（防重复调用的自旋保护、工具结果截断以控制上下文、通过/失败结论以真实 `runTests` 输出为准）。
 
-某个研究或评审 Agent 失败只会降级为一条标注，不会中止整个运行——一次限流不会击沉整个 Swarm。各角色模型可通过 `glm-copilot.agentRoles` 配置；研究默认使用免费 DeepSeek V4 Flash Free，评审默认使用免费 Big Pickle，实现始终使用聊天中选择的模型。
+某个研究或评审 Agent 失败只会降级为一条标注，不会中止整个运行——一次限流不会击沉整个 Swarm。各角色模型可通过 `opencode-for-copilot.agentRoles` 配置；研究默认使用免费 DeepSeek V4 Flash Free，评审默认使用免费 Big Pickle，实现始终使用聊天中选择的模型。
 
 ### 零运行时依赖
 
@@ -119,7 +119,7 @@ API Key 存储在 VS Code 的 `SecretStorage` 中（macOS 钥匙串 / Windows �
 
 - VS Code 1.116 及以上版本。本扩展依赖非公开的 Copilot Chat API，较新的 VS Code 版本可能存在兼容性问题——如遇到请[提交 Issue](https://github.com/abbalochdev/opencode-for-copilot/issues)。
 - GitHub Copilot 订阅（Free / Pro / Enterprise——免费版即可使用）
-- OpenCode 账户 — [Go 订阅](https://opencode.ai/docs/go/)（首月 $5，之后 $10/月）或 [Zen 按量付费](https://opencode.ai/docs/zen)。前往 [opencode.ai/auth](https://opencode.ai/auth) 订阅并获取 API Key。使用自定义 `glm-copilot.baseUrl` 时也可使用兼容的 provider token
+- OpenCode 账户 — [Go 订阅](https://opencode.ai/docs/go/)（首月 $5，之后 $10/月）或 [Zen 按量付费](https://opencode.ai/docs/zen)。前往 [opencode.ai/auth](https://opencode.ai/auth) 订阅并获取 API Key——一个 Key 同时适用于 Go 和 Zen
 
 ### 安装方式
 
@@ -130,8 +130,8 @@ API Key 存储在 VS Code 的 `SecretStorage` 中（macOS 钥匙串 / Windows �
 
 ### 使用步骤
 
-1. 通过命令面板（`Cmd+Shift+P`）运行 **OpenCode: 设置 API Key**
-2. 粘贴你的 OpenCode API Key 或兼容的 provider token
+1. 通过命令面板（`Cmd+Shift+P`）运行 **OpenCode: 设置 Go/Zen API Key**
+2. 粘贴你的 OpenCode API Key（Go 与 Zen 共用同一个 Key）
 3. 打开 Copilot Chat，点击模型选择器，选择任意 OpenCode 模型（GLM-5.2、Kimi K2.7 Code、DeepSeek V4 Flash、Claude Sonnet 5 等）
 4. 搞定——开始聊天
 
@@ -194,18 +194,19 @@ API Key 存储在 VS Code 的 `SecretStorage` 中（macOS 钥匙串 / Windows �
 
 | 设置项                                       | 默认值           | 说明                                                                                                                                                                                                                                                                                                                                                  |
 | -------------------------------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `glm-copilot.endpoint`                       | `opencode-go`             | 单值端点选择器。`opencode-go` / `opencode-go-anthropic` 使用 OpenCode Go 订阅模型；`opencode-zen` / `opencode-zen-anthropic` 使用 OpenCode Zen 按量付费模型（含 Claude 和免费模型）。也支持智谱/Z.ai GLM 端点：`china-coding`、`china-standard`、`china-anthropic`、`international-coding`、`international-standard`、`international-anthropic` |
-| `glm-copilot.baseUrl`                        | 留空                     | 可选 API endpoint 覆盖项。任何非空值都会优先覆盖 `endpoint` preset。 |
-| `glm-copilot.maxTokens`                      | `0`              | 最大输出 Token 数（`0` = 不限制）。可用于成本控制                                                                                                                                                                                                                                                                                                     |
-| `glm-copilot.modelIdOverrides`               | 预填 OpenCode ID 映射 | API 实际发送的模型 ID。仅在兼容 endpoint 使用不同模型名时修改                                                                                                                                                                                                                     |
-| `glm-copilot.customModels`                   | `[]`             | 额外显示在模型选择器中的兼容模型。支持字符串 ID，或包含 `id`、可选 `name`、token 上限、`toolCalling`、`thinking` 的对象。自定义 ID 会覆盖内置模型。图片仍然走当前视觉代理，不会绕过 proxy 变成 native vision                                                                                                                                     |
-| `glm-copilot.debugMode`                      | `minimal`        | 诊断模式：`minimal` 仅上报 token 用量，`metadata` 输出隐私安全日志，`verbose` 将完整请求 dump 和 pipeline snapshot 写入扩展 global storage。完整 dump 可能包含敏感提示词文本、工具定义、文件片段和图片描述。使用 `OpenCode: 打开请求 Dump 目录` 打开 dump 位置                                                                                             |
-| `glm-copilot.visionModel`                    | _(自动)_         | 当自动模式下视觉模型不可用时，用作回退的 VS Code 视觉模型。请通过 `OpenCode: 配置视觉代理` 设置；新版保存为 `vendor/id`，旧版裸模型 ID 仍兼容读取                                                                                                                                                                                                  |
-| `glm-copilot.visionPrompt`                   | _(内置)_         | 用于描述图片附件的提示词                                                                                                                                                                                                                                                                                                                              |
-| `glm-copilot.ponytailMode`                   | `full`           | Ponytail 编程准则系统指令级别。`off` = 不注入指令；`lite` = 简要提醒；`full` = 完整的 7 级阶梯及所有规则；`ultra` = 严格模式，优先保证边界情况正确性。可通过 `OpenCode: 设置 Ponytail 模式` 随时切换                                                                                                                         |
-| `glm-copilot.codeSimplifier`                 | `true`           | 代码精简器自主优化代理（默认开启）。主动检查修改的代码，简化结构、改善可读性与可维护性。启用时 Ponytail 自动降为轻量模式。可通过 `OpenCode: 切换代码精简器` 切换                                                                                                                                                |
-| `glm-copilot.agentRoles`                     | `{}`             | Agent Swarm 各角色的模型：`research`（列表，轮询分配，默认免费 DeepSeek V4 Flash Free）、`implement`（始终为聊天中选择的模型）、可选 `review`（列表，默认免费 Big Pickle）。每项为 `{ "vendor", "family", "id"? }`                                                                                                            |
-| `glm-copilot.experimental.stabilizeToolList` | `false`          | 实验性设置。尝试预先激活 VS Code/Copilot 的虚拟工具，让传给 GLM API 的 `tools` 参数在多轮对话中更完整、更稳定。当已启用工具跨轮次变化时，可能提高上下文缓存命中率。代价是 input tokens 可能增加；缓存命中的 input tokens 单价更低，但仍会计入用量。64 个或更少已启用工具时通常无需开启，除非工具列表仍在跨轮次变化；超过 128 个已启用工具时不建议开启 |
+| `opencode-for-copilot.opencodePlan`          | `go`             | 当前使用的 OpenCode 套餐（`go` 订阅或 `zen` 按量付费）。决定默认端点；模型选择器始终列出完整的 Go+Zen 目录，并以 `go/…` 或 `zen/…` 前缀标明计费路径 |
+| `opencode-for-copilot.endpoint`              | `opencode-go`             | 单值端点选择器。`opencode-go` / `opencode-go-anthropic` 使用 OpenCode Go 订阅模型；`opencode-zen` / `opencode-zen-anthropic` 使用 OpenCode Zen 按量付费模型（含 Claude 和免费模型） |
+| `opencode-for-copilot.baseUrl`               | 留空                     | 可选 API endpoint 覆盖项。任何非空值都会优先覆盖 `endpoint` preset。 |
+| `opencode-for-copilot.maxTokens`             | `0`              | 最大输出 Token 数（`0` = 不限制）。可用于成本控制                                                                                                                                                                                                                                                                                                     |
+| `opencode-for-copilot.modelIdOverrides`      | 预填 OpenCode ID 映射 | API 实际发送的模型 ID。仅在兼容 endpoint 使用不同模型名时修改                                                                                                                                                                                                                     |
+| `opencode-for-copilot.customModels`          | `[]`             | 额外显示在模型选择器中的兼容模型。支持字符串 ID，或包含 `id`、可选 `name`、token 上限、`toolCalling`、`thinking` 的对象。自定义 ID 会覆盖内置模型。图片仍然走当前视觉代理，不会绕过 proxy 变成 native vision                                                                                                                                     |
+| `opencode-for-copilot.debugMode`             | `minimal`        | 诊断模式：`minimal` 仅上报 token 用量，`metadata` 输出隐私安全日志，`verbose` 将完整请求 dump 和 pipeline snapshot 写入扩展 global storage。完整 dump 可能包含敏感提示词文本、工具定义、文件片段和图片描述。使用 `OpenCode: 打开请求 Dump 目录` 打开 dump 位置                                                                                             |
+| `opencode-for-copilot.visionModel`           | _(自动)_         | 当自动模式下视觉模型不可用时，用作回退的 VS Code 视觉模型。请通过 `OpenCode: 配置视觉代理` 设置；新版保存为 `vendor/id`，旧版裸模型 ID 仍兼容读取                                                                                                                                                                                                  |
+| `opencode-for-copilot.visionPrompt`          | _(内置)_         | 用于描述图片附件的提示词                                                                                                                                                                                                                                                                                                                              |
+| `opencode-for-copilot.ponytailMode`          | `full`           | Ponytail 编程准则系统指令级别。`off` = 不注入指令；`lite` = 简要提醒；`full` = 完整的 7 级阶梯及所有规则；`ultra` = 严格模式，优先保证边界情况正确性。可通过 `OpenCode: 设置 Ponytail 模式` 随时切换                                                                                                                         |
+| `opencode-for-copilot.codeSimplifier`        | `true`           | 代码精简器自主优化代理（默认开启）。主动检查修改的代码，简化结构、改善可读性与可维护性。启用时 Ponytail 自动降为轻量模式。可通过 `OpenCode: 切换代码精简器` 切换                                                                                                                                                |
+| `opencode-for-copilot.agentRoles`            | `{}`             | Agent Swarm 各角色的模型：`research`（列表，轮询分配，默认免费 DeepSeek V4 Flash Free）、`implement`（始终为聊天中选择的模型）、可选 `review`（列表，默认免费 Big Pickle）。每项为 `{ "vendor", "family", "id"? }`                                                                                                            |
+| `opencode-for-copilot.experimental.stabilizeToolList` | `false`          | 实验性设置。尝试预先激活 VS Code/Copilot 的虚拟工具，让传给 GLM API 的 `tools` 参数在多轮对话中更完整、更稳定。当已启用工具跨轮次变化时，可能提高上下文缓存命中率。代价是 input tokens 可能增加；缓存命中的 input tokens 单价更低，但仍会计入用量。64 个或更少已启用工具时通常无需开启，除非工具列表仍在跨轮次变化；超过 128 个已启用工具时不建议开启 |
 
 思考深度可通过 Copilot Chat 的模型选择器对每个模型单独设置。
 
@@ -213,8 +214,8 @@ API Key 存储在 VS Code 的 `SecretStorage` 中（macOS 钥匙串 / Windows �
 
 ```json
 {
-  "glm-copilot.baseUrl": "https://proxy.example.com/v1",
-  "glm-copilot.customModels": [
+  "opencode-for-copilot.baseUrl": "https://proxy.example.com/v1",
+  "opencode-for-copilot.customModels": [
     "my-glm-model",
     {
       "id": "team-coder",
@@ -225,7 +226,7 @@ API Key 存储在 VS Code 的 `SecretStorage` 中（macOS 钥匙串 / Windows �
       "thinking": true
     }
   ],
-  "glm-copilot.modelIdOverrides": {
+  "opencode-for-copilot.modelIdOverrides": {
     "glm-5.2": "your-glm-5.2-model-id",
     "claude-sonnet-5": "your-claude-sonnet-model-id",
     "team-coder": "provider-team-coder-id"
@@ -252,7 +253,7 @@ API Key 存储在 VS Code 的 `SecretStorage` 中（macOS 钥匙串 / Windows �
 
 ### 通过中转/代理使用时报 HTTP 400 `Invalid schema for function '...'`
 
-本扩展面向 OpenCode（Go 和 Zen）端点及官方 GLM 端点（BigModel Coding Plan、Z.ai 以及文档中描述的 BigModel/Z.ai standard API）。工具 schema 由 VS Code/Copilot 自身的工具定义原样生成并由扩展原样透传。第三方中转或代理（如 New API、OneAPI）通常执行比官方端点更严格的 OpenAI schema 校验，会拒收包含 `default: null`、某些 `anyOf`/`oneOf` 结构或其他细微偏差的 schema —— 最典型的报错是 `Invalid schema for function 'get_errors': null is not of type "array"`。
+本扩展仅面向 OpenCode（Go 和 Zen）端点。工具 schema 由 VS Code/Copilot 自身的工具定义原样生成并由扩展原样透传。第三方中转或代理（如 New API、OneAPI）通常执行比官方端点更严格的 OpenAI schema 校验，会拒收包含 `default: null`、某些 `anyOf`/`oneOf` 结构或其他细微偏差的 schema —— 最典型的报错是 `Invalid schema for function 'get_errors': null is not of type "array"`。
 
 出于设计原因，**本扩展不会对此做清洗**：
 
@@ -261,7 +262,7 @@ API Key 存储在 VS Code 的 `SecretStorage` 中（macOS 钥匙串 / Windows �
 
 如果在中转上遇到此问题，建议：
 
-- 将 `glm-copilot.baseUrl` 切回 OpenCode 或官方 GLM 端点（留空并使用 `endpoint`）。
+- 将 `opencode-for-copilot.baseUrl` 切回 OpenCode 端点（留空并使用 `endpoint`）。
 - 通过 **OpenCode: 打开请求 Dump 目录** 打开 dump，检查出问题的工具 schema，然后向你的中转方反馈严格校验的问题。
 - 错误信息同样会写入 OpenCode 输出通道，可在那里复制完整的服务器返回。
 

@@ -1,15 +1,14 @@
 import vscode from 'vscode';
 import { setErrorActionUrl, type ErrorActionUrls } from '../client';
-import { getOpencodePlan } from '../config';
 import {
-    CONFIGURE_API_KEY_URI_PATH,
-    SET_VISION_MODEL_URI_PATH,
-    SHOW_LOGS_URI_PATH,
+	CONFIGURE_API_KEY_URI_PATH,
+	SET_VISION_MODEL_URI_PATH,
+	SHOW_LOGS_URI_PATH,
 } from '../consts';
 import { logger } from '../logger';
 import {
-    setProviderNoticeShowLogsUrl,
-    setVisionProxyConfigurationUrl,
+	setProviderNoticeShowLogsUrl,
+	setVisionProxyConfigurationUrl,
 } from '../provider/tools/notices';
 
 interface ActionUrlDefinition {
@@ -25,25 +24,20 @@ const ACTION_URLS: readonly ActionUrlDefinition[] = [
 	{
 		key: 'configureApiKey',
 		path: CONFIGURE_API_KEY_URI_PATH,
-		handle: () =>
-			vscode.commands.executeCommand(
-				getOpencodePlan() === 'zen'
-					? 'opencode-for-copilot.setZenApiKey'
-					: 'opencode-for-copilot.setGoApiKey',
-			),
-		resolveFailureMessage: 'Failed to resolve GLM set API key URI',
+		handle: () => vscode.commands.executeCommand('opencode-for-copilot.setApiKey'),
+		resolveFailureMessage: 'Failed to resolve OpenCode set API key URI',
 	},
 	{
 		key: 'showLogs',
 		path: SHOW_LOGS_URI_PATH,
 		handle: () => logger.show(),
-		resolveFailureMessage: 'Failed to resolve GLM show logs URI',
+		resolveFailureMessage: 'Failed to resolve OpenCode show logs URI',
 		setUrl: setProviderNoticeShowLogsUrl,
 	},
 	{
 		path: SET_VISION_MODEL_URI_PATH,
 		handle: () => vscode.commands.executeCommand('opencode-for-copilot.setVisionModel'),
-		resolveFailureMessage: 'Failed to resolve GLM set vision model URI',
+		resolveFailureMessage: 'Failed to resolve OpenCode set vision model URI',
 		setUrl: setVisionProxyConfigurationUrl,
 	},
 ];
@@ -55,11 +49,11 @@ export function registerActionUrls(context: vscode.ExtensionContext): void {
 				const action = ACTION_URLS.find((item) => item.path === uri.path);
 				if (action) {
 					void Promise.resolve(action.handle()).catch((error) => {
-						logger.warn(`Failed to handle GLM URI action: ${uri.path}`, error);
+						logger.warn(`Failed to handle OpenCode URI action: ${uri.path}`, error);
 					});
 					return;
 				}
-				logger.warn(`Unhandled GLM URI: ${uri.toString(true)}`);
+				logger.warn(`Unhandled OpenCode URI: ${uri.toString(true)}`);
 			},
 		}),
 	);

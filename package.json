@@ -3,7 +3,7 @@
   "displayName": "OpenCode for Copilot",
   "description": "Use OpenCode Go & Zen coding models (GLM, Kimi, DeepSeek, Claude, Grok, Qwen, free models) in the Copilot Chat model picker. Vision, thinking mode, agent tools — zero config, BYOK.",
   "icon": "resources/icon.png",
-  "version": "3.11.1",
+  "version": "3.11.12",
   "packageManager": "pnpm@11.7.0",
   "publisher": "abbalochdev",
   "license": "MIT",
@@ -65,12 +65,8 @@
     ],
     "commands": [
       {
-        "command": "opencode-for-copilot.setGoApiKey",
-        "title": "%opencode-for-copilot.command.setGoApiKey%"
-      },
-      {
-        "command": "opencode-for-copilot.setZenApiKey",
-        "title": "%opencode-for-copilot.command.setZenApiKey%"
+        "command": "opencode-for-copilot.setApiKey",
+        "title": "%opencode-for-copilot.command.setApiKey%"
       },
       {
         "command": "opencode-for-copilot.getApiKey",
@@ -131,7 +127,7 @@
               "markdown": "resources/walkthrough/set-api-key.md"
             },
             "completionEvents": [
-              "onCommand:opencode-for-copilot.setGoApiKey"
+              "onCommand:opencode-for-copilot.setApiKey"
             ]
           },
           {
@@ -253,37 +249,19 @@
             "opencode-go",
             "opencode-go-anthropic",
             "opencode-zen",
-            "opencode-zen-anthropic",
-            "china-coding",
-            "china-standard",
-            "china-anthropic",
-            "international-coding",
-            "international-standard",
-            "international-anthropic"
+            "opencode-zen-anthropic"
           ],
           "enumItemLabels": [
             "%opencode-for-copilot.config.endpoint.opencodeGo.label%",
             "%opencode-for-copilot.config.endpoint.opencodeGoAnthropic.label%",
             "%opencode-for-copilot.config.endpoint.opencodeZen.label%",
-            "%opencode-for-copilot.config.endpoint.opencodeZenAnthropic.label%",
-            "%opencode-for-copilot.config.endpoint.chinaCoding.label%",
-            "%opencode-for-copilot.config.endpoint.chinaStandard.label%",
-            "%opencode-for-copilot.config.endpoint.chinaAnthropic.label%",
-            "%opencode-for-copilot.config.endpoint.internationalCoding.label%",
-            "%opencode-for-copilot.config.endpoint.internationalStandard.label%",
-            "%opencode-for-copilot.config.endpoint.internationalAnthropic.label%"
+            "%opencode-for-copilot.config.endpoint.opencodeZenAnthropic.label%"
           ],
           "markdownEnumDescriptions": [
             "%opencode-for-copilot.config.endpoint.opencodeGo.description%",
             "%opencode-for-copilot.config.endpoint.opencodeGoAnthropic.description%",
             "%opencode-for-copilot.config.endpoint.opencodeZen.description%",
-            "%opencode-for-copilot.config.endpoint.opencodeZenAnthropic.description%",
-            "%opencode-for-copilot.config.endpoint.chinaCoding.description%",
-            "%opencode-for-copilot.config.endpoint.chinaStandard.description%",
-            "%opencode-for-copilot.config.endpoint.chinaAnthropic.description%",
-            "%opencode-for-copilot.config.endpoint.internationalCoding.description%",
-            "%opencode-for-copilot.config.endpoint.internationalStandard.description%",
-            "%opencode-for-copilot.config.endpoint.internationalAnthropic.description%"
+            "%opencode-for-copilot.config.endpoint.opencodeZenAnthropic.description%"
           ],
           "markdownDescription": "%opencode-for-copilot.config.endpoint.description%"
         },
@@ -292,11 +270,6 @@
           "default": 0,
           "minimum": 0,
           "description": "%opencode-for-copilot.config.maxTokens.description%"
-        },
-        "opencode-for-copilot.showProviderPrefix": {
-          "type": "boolean",
-          "default": false,
-          "markdownDescription": "%opencode-for-copilot.config.showProviderPrefix.description%"
         },
         "opencode-for-copilot.experimental.stabilizeToolList": {
           "type": "boolean",

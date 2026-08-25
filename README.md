@@ -6,7 +6,7 @@
   <br/>
   <img src="https://img.shields.io/github/v/release/abbalochdev/opencode-for-copilot?style=for-the-badge&label=Version" alt="Version" />
   <img src="https://img.shields.io/badge/models-31+-blue?style=for-the-badge" alt="31+ models" />
-  <img src="https://img.shields.io/badge/tests-139%20passing-brightgreen?style=for-the-badge" alt="139 tests passing" />
+  <img src="https://img.shields.io/badge/tests-234%20passing-brightgreen?style=for-the-badge" alt="234 tests passing" />
   <img src="https://img.shields.io/badge/dependencies-zero-success?style=for-the-badge" alt="Zero runtime dependencies" />
   <img src="https://img.shields.io/badge/license-MIT-green?style=for-the-badge" alt="MIT License" />
   <!-- marketplace-readme:remove-end -->
@@ -23,7 +23,7 @@
 ## Quick Start
 
 1. **Get a key** — subscribe at [opencode.ai/auth](https://opencode.ai/auth) ([Go](https://opencode.ai/docs/go/) or [Zen](https://opencode.ai/docs/zen)) and copy your API key.
-2. **Set it** — run **OpenCode: Set API Key**; it lands in your OS keychain, never on disk.
+2. **Set it** — run **OpenCode: Set Go/Zen API Key**; it lands in your OS keychain, never on disk. One key works for both Go and Zen.
 3. **Chat** — pick any of the 31+ models in Copilot Chat, or type `@swarm` and let a team of agents do the work.
 
 ## Why this extension?
@@ -54,7 +54,6 @@ flowchart LR
     VISION --> PICKER
     ROUTER -->|OpenAI protocol| GO[OpenCode Go / Zen<br/>/chat/completions]
     ROUTER -->|Anthropic protocol| ANTH[OpenCode Go / Zen<br/>/v1/messages]
-    ROUTER -->|GLM native| GLM[Zhipu · Z.ai · Coding Plan]
 ```
 
 Every model is routed to the endpoint it speaks natively, images are described before they reach the model, and the Agent Swarm orchestrates parallel agents — all inside the model picker you already know.
@@ -87,7 +86,7 @@ flowchart TD
 - **Resilient by design** — a rate-limited or failed sub-agent degrades to a marked note; the swarm never sinks.
 - **Your model, your cost** — research/review default to free models; implementation always runs on the model you picked.
 
-> Role models are configurable via `glm-copilot.agentRoles` — see [Settings](#settings).
+> Role models are configurable via `opencode-for-copilot.agentRoles` — see [Settings](#settings).
 
 ### 👁 Transparent Vision Proxy
 
@@ -125,7 +124,7 @@ Because the extension plugs into Copilot's native provider API, you keep the ful
 
 ### 💰 Cost Visibility · 🔒 Security by Default
 
-- Per-turn list-price estimates in the status bar and logs — CNY on domestic GLM endpoints, USD on Z.ai.
+- Per-turn list-price estimates in the status bar and logs — USD on all OpenCode endpoints (CNY if you point `baseUrl` at a domestic GLM endpoint manually).
 - API key in VS Code `SecretStorage` (OS keychain) — never in `settings.json`, never in Git history.
 
 ## Getting Started
@@ -134,7 +133,7 @@ Because the extension plugs into Copilot's native provider API, you keep the ful
 
 - VS Code 1.116 or later. This extension relies on non-public Copilot Chat APIs that may break on newer VS Code versions — [report an issue](https://github.com/abbalochdev/opencode-for-copilot/issues) if you hit one.
 - GitHub Copilot subscription (Free / Pro / Enterprise — the free tier works)
-- **OpenCode account** — [Go subscription](https://opencode.ai/docs/go/) ($5 for your first month, then $10/month) or [Zen pay-as-you-go](https://opencode.ai/docs/zen). Subscribe at [opencode.ai/auth](https://opencode.ai/auth) and copy your API key. The GLM Coding Plan and Z.ai endpoints are also supported via the `endpoint` setting.
+- **OpenCode account** — [Go subscription](https://opencode.ai/docs/go/) ($5 for your first month, then $10/month) or [Zen pay-as-you-go](https://opencode.ai/docs/zen). Subscribe at [opencode.ai/auth](https://opencode.ai/auth) and copy your API key — one key works for both.
 
 ### Installation
 
@@ -146,14 +145,14 @@ Install from the registry used by your editor:
 ### Usage
 
 1. Subscribe to [OpenCode](https://opencode.ai/docs/) and copy your API key from [opencode.ai/auth](https://opencode.ai/auth)
-2. Run **OpenCode: Set API Key** from the Command Palette (`Cmd+Shift+P` / `Ctrl+Shift+P`)
+2. Run **OpenCode: Set Go/Zen API Key** from the Command Palette (`Cmd+Shift+P` / `Ctrl+Shift+P`)
 3. Paste your OpenCode API key — it's stored in VS Code's secure SecretStorage (OS keychain)
 4. Open Copilot Chat, click the model picker, pick any OpenCode model (GLM-5.2, Kimi K2.7 Code, DeepSeek V4 Flash, Claude Sonnet 5, etc.)
 5. That's it — chat away!
 
 ## Models
 
-All OpenCode Go & Zen models are available. The extension automatically routes each model to the correct endpoint protocol:
+All OpenCode Go & Zen models are available. The extension automatically routes each model to the correct endpoint protocol, and prefixes every picker entry with its billing path (`go/GLM-5.2`, `zen/Claude Sonnet 5`) so you always know which plan a model draws from:
 
 ### OpenAI endpoint (OpenCode Go / Zen)
 
@@ -210,18 +209,19 @@ All models support tool calling. GLM-5.2, GLM-5.1, and Claude (Fable 5, Opus, So
 
 | Setting                                      | Default                   | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | -------------------------------------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `glm-copilot.endpoint`                       | `opencode-go`             | Single-value endpoint selector. `opencode-go` / `opencode-go-anthropic` serve OpenCode Go subscription models; `opencode-zen` / `opencode-zen-anthropic` serve OpenCode Zen pay-as-you-go models (including Claude and free models). Also supports Zhipu/Z.ai GLM endpoints: `china-coding`, `china-standard`, `china-anthropic`, `international-coding`, `international-standard`, `international-anthropic` |
-| `glm-copilot.baseUrl`                        | empty                     | Optional API endpoint override. When non-empty, overrides the `endpoint` preset. |
-| `glm-copilot.maxTokens`                      | `0`                       | Max output tokens (`0` = no limit). Useful for cost control                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| `glm-copilot.modelIdOverrides`               | prefilled OpenCode IDs   | API model IDs to send for built-in or custom models. Change only for compatible endpoints with different model names                                                                                                                                                                                                                                                                                                                                 |
-| `glm-copilot.customModels`                   | `[]`                      | Extra GLM-compatible models for the picker. Accepts string IDs or objects with `id`, optional `name`, token limits, `toolCalling`, and `thinking`. Custom IDs override built-ins. Images still go through the current Vision Proxy; custom models do not bypass it for native vision                                                                                                                                                                                                                                          |
-| `glm-copilot.debugMode`                      | `minimal`                 | Diagnostic mode: `minimal` for token usage only, `metadata` for privacy-preserving logs, or `verbose` for full request dumps and pipeline snapshots under extension global storage. Full dumps may include sensitive prompt text, tool schemas, file snippets, and image descriptions. Use `OpenCode: Open Request Dumps Folder` to open the dump location                                                                                                                                                                         |
-| `glm-copilot.visionModel`                    | _(auto)_                  | VS Code vision model used as fallback when automatic vision is unavailable. Configure from `OpenCode: Configure Vision Proxy`; new saves use `vendor/id`, while legacy bare model IDs are still read                                                                                                                                                                                                                                                                                                                |
-| `glm-copilot.visionPrompt`                   | _(built-in)_              | Prompt used to describe image attachments                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| `glm-copilot.ponytailMode`                   | `full`                    | Ponytail coding-discipline system instruction level. `off` = no instruction; `lite` = brief reminder; `full` = complete 7-rung ladder with all rules; `ultra` = strict mode prioritizing edge-case correctness. Use `OpenCode: Set Ponytail Mode` to switch at runtime                                                                                                                                                                                                                                                         |
-| `glm-copilot.codeSimplifier`                 | `true`                    | Autonomous code refinement agent (on by default). Proactively reviews modified code and simplifies for clarity, consistency, and maintainability. When enabled, Ponytail auto-downgrades to Lite. Toggle with `OpenCode: Toggle Code Simplifier`                                                                                                                                                                                                                                                                               | 
-| `glm-copilot.agentRoles`                     | `{}`                      | Models per agent-swarm role: `research` (list, round-robin — defaults to free DeepSeek V4 Flash Free), `implement` (always the chat-selected model), and optional `review` (list, defaults to free Big Pickle). Each entry is `{ "vendor", "family", "id"? }`                                                                                                                                                                                                                                                                 |
-| `glm-copilot.experimental.stabilizeToolList` | `false`                   | Experimental. Tries to pre-activate VS Code/Copilot virtual tools so the API `tools` parameter is more complete and stable across turns. May improve context-cache hit rate when enabled tools change between turns. Can increase input tokens because more function definitions may be included; cache-hit input tokens are cheaper but still count toward usage. Usually leave it off with 64 or fewer enabled tools unless the tool list still changes across turns; do not enable it with more than 128 enabled tools |
+| `opencode-for-copilot.opencodePlan`          | `go`                      | Active OpenCode plan (`go` subscription or `zen` pay-as-you-go). Picks your default endpoint; the picker always lists the full Go+Zen catalog, prefixed `go/…` or `zen/…` by billing path |
+| `opencode-for-copilot.endpoint`              | `opencode-go`             | Single-value endpoint selector. `opencode-go` / `opencode-go-anthropic` serve OpenCode Go subscription models; `opencode-zen` / `opencode-zen-anthropic` serve OpenCode Zen pay-as-you-go models (including Claude and free models) |
+| `opencode-for-copilot.baseUrl`               | empty                     | Optional API endpoint override. When non-empty, overrides the `endpoint` preset. |
+| `opencode-for-copilot.maxTokens`             | `0`                       | Max output tokens (`0` = no limit). Useful for cost control                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `opencode-for-copilot.modelIdOverrides`      | prefilled OpenCode IDs   | API model IDs to send for built-in or custom models. Change only for compatible endpoints with different model names                                                                                                                                                                                                                                                                                                                                 |
+| `opencode-for-copilot.customModels`          | `[]`                      | Extra OpenCode-compatible models for the picker. Accepts string IDs or objects with `id`, optional `name`, token limits, `toolCalling`, and `thinking`. Custom IDs override built-ins. Images still go through the current Vision Proxy; custom models do not bypass it for native vision                                                                                                                                                                                                                                     |
+| `opencode-for-copilot.debugMode`             | `minimal`                 | Diagnostic mode: `minimal` for token usage only, `metadata` for privacy-preserving logs, or `verbose` for full request dumps and pipeline snapshots under extension global storage. Full dumps may include sensitive prompt text, tool schemas, file snippets, and image descriptions. Use `OpenCode: Open Request Dumps Folder` to open the dump location                                                                                                                                                                        |
+| `opencode-for-copilot.visionModel`           | _(auto)_                  | VS Code vision model used as fallback when automatic vision is unavailable. Configure from `OpenCode: Configure Vision Proxy`; new saves use `vendor/id`, while legacy bare model IDs are still read                                                                                                                                                                                                                                                                                                                |
+| `opencode-for-copilot.visionPrompt`          | _(built-in)_              | Prompt used to describe image attachments                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `opencode-for-copilot.ponytailMode`          | `full`                    | Ponytail coding-discipline system instruction level. `off` = no instruction; `lite` = brief reminder; `full` = complete 7-rung ladder with all rules; `ultra` = strict mode prioritizing edge-case correctness. Use `OpenCode: Set Ponytail Mode` to switch at runtime                                                                                                                                                                                                                                                         |
+| `opencode-for-copilot.codeSimplifier`        | `true`                    | Autonomous code refinement agent (on by default). Proactively reviews modified code and simplifies for clarity, consistency, and maintainability. When enabled, Ponytail auto-downgrades to Lite. Toggle with `OpenCode: Toggle Code Simplifier`                                                                                                                                                                                                                                                                               |
+| `opencode-for-copilot.agentRoles`            | `{}`                      | Models per agent-swarm role: `research` (list, round-robin — defaults to free DeepSeek V4 Flash Free), `implement` (always the chat-selected model), and optional `review` (list, defaults to free Big Pickle). Each entry is `{ "vendor", "family", "id"? }`                                                                                                                                                                                                                                                                 |
+| `opencode-for-copilot.experimental.stabilizeToolList` | `false`          | Experimental.Tries to pre-activate VS Code/Copilot virtual tools so the API `tools` parameter is more complete and stable across turns. May improve context-cache hit rate when enabled tools change between turns. Can increase input tokens because more function definitions may be included; cache-hit input tokens are cheaper but still count toward usage. Usually leave it off with 64 or fewer enabled tools unless the tool list still changes across turns; do not enable it with more than 128 enabled tools |
 
 Thinking Effort is configured from Copilot Chat's model picker for each thinking-capable GLM model.
 
@@ -229,8 +229,8 @@ Example `settings.json` for a custom API proxy:
 
 ```json
 {
-  "glm-copilot.baseUrl": "https://proxy.example.com/v1",
-  "glm-copilot.customModels": [
+  "opencode-for-copilot.baseUrl": "https://proxy.example.com/v1",
+  "opencode-for-copilot.customModels": [
     "my-model",
     {
       "id": "team-coder",
@@ -241,7 +241,7 @@ Example `settings.json` for a custom API proxy:
       "thinking": true
     }
   ],
-  "glm-copilot.modelIdOverrides": {
+  "opencode-for-copilot.modelIdOverrides": {
     "glm-5.2": "your-glm-5.2-model-id"
   }
 }
@@ -249,9 +249,9 @@ Example `settings.json` for a custom API proxy:
 
 ## Troubleshooting
 
-### GLM models are missing from the agent / background agent model picker
+### OpenCode models are missing from the agent / background agent model picker
 
-Recent VS Code versions gate custom providers from the background agent and the new agent window. If you can pick GLM in the editor chat but not in the agent window, add the extension to the allowlist in `settings.json`:
+Recent VS Code versions gate custom providers from the background agent and the new agent window. If you can pick OpenCode models in the editor chat but not in the agent window, add the extension to the allowlist in `settings.json`:
 
 ```json
 {
@@ -266,7 +266,7 @@ If the agent still refuses to start with `No utility model is configured for 'co
 
 ### HTTP 400 `Invalid schema for function '...'` from a proxy or relay
 
-This extension targets the OpenCode (Go & Zen) endpoints and the official GLM endpoints (BigModel Coding Plan, Z.ai, and the documented BigModel/Z.ai standard API). VS Code/Copilot generates the tool schemas verbatim from its own tool definitions and forwards them as-is. Third-party relays or proxies (e.g. New API, OneAPI) often enforce stricter OpenAI-schema validation than the official endpoint and reject schemas that contain `default: null`, certain `anyOf`/`oneOf` shapes, or other minor deviations — the most common symptom is `Invalid schema for function 'get_errors': null is not of type "array"`.
+This extension targets the OpenCode (Go & Zen) endpoints only. VS Code/Copilot generates the tool schemas verbatim from its own tool definitions and forwards them as-is. Third-party relays or proxies (e.g. New API, OneAPI) often enforce stricter OpenAI-schema validation than the official endpoint and reject schemas that contain `default: null`, certain `anyOf`/`oneOf` shapes, or other minor deviations — the most common symptom is `Invalid schema for function 'get_errors': null is not of type "array"`.
 
 This is **not** something this extension sanitizes, by design:
 
@@ -275,7 +275,7 @@ This is **not** something this extension sanitizes, by design:
 
 If you hit this on a relay, the supported options are:
 
-- Switch `opencode-for-copilot.baseUrl` back to the OpenCode or official GLM endpoint (leave empty and use `endpoint`).
+- Switch `opencode-for-copilot.baseUrl` back to an OpenCode endpoint (leave empty and use `endpoint`).
 - Open a request dump with **OpenCode: Open Request Dumps Folder** and inspect the offending tool schema, then report the strict-validation bug to your relay.
 - The error is also written to the OpenCode output channel — you can copy the full server response from there.
 
@@ -285,15 +285,15 @@ This fork originated from *GLM for VSCode Copilot* and reused its identifiers. I
 
 | Surface | Before (collided with upstream) | Now |
 | --- | --- | --- |
-| Command IDs | `glm-copilot.setApiKey` … | `opencode-for-copilot.setGoApiKey` / `setZenApiKey` / `refreshModels` / … |
+| Command IDs | `glm-copilot.setApiKey` … | `opencode-for-copilot.setApiKey` / `refreshModels` / … |
 | Model vendor | `glm` (model IDs `glm/glm-5` …) — same IDs as upstream, so picker entries crossed over between extensions | `opencode` (`opencode/glm-5`, `opencode/gpt-5.6-luna`, …) |
-| API keys | One shared key slot | Separate Go-subscription and Zen pay-as-you-go keys; requests pick the key by endpoint URL automatically |
+| API keys | One shared key slot | Still one key — OpenCode Go is a subscription add-on on your Zen account, so a single key from opencode.ai/auth works for both endpoint families |
 | Settings section | `glm-copilot.*` (shared — configuring one extension changed the other) | `opencode-for-copilot.*` (one-time migration of existing values; the old section is never read again) |
 | Output channel | `GLM` (both extensions logged into one channel) | `OpenCode` |
 
 Key features introduced along the way:
 
-- **Per-plan model catalog** — the `opencode-for-copilot.opencodePlan` setting (`go`, default, or `zen`) selects which plan's model list, default endpoint, and API key to use. The Go plan hides Zen-only models (Claude, free tier) that a Go subscription cannot call, so you no longer get `401 Insufficient balance` after picking them.
+- **Full model catalog** — the `opencode-for-copilot.opencodePlan` setting (`go`, default, or `zen`) picks your default endpoint; every Go and Zen model is listed either way, each prefixed with its billing path (`go/GLM-5.2`, `zen/Claude Sonnet 5`). Picking a `zen/…` model without credits fails with a clear message instead of a cryptic 401.
 - **Live model catalog** — the list is fetched from the official OpenCode endpoints and re-fetched when stale: opening the picker past the TTL refreshes in the background, failed fetches retry after 60 s instead of serving the static fallback for 5 minutes (covers starting VS Code before your VPN is up), and **OpenCode: Refresh Model List** forces an immediate re-fetch.
 - **Clearer errors** — a Zen-only-model billing failure explains that the *model choice* is the problem, not the API key.
 - **Agent swarm participant** moved to `opencode-for-copilot.pipeline` (re-type `@swarm` once after updating).

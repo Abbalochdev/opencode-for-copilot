@@ -1,6 +1,16 @@
 # Changelog
 
 
+## [3.11.12](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.11.1...v3.11.12) (2026-08-25)
+
+### Fixes
+
+* **picker:** show the full Go + Zen model catalog regardless of the `opencodePlan` toggle — two stacked filters previously hid every Zen-pinned model on the default `go` plan (the catalog fetcher only hit `/zen/go/v1/models`, then a client-side filter dropped the rest), which is why only Go models appeared. The fetcher now merges both `/zen/go/v1/models` and `/zen/v1/models` in parallel (unknown IDs pin to the catalog they came from; models served on both keep the Go pin), and the client-side filter is removed. Entitlement is decided server-side per request — picking a `zen/…` model without credits still fails, but with the explanatory billing message instead of a surprise.
+* **models:** static catalog deleted — the 35-entry hand-maintained metadata table is gone (`opencode-models.ts` shrinks ~740 lines). Wire-protocol routing for fetched models is now derived from ID-family rules validated against the OpenCode docs (Claude/Qwen → Anthropic, MiniMax → Anthropic on Go only, everything else OpenAI-compatible); context windows, pricing, and capabilities come live from models.dev. The only static data left is the four-model offline baseline (`glm-5.2`, `minimax-m3`, `claude-sonnet-4-5`, free `deepseek-v4-flash-free`) covering every plan × protocol — always merged at lowest priority, so a partial catalog outage still serves the baseline plus whichever endpoint responded.",
+* **opencode-only endpoints:** the Zhipu/Z.ai GLM endpoint layer is removed — the `endpoint` setting now offers only the four OpenCode presets (`opencode-go`, `opencode-go-anthropic`, `opencode-zen`, `opencode-zen-anthropic`). The legacy `region` / `apiMode` / `apiProtocol` trio, the GLM Coding Plan usage query (the **Query Usage** command now always opens the OpenCode console), and the bigmodel.cn↔z.ai request failover are gone with it. Users who had a GLM preset selected fall back to their plan's default endpoint; a manual `baseUrl` pointing at bigmodel.cn/z.ai keeps working for requests. Model names in the picker are now prefixed with their billing path (`go/GLM-5.2`, `zen/DeepSeek V4 Pro`), replacing the old provider-label prefix option (`showProviderPrefix` setting removed). The key command is retitled **OpenCode: Set Go/Zen API Key**.
+* **auth:** one API key for Go and Zen — OpenCode Go is a subscription add-on on the Zen account: a single key from opencode.ai/auth authenticates both endpoint families, and entitlement (Go models vs pay-as-you-go) is decided server-side by billing state, not by which key was entered. The 3.10.0 split into `Set Go API Key` / `Set Zen API Key` secret slots modeled one credential as two and made users paste the same key twice. Commands collapse back to a single key prompt; requests always use that one key while per-model Go/Zen URL routing stays unchanged. Keys stored in the old per-plan slots keep working (read as fallback) and are still removed by **Clear All API Keys**. The `opencodePlan` setting is unchanged — it still picks your default endpoint.
+
+
 ## [3.11.1](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.11.0...v3.11.1) (2026-08-25)
 
 ### Features

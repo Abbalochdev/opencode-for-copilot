@@ -2,15 +2,15 @@ import vscode from 'vscode';
 import { AuthManager } from '../auth';
 import { GLMClient } from '../client';
 import {
-	findModelDefinition,
-	getApiModelId,
-	getApiProtocol,
-	getBaseUrl,
-	getBaseUrlOverride,
-	getCodeSimplifierEnabled,
-	getMaxTokens,
-	getPonytailMode,
-	getRules,
+    findModelDefinition,
+    getApiModelId,
+    getApiProtocol,
+    getBaseUrl,
+    getBaseUrlOverride,
+    getCodeSimplifierEnabled,
+    getMaxTokens,
+    getPonytailMode,
+    getRules,
 } from '../config';
 import { isOfficialGLMBaseUrl, resolveEndpointBaseUrl, resolveEndpointProtocol } from '../endpoint';
 import { t } from '../i18n';
@@ -116,9 +116,9 @@ export async function prepareChatRequest({
 		baseUrl = getBaseUrl();
 		apiProtocol = getApiProtocol();
 	}
-	// Key follows the endpoint: Go URLs use the Go-subscription key, Zen URLs
-	// the Zen pay-as-you-go key, everything else the legacy single key.
-	const apiKey = await authManager.getApiKeyForEndpoint(baseUrl);
+	// One OpenCode credential authenticates both Go and Zen endpoints; the
+	// URL alone decides which billing path the gateway charges.
+	const apiKey = await authManager.getApiKey();
 	if (!apiKey) {
 		throw new Error(t('auth.notConfigured'));
 	}

@@ -1,14 +1,17 @@
 import vscode from 'vscode';
 import type { AuthManager } from '../../auth';
-import { getApiModelId, getApiProtocol, getBaseUrl } from '../../config';
-import { GLM_CN_CODING_BASE_URL } from '../../endpoint';
+import { getApiModelId, getOpencodePlan } from '../../config';
+import {
+	OPENCODE_GO_OPENAI_BASE_URL,
+	OPENCODE_ZEN_OPENAI_BASE_URL,
+} from '../../endpoint';
 import { t } from '../../i18n';
 import { DEFAULT_GLM_VISION_MODEL_ID } from './consts';
 import {
-    logAutomaticGLMVisionFallback,
-    logAutomaticGLMVisionModelSelected,
-    logInvalidVisionProxyApiEndpointConfig,
-    logVisionApiEndpointSelected,
+	logAutomaticGLMVisionFallback,
+	logAutomaticGLMVisionModelSelected,
+	logInvalidVisionProxyApiEndpointConfig,
+	logVisionApiEndpointSelected,
 } from './log';
 import { isVisionProxyError, VisionProxyError } from './protocols/errors';
 import { createEndpointVisionDescriber } from './sources/endpoint';
@@ -82,7 +85,7 @@ export function createVisionService(
 			}
 
 			const config = createAutomaticGLMVisionConfig();
-			const apiKey = await authManager.getApiKeyForEndpoint(config.url);
+			const apiKey = await authManager.getApiKey();
 			const primary = createEndpointVisionDescriber(config, apiKey);
 			logAutomaticGLMVisionModelSelected(primary.id, config.url);
 			return new AutomaticVisionDescriber(primary, () => vscodeLm.get());
@@ -126,11 +129,10 @@ class AutomaticVisionDescriber implements VisionDescriber {
 }
 
 function createAutomaticGLMVisionConfig(): VisionProxyConfig {
-	// When the main chat protocol is Anthropic, the vision proxy still needs to use
-	// the OpenAI-compatible endpoint because Anthropic vision endpoint availability
-	// may differ. Fall back to the Coding Plan endpoint for vision descriptions.
-	const protocol = getApiProtocol();
-	const visionBaseUrl = protocol === 'anthropic' ? GLM_CN_CODING_BASE_URL : getBaseUrl();
+	// The vision proxy always talks OpenAI-style `/chat/completions`, so pin
+	// the plan's OpenAI base URL regardless of the active protocol preset.
+	const visionBaseUrl =
+		getOpencodePlan() === 'zen' ? OPENCODE_ZEN_OPENAI_BASE_URL : OPENCODE_GO_OPENAI_BASE_URL;
 
 	return {
 		providerFamily: 'openai-compatible',

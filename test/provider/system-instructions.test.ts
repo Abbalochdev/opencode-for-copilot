@@ -25,7 +25,7 @@ async function prepare(requestKind: RequestKind) {
 	return prepareChatRequest({
 		authManager: {
 			getApiKey: async () => 'test-key',
-			getApiKeyForEndpoint: async () => 'test-key',
+			getApiKey: async () => 'test-key',
 		} as unknown as AuthManager,
 		globalStorageUri: vscode.Uri.file('/tmp/glm-sysinstr-test'),
 		modelInfo: { id: 'glm-5.2' } as vscode.LanguageModelChatInformation,

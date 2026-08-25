@@ -8,8 +8,7 @@ export async function registerProvider(context: vscode.ExtensionContext): Promis
 	const provider = new GLMChatProvider(context);
 
 	context.subscriptions.push(
-		vscode.commands.registerCommand('opencode-for-copilot.setGoApiKey', () => provider.configureApiKey('go')),
-		vscode.commands.registerCommand('opencode-for-copilot.setZenApiKey', () => provider.configureApiKey('zen')),
+		vscode.commands.registerCommand('opencode-for-copilot.setApiKey', () => provider.configureApiKey()),
 		vscode.commands.registerCommand('opencode-for-copilot.refreshModels', () => provider.refreshModels()),
 		vscode.commands.registerCommand('opencode-for-copilot.queryUsage', () => provider.queryUsage()),
 		vscode.commands.registerCommand('opencode-for-copilot.clearApiKey', () => provider.clearApiKey()),

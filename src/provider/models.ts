@@ -1,6 +1,4 @@
 import vscode from 'vscode';
-import { getShowProviderPrefix } from '../config';
-import type { OpencodePlan } from '../endpoint';
 import { t } from '../i18n';
 import type { ModelDefinition, PricingCurrency } from '../types';
 import { toModelCostInfo, type ModelCostInformation } from './pricing/costs';
@@ -54,13 +52,16 @@ export function toChatInfo(
 		detail = tooltip = t('model.deprecated');
 	} else if (isZenOnlyModel(m)) {
 		// Go subscribers otherwise only find out via a cryptic 401 after picking.
+		// The note stays in the hover `tooltip` only — surfacing it as `detail`
+		// wraps the picker row (same problem the models.dev paragraph had) and
+		// makes Zen rows inconsistent with the clean Go rows, so it is dropped
+		// from the inline label.
 		const note = t('model.zenPaygOnly');
-		detail = detail ? `${detail} · ${note}` : note;
 		tooltip = tooltip ? `${tooltip}\n\n${note}` : note;
 	}
 	return {
 		id: m.id,
-		name: getShowProviderPrefix() ? `${providerLabel(m.family)} · ${m.name}` : m.name,
+		name: withOriginPrefix(m, m.name),
 		family: m.family,
 		version: m.version,
 		detail,
@@ -86,42 +87,28 @@ function isUserSelectableModel(modelId: string): boolean {
 
 /** Zen-only models are billed per use and are not part of the OpenCode Go subscription. */
 function isZenOnlyModel(m: ModelDefinition): boolean {
-	return m.endpointPreset === 'opencode-zen' || m.endpointPreset === 'opencode-zen-anthropic';
+	return modelOrigin(m) === 'zen';
 }
 
 /**
- * Model list for the active OpenCode plan: the Go subscription catalog hides
- * Zen-only (pay-as-you-go) models; the Zen plan serves the full catalog.
+ * Which OpenCode plan a model routes to — `go` (subscription) or `zen`
+ * (pay-as-you-go). `undefined` for models without an OpenCode endpoint pin
+ * (e.g. custom models), which follow the active endpoint preset.
  */
-export function filterModelsForPlan(
-	models: readonly ModelDefinition[],
-	plan: OpencodePlan,
-): ModelDefinition[] {
-	if (plan !== 'go') {
-		return [...models];
+function modelOrigin(m: ModelDefinition): 'go' | 'zen' | undefined {
+	if (!m.endpointPreset) {
+		return undefined;
 	}
-	return models.filter((m) => !isZenOnlyModel(m));
+	return m.endpointPreset.startsWith('opencode-go') ? 'go' : 'zen';
 }
 
-const PROVIDER_LABELS: Record<string, string> = {
-	glm: 'GLM',
-	kimi: 'Kimi',
-	deepseek: 'DeepSeek',
-	grok: 'Grok',
-	mimo: 'MiMo',
-	minimax: 'MiniMax',
-	qwen: 'Qwen',
-	claude: 'Claude',
-	pickle: 'Pickle',
-	north: 'North',
-	nemotron: 'Nemotron',
-	laguna: 'Laguna',
-	ling: 'Ling',
-};
-
-/** Human-readable provider label for a model family (e.g. `kimi` → `Kimi`). */
-export function providerLabel(family: string): string {
-	return PROVIDER_LABELS[family] ?? family;
+/**
+ * Prefix every OpenCode model with its billing path (`zen/DeepSeek V4 Pro`,
+ * `go/GLM-5.2`) so the mixed Go+Zen catalog stays readable at a glance.
+ */
+function withOriginPrefix(m: ModelDefinition, name: string): string {
+	const origin = modelOrigin(m);
+	return origin ? `${origin}/${name}` : name;
 }
 
 export function getConfiguredThinkingEffort(options: ModelConfigurationOptions): ThinkingEffort {

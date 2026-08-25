@@ -17,13 +17,17 @@
 
 import { parseArgs } from 'node:util';
 import {
-    OPENCODE_GO_ANTHROPIC_BASE_URL,
-    OPENCODE_GO_OPENAI_BASE_URL,
-    OPENCODE_ZEN_ANTHROPIC_BASE_URL,
-    OPENCODE_ZEN_OPENAI_BASE_URL,
+	OPENCODE_GO_ANTHROPIC_BASE_URL,
+	OPENCODE_GO_OPENAI_BASE_URL,
+	OPENCODE_ZEN_ANTHROPIC_BASE_URL,
+	OPENCODE_ZEN_OPENAI_BASE_URL,
 } from '../src/endpoint.js';
-import { fetchAllOpenCodeModelIds, getOverlayModels } from '../src/provider/opencode-models.js';
-import type { EndpointPreset } from '../src/types.js';
+import {
+	buildDynamicModels,
+	fetchOpenCodeCatalogIds,
+	getFallbackModels,
+} from '../src/provider/opencode-models.js';
+import type { EndpointPreset, ModelDefinition } from '../src/types.js';
 
 // ---- CLI ----
 
@@ -255,9 +259,8 @@ function buildRequestBody(
 
 // ---- Model collection ----
 
-function collectModels(): ModelInfo[] {
-	const overlay = getOverlayModels();
-	return overlay
+function collectModels(catalogModels: readonly ModelDefinition[]): ModelInfo[] {
+	return catalogModels
 		.filter((m) => {
 			if (SKIP_MODELS.has(m.id)) return false;
 			if (MODELS_FILTER && !MODELS_FILTER.includes(m.id)) return false;
@@ -311,10 +314,11 @@ function formatReport(results: TestResult[], models: ModelInfo[]): string {
 
 async function main(): Promise<void> {
 	console.log('Fetching model list from OpenCode API...');
-	const fetchedIds = await fetchAllOpenCodeModelIds();
-	console.log(`Found ${fetchedIds.size} models in API response.`);
+	const catalogs = await fetchOpenCodeCatalogIds();
+	console.log(`Found ${catalogs.go.size} Go + ${catalogs.zen.size} Zen models in API response.`);
 
-	const models = collectModels();
+	const catalogModels = buildDynamicModels(catalogs, [], [...getFallbackModels()]);
+	const models = collectModels(catalogModels);
 	console.log(`Testing ${models.length} models (after filters).`);
 
 	if (models.length === 0) {
