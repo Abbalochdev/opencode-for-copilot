@@ -1,4 +1,5 @@
 import type * as vscode from 'vscode';
+import type { ModelRef } from './types';
 
 /**
  * Retry helper for agent `sendRequest` calls.
@@ -78,6 +79,53 @@ export async function withRetry<T>(
 					});
 				}
 			});
+		}
+	}
+	throw lastError;
+}
+
+/**
+ * Walks a primary model + fallback chain, swapping when the current model's
+ * retries are exhausted by a retriable error (429/5xx/network) rather than
+ * re-burning the same quota on the same dead endpoint.
+ *
+ * Why this exists on top of {@link withRetry}: withRetry alone caps at 3
+ * Contract:
+ when swapping — VS Code's `LanguageModelChatMessage` is provider-neutral.
+ */
+export async function withModelFailover<T, M>(
+	primary: M,
+	fallbackRefs: readonly ModelRef[],
+	pick: (ref: ModelRef) => Promise<M>,
+	send: (model: M) => Thenable<T> | Promise<T>,
+	token?: vscode.CancellationToken,
+): Promise<{ result: T; usedRef: ModelRef | undefined; usedFallback: boolean }> {
+	// Build the candidate queue: primary first, then each fallback via `pick`.
+	const queue: Array<() => Promise<M>> = [
+		async () => primary,
+		...fallbackRefs.map((ref) => () => pick(ref)),
+	];
+
+	let lastError: unknown;
+	for (let i = 0; i < queue.length; i++) {
+		let model: M;
+		try {
+			model = await queue[i]();
+		} catch (pickErr) {
+			lastError = pickErr;
+			continue;
+		}
+		try {
+			const result = await withRetry(() => send(model), token);
+			return { result, usedRef: i === 0 ? undefined : fallbackRefs[i - 1], usedFallback: i > 0 };
+		} catch (err) {
+			lastError = err;
+			// Non-retriable: bail out entirely — see contract. Don't mask a
+			// programmer error with a "tried Mimo after that" footnote.
+			if (!isRetriableError(err)) {
+				throw err;
+			}
+			// Retriable error exhausted retries on this model — try next.
 		}
 	}
 	throw lastError;

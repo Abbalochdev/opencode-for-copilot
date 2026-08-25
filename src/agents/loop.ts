@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
 import type { PipelineCostTracker } from './cost';
-import { resultToTextParts } from './modelSelect';
-import { withRetry } from './retry';
-import type { PipelineTask } from './types';
+import { pickModel, resultToTextParts } from './modelSelect';
+import { withModelFailover, withRetry } from './retry';
+import type { ModelRef, PipelineTask } from './types';
 
 /**
  * Per-run read-only tool-result cache (C4). Parallel sub-agents often read
@@ -85,12 +85,21 @@ export interface SubAgentOptions {
 	onTurn?: (turn: number) => void;
 	/** Optional cost tracker — counts input/output tokens per turn. */
 	costTracker?: PipelineCostTracker;
+	/**
+	  * times" — see {@link withModelFailover}. Empty = no failover, primary
+	 * only (the historical behavior).
+	 */
+	fallbackRefs?: ModelRef[];
 }
 
 export interface SubAgentResult {
 	/** Final assistant text — the sub-agent's report. */
 	text: string;
 	turns: number;
+	/**
+	 * Ref of a fallback model that handled at least one turn when the primary.
+	 */
+	fallbackUsed?: ModelRef;
 }
 
 /**
@@ -109,14 +118,30 @@ export async function runSubAgent(options: SubAgentOptions): Promise<SubAgentRes
 	];
 	let lastAssistantText = '';
 	let turn = 0;
+	// Tracks the ref of any fallback model that handled a turn — surfaced up to
+	let fallbackUsed: ModelRef | undefined;
 	while (turn < maxTurns) {
 		turn++;
 		options.onTurn?.(turn);
 		options.costTracker?.countInput(messages);
-		const response = await withRetry(
-			() => options.model.sendRequest(messages, requestOptions, options.token),
-			options.token,
-		);
+		const send = (model: vscode.LanguageModelChat): Thenable<vscode.LanguageModelChatResponse> =>
+			model.sendRequest(messages, requestOptions, options.token);
+		let response: vscode.LanguageModelChatResponse;
+		if (options.fallbackRefs && options.fallbackRefs.length > 0) {
+			const failover = await withModelFailover(
+				options.model,
+				options.fallbackRefs,
+				pickModel,
+				send,
+				options.token,
+			);
+			response = failover.result;
+			if (failover.usedFallback && failover.usedRef) {
+				fallbackUsed = failover.usedRef;
+			}
+		} else {
+			response = await withRetry(() => send(options.model), options.token);
+		}
 		const textParts: vscode.LanguageModelTextPart[] = [];
 		const toolCalls: vscode.LanguageModelToolCallPart[] = [];
 		for await (const part of response.stream) {
@@ -146,7 +171,7 @@ export async function runSubAgent(options: SubAgentOptions): Promise<SubAgentRes
 				));
 				continue;
 			}
-			return { text: cleanText, turns: turn };
+			return { text: cleanText, turns: turn, ...(fallbackUsed ? { fallbackUsed } : {}) };
 		}
 		for (const call of toolCalls) {
 			let result: vscode.LanguageModelToolResult;
@@ -184,7 +209,7 @@ export async function runSubAgent(options: SubAgentOptions): Promise<SubAgentRes
 		]));
 	}
 	}
-	return { text: lastAssistantText, turns: turn };
+	return { text: lastAssistantText, turns: turn, ...(fallbackUsed ? { fallbackUsed } : {}) };
 }
 
 /** Feed back at most `cap` (default MAX_TOOL_RESULT_CHARS) of text per tool result, so history stays small. */

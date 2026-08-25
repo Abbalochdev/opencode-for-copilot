@@ -85,6 +85,12 @@ async function researchOneArea(
 		message: `Researching (${modelRef.id ?? modelRef.family}): ${area.slice(0, 60)}`,
 	});
 	const model = await pickModel(modelRef);
+	// Hand the rest of the research rotation as a per-turn fallback: if this
+	// area's assigned model 429/5xx's through its 3 retries, the next turn
+	// tries the next model in the rotation instead of dying as a
+	// `failedFinding`. This is the runtime complement to the pre-run audit —
+	// a model that passed probe can still hit a quota during the actual call.
+	const fallbackRefs = config.research.filter((ref) => ref !== modelRef);
 	const { text } = await runSubAgent({
 		model,
 		systemPrompt: RESEARCH_SYSTEM_PROMPT,
@@ -93,6 +99,7 @@ async function researchOneArea(
 		token,
 		maxTurns: MAX_RESEARCH_TURNS,
 		costTracker,
+		...(fallbackRefs.length > 0 ? { fallbackRefs } : {}),
 	});
 	return {
 		area,

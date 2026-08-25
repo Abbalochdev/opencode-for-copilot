@@ -85,5 +85,9 @@
   "opencode-for-copilot.config.visionPrompt.description": "在将图片附件转发给 GLM 之前，发送给视觉代理模型的提示词。\n\n[配置视觉代理](command:opencode-for-copilot.setVisionModel)",
   "opencode-for-copilot.config.agentRoles.description": "流水线各代理角色使用的模型：research（并行研究步骤）与review（最终代码审查）。",
   "opencode-for-copilot.config.agentRoles.research.description": "并行研究步骤使用的模型。研究领域按轮询分配，配置多个模型可让研究真正并行执行。",
-  "opencode-for-copilot.config.agentRoles.review.description": "最终代码审查步骤使用的模型。"
+  "opencode-for-copilot.config.agentRoles.review.description": "最终代码审查步骤使用的模型。",
+  "opencode-for-copilot.config.agentRoles.implementFallback.description": "聊天所选 implementer 不可用（如服务方宕机、配额耗尽）时按序尝试的模型。不设置时默认使用审计过的免费模型作为安全网，开箱即用、零配置。",
+  "opencode-for-copilot.config.rules.description": "用户自定义规则，以 `### USER RULES` 块注入到每次编码请求（主代理与后台代理）系统消息的开头。每条规则作为一条 bullet——用于强制项目约定，例如 `优先使用 TypeScript 而不是 JavaScript`、`回答保持简洁`、`左大括号换行`。工具类请求（chat-title、git-commit 等）完全跳过注入，避免污染提示词缓存。空白条目会被自动丢弃。",
+  "opencode-for-copilot.config.allowExtraTools.description": "**实验性功能**：允许 Agent Swarm 调用其精挑白名单之外的工具。\n\n默认情况下，research / review / implement 各阶段代理只能看到精挑过的 VS Code 内置工具集（read_file、apply_patch、runTests ……），这样请求体更小，也不容易超过 GLM 单次 128 个工具的上限。开启后，用户在 Copilot 中配置的 MCP 工具或其他第三方工具也会被转发给代理——对接数据库、浏览器或工单类 MCP 服务器时很有用。\n\n- 关闭（默认）：只把精挑过的内置工具传给 swarm。\n- 开启：先放精挑工具，再追加 extras；超过 128 个时仍会截断，且优先保留精挑工具、再保留 extras。\n\n只读型 extras（名称中含 `read`、`query`、`search`、`list`、`fetch`、`get`、`resolve`、`describe`）也会进入 research / review 的只读工具池；会写入的工具仅出现在 implementer 池中.",
+  "opencode-for-copilot.config.auditFreeModelProbeMs.description": "Agent Swarm 免费模型审计时单个模型的探测超时（毫秒）。当未设置 `opencode-for-copilot.agentRoles` 时，每次 `@swarm` 启动会并行探测所有免费模型、按响应延迟排序择优；本设置限制单个探测的等待时间。审计的墙钟时间 = *最慢* 的那次探测（所有探测并行），因此每次运行至多多花本设置这么多时间。\n\n默认 6000ms（6 秒）。网络较慢时可调小以截断审计——超时未响应的模型会被标记为 ✗(`timeout`)，swarm 会改走其他可用模型。最小 500ms，最大 30000ms。已设置 `agentRoles.*` 时审计会被完全跳过，本设置不起作用。"
 }

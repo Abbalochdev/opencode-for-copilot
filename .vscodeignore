@@ -24,3 +24,9 @@ pnpm-lock.yaml
 .env*
 !.env.example
 vscode.proposed.languageModelThinkingPart.d.ts
+# Debug-scratch and project-meta not used by the running extension.
+extracted/**
+docs/**
+AGENTS.md
+.copilot/**
+CHANGELOG.md

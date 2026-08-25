@@ -1,11 +1,18 @@
 import * as vscode from 'vscode';
+import { formatAuditReport } from './audit-free-models';
 import { PipelineCostTracker } from './cost';
 import { runImplementation } from './implement';
 import { clearToolResultCache } from './loop';
 import { clearModelCache } from './modelSelect';
 import { runResearch } from './research';
 import { runPreImplementationReview } from './review';
-import type { AgentRoleConfig, ModelRef, PipelineResult, PipelineTask } from './types';
+import type {
+	AgentRoleConfig,
+	FreeModelAuditEntry,
+	ModelRef,
+	PipelineResult,
+	PipelineTask,
+} from './types';
 
 /**
  * Runs the full agent swarm: parallel research agents → parallel review
@@ -21,6 +28,8 @@ export async function runPipeline(
 	token: vscode.CancellationToken,
 	progress: vscode.Progress<{ message: string }>,
 	toolInvocationToken: vscode.ChatParticipantToolToken | undefined,
+	/** Free-model audit results, threaded through to the pipeline result for surfacing in the @swarm report. Empty when the audit was skipped (e.g. user pinned `agentRoles.*` in earlier revisions — see `agent-pipeline.ts`). */
+	audit: readonly FreeModelAuditEntry[] = [],
 ): Promise<PipelineResult> {
 	// Fresh per-run caches: model lookups + cost tracking + read-only tool results.
 	clearModelCache();
@@ -40,7 +49,7 @@ export async function runPipeline(
 	}
 
 	progress.report({ message: `Implementing and running tests (model: ${label(config.implement)})...` });
-	const { diffSummary, testsPassed, ranTests, turns } = await runImplementation(
+	const { diffSummary, testsPassed, ranTests, turns, fallbackUsed } = await runImplementation(
 		task,
 		findings,
 		config,
@@ -60,6 +69,13 @@ export async function runPipeline(
 		researchAreas: findings.length,
 		reviewNote,
 		cost: costTracker.build(),
+		// Thread the implementer's actual fallback chain through to the report.
+		...(fallbackUsed ? { implementFallbackUsed: [fallbackUsed] } : {}),
+		// Thread the audit through. Even when the audit table is empty (no
+		// audit ran — e.g. skipped because of cancellation), keep the field
+		// present so `formatReport`'s "always show the table if any entries"
+		// short-circuit stays explicit.
+		auditReport: audit.length > 0 ? [...audit] : undefined,
 	};
 }
 
@@ -81,6 +97,16 @@ export function formatReport(result: PipelineResult): string {
 		lines.push(
 			`Cost (est): ${result.cost.inputTokens.toLocaleString()} in / ${result.cost.outputTokens.toLocaleString()} out tokens across ${result.cost.requests} request(s).`,
 		);
+	}
+	if (result.implementFallbackUsed && result.implementFallbackUsed.length > 0) {
+		const names = result.implementFallbackUsed.map(label).join(' → ');
+		lines.push(`Implementer fell back to: ${names}`);
+	}
+	// Audit table — kept quiet when empty (audit didn't run / produced no
+	// entries). When it ran, the user gets a high-signal one-line-per-model
+	// breakdown of which free models were alive and which were skipped.
+	if (result.auditReport && result.auditReport.length > 0) {
+		lines.push('', formatAuditReport(result.auditReport));
 	}
 	lines.push('', result.diffSummary);
 	return lines.join('\n');

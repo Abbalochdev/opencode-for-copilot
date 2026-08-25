@@ -454,6 +454,25 @@ export function getAllowExtraTools(): boolean {
 	return config.get<boolean>('allowExtraTools', false);
 }
 
+/**
+ * Per-model probe timeout for the agent swarm's free-tier audit. When the
+ * user has NOT pinned `glm-copilot.agentRoles.*`, each swarm run starts by
+ * probing every OpenCode free model in parallel and ranking the responders
+ * by latency; this setting bounds a single probe. The audit's wall-clock is
+ * the *slowest* probe (all probes run in parallel), so the audit adds at
+ * most this much to the front of `@swarm`.
+ *
+ * Default 6000ms. Tune down on slow connections to truncate the audit
+ * (we'd rather lose one suspect model than wait through it).
+ */
+export function getAuditFreeModelProbeMs(): number {
+	const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
+	const raw = config.get<unknown>('auditFreeModelProbeMs', 6_000);
+	// Coerce to a sane positive integer — guard against stray strings/booleans.
+	const n = typeof raw === 'number' && Number.isFinite(raw) ? raw : 6_000;
+	return Math.max(500, Math.floor(n));
+}
+
 function getConfiguredDebugMode(config: vscode.WorkspaceConfiguration): DebugMode | undefined {
 	const mode = config.inspect<unknown>('debugMode');
 	return (

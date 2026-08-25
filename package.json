@@ -215,6 +215,29 @@
                   }
                 }
               }
+            },
+            "implementFallback": {
+              "type": "array",
+              "markdownDescription": "%opencode-for-copilot.config.agentRoles.implementFallback.description%",
+              "items": {
+                "type": "object",
+                "required": [
+                  "vendor",
+                  "family"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "vendor": {
+                    "type": "string"
+                  },
+                  "family": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "string"
+                  }
+                }
+              }
             }
           }
         },
@@ -445,6 +468,13 @@
           "default": false,
           "tags": ["experimental"],
           "markdownDescription": "%opencode-for-copilot.config.allowExtraTools.description%"
+        },
+        "opencode-for-copilot.auditFreeModelProbeMs": {
+          "type": "number",
+          "default": 6000,
+          "minimum": 500,
+          "maximum": 30000,
+          "markdownDescription": "%opencode-for-copilot.config.auditFreeModelProbeMs.description%"
         }
       }
     }

@@ -3,8 +3,8 @@ import { safeStringify } from '../json';
 import type { PipelineCostTracker } from './cost';
 import { stripToolCallMarkup, truncateToolResult } from './loop';
 import { pickModel, resultToText, resultToTextParts } from './modelSelect';
-import { withRetry } from './retry';
-import type { AgentRoleConfig, PipelineTask, ResearchFinding } from './types';
+import { withModelFailover, withRetry } from './retry';
+import type { AgentRoleConfig, ModelRef, PipelineTask, ResearchFinding } from './types';
 
 const IMPLEMENT_SYSTEM_PROMPT =
 	'You are the implementation agent. Make the requested change directly using the available tools. '
@@ -101,6 +101,8 @@ export interface ImplementationResult {
 	testsPassed: boolean;
 	ranTests: boolean;
 	turns: number;
+	/** Ref of a fallback model that handled at least one turn when the primary chat-selected model 429/5xx'd through retries. `undefined` when the primary handled every turn. Surfaced to the swarm report via `PipelineResult.implementFallbackUsed`. */
+	fallbackUsed?: ModelRef;
 }
 
 /**
@@ -156,6 +158,7 @@ export async function runImplementation(
 	let lastToolOutput = '';
 	let recentCallKeys: string[] = [];
 	let testNudgeSent = false;
+	let fallbackUsed: ModelRef | undefined;
 
 	while (turn < MAX_TURNS) {
 		turn++;
@@ -176,10 +179,24 @@ export async function runImplementation(
 				+ 'Call runTests now, then conclude with your final plain-text summary.',
 			));
 		}
-		const response = await withRetry(
-			() => model.sendRequest(messages, { tools }, token),
-			token,
-		);
+		// original report.
+		const send = (m: vscode.LanguageModelChat) => m.sendRequest(messages, { tools }, token);
+		let response: vscode.LanguageModelChatResponse;
+		if (config.implementFallback && config.implementFallback.length > 0) {
+			const failover = await withModelFailover(
+				model,
+				config.implementFallback,
+				pickModel,
+				send,
+				token,
+			);
+			response = failover.result;
+			if (failover.usedFallback && failover.usedRef) {
+				fallbackUsed = failover.usedRef;
+			}
+		} else {
+			response = await withRetry(() => send(model), token);
+		}
 		costTracker?.countInput(messages);
 		let assistantText = '';
 		const textParts: vscode.LanguageModelTextPart[] = [];
@@ -320,5 +337,6 @@ export async function runImplementation(
 		testsPassed,
 		ranTests,
 		turns: turn,
+		...(fallbackUsed ? { fallbackUsed } : {}),
 	};
 }

@@ -781,6 +781,30 @@ const METADATA_OVERLAY: ReadonlyMap<string, ModelMeta> = new Map([
 
 // ---- API response types ----
 
+/**
+ * `ModelRef`s for every free-tier OpenCode model. Used by the agent swarm's
+ * runtime audit (`auditFreeModels`) to probe which free models are alive
+ * before research/review/implementer-fallback begin a run.
+ *
+ * `vendor: 'glm'` matches the extension's declared
+ * {@link LanguageModelChatProvider} vendor — Copilot Chat's
+ * `selectChatModels` keys off `id` first (when set), so family mismatches
+ * are not a concern.
+ *
+ * Order is the catalogue's natural ordering (Big Pickle / DeepSeek V4 Flash
+ * Free first — the historical defaults) so the audit's stable sort by
+ * latency keeps a deterministic ordering for models with equal response time.
+ */
+export const FREE_MODEL_REFS: readonly { vendor: 'glm'; family: string; id: string }[] = [
+	{ vendor: 'glm', family: 'pickle', id: 'big-pickle' },
+	{ vendor: 'glm', family: 'deepseek', id: 'deepseek-v4-flash-free' },
+	{ vendor: 'glm', family: 'mimo', id: 'mimo-v2.5-free' },
+	{ vendor: 'glm', family: 'north', id: 'north-mini-code-free' },
+	{ vendor: 'glm', family: 'nemotron', id: 'nemotron-3-ultra-free' },
+	{ vendor: 'glm', family: 'laguna', id: 'laguna-s-2.1-free' },
+	{ vendor: 'glm', family: 'ling', id: 'ling-3.0-flash-free' },
+];
+
 interface OpenCodeModelEntry {
 	id: string;
 	object: string;

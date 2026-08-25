@@ -2,15 +2,15 @@ import vscode from 'vscode';
 import { AuthManager } from '../auth';
 import { GLMClient } from '../client';
 import {
-    findModelDefinition,
-    getApiModelId,
-    getApiProtocol,
-    getBaseUrl,
-    getBaseUrlOverride,
-    getCodeSimplifierEnabled,
-    getMaxTokens,
-    getPonytailMode,
-    getRules,
+	findModelDefinition,
+	getApiModelId,
+	getApiProtocol,
+	getBaseUrl,
+	getBaseUrlOverride,
+	getCodeSimplifierEnabled,
+	getMaxTokens,
+	getPonytailMode,
+	getRules,
 } from '../config';
 import { isOfficialGLMBaseUrl, resolveEndpointBaseUrl, resolveEndpointProtocol } from '../endpoint';
 import { t } from '../i18n';
@@ -20,10 +20,10 @@ import { convertMessages, countMessageChars } from './convert';
 import { dumpGLMRequest, type CacheDiagnosticsRecorder, type CacheDiagnosticsRun } from './debug';
 import { getConfiguredThinkingEffort, type ModelConfigurationOptions } from './models';
 import { injectPonytailSystemMessage } from './ponytail';
-import { injectRulesSystemMessage } from './rules';
 import { getPricingCurrencyForBaseUrl } from './pricing/currency';
 import type { ReplayMarkerMetadata } from './replay';
 import { shouldForceThinkingNone, type RequestKind } from './routing';
+import { injectRulesSystemMessage } from './rules';
 import type { ConversationSegment } from './segment';
 import { REQUEST_KINDS_ELIGIBLE_FOR_TOOL_TRIMMING } from './tools/consts';
 import { collectTrailingToolResultIds, prepareRequestTools } from './tools/request';

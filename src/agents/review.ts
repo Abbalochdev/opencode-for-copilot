@@ -41,6 +41,7 @@ export async function runPreImplementationReview(
 	const calls = reviewers.map(async (ref): Promise<ReviewResult> => {
 		progress?.report({ message: `Reviewing research plan (${ref.id ?? ref.family})...` });
 		const model = await pickModel(ref);
+		const fallbackRefs = reviewers.filter((other) => other !== ref);
 		const { text } = await runSubAgent({
 			model,
 			systemPrompt: REVIEW_SYSTEM_PROMPT,
@@ -49,6 +50,7 @@ export async function runPreImplementationReview(
 			token,
 			maxTurns: MAX_REVIEW_TURNS,
 			costTracker,
+			...(fallbackRefs.length > 0 ? { fallbackRefs } : {}),
 		});
 		return {
 			verdict: /no issues|plan is sound|looks sound|\bcorrect\b/i.test(text) ? 'ok' : 'issues',
