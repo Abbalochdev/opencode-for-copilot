@@ -1,10 +1,22 @@
 # Changelog
 
+
+## [3.11.1](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.11.0...v3.11.1) (2026-08-25)
+
+### Features
+
+* **agent swarm hardening:** free-tier model audit — before each `@swarm` run (when `agentRoles.*` is unpinned) the swarm probes every OpenCode free model in parallel and routes research/review/implementer-fallback through the fastest responders, so a down model (outage, quota, regional routing) no longer silently degrades results. Probe timeout is configurable via `opencode-for-copilot.auditFreeModelProbeMs` (default 6000ms, min 500ms).
+* **agent swarm hardening:** `implementFallback` role — models tried in order after the chat-selected implementer is unavailable (provider outage, quota exhausted). Unpinned runs use the audited free models as a zero-config safety net.
+* **agent swarm hardening:** retry + model failover — every sub-agent `sendRequest` now retries retriable failures (429 / 5xx / network) with exponential backoff and fails over across models, instead of a single error killing a research area or the implementer.
+* **agent swarm hardening:** read-only tool-result cache (C4) and adaptive per-turn truncation cut duplicate token spend across parallel research agents; the implementation agent's test-verdict parser now correctly reads "6 passed, 4 failed" as a failure.
+
+
 ## [3.11.0](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.10.1...v3.11.0) (2026-08-25)
 
 ### Features
 
 * **coexistence:** fully independent settings from the upstream *GLM for VS Code Copilot* extension — all settings move to the new `opencode-for-copilot.*` section (the old `glm-copilot.*` section is shared with the upstream extension, so configuring one extension used to change the other's behaviour). Existing user-set values are migrated once on activation and the legacy section is never read again; both extensions can now be installed side by side with completely separate configuration. Also in this release: the log channel is renamed `GLM` → `OpenCode` (the two extensions' logs no longer interleave in one output channel), and the `@swarm` participant ID moves to `opencode-for-copilot.pipeline` (re-type `@swarm` once after updating).
+
 
 ## [3.10.1](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.10.0...v3.10.1) (2026-08-25)
 
@@ -13,29 +25,61 @@
 * **commands:** drop the ambiguous `Set API Key` command — with separate Go/Zen keys it was unclear which slot it wrote; error-notice URIs and the walkthrough button now open the key prompt for the active plan. `Get API Key` is retitled **Open API Key Page** (it opens the website, it does not read the stored key) and `Clear API Key` is retitled **Clear All API Keys** (it clears both slots).
 * **models:** the catalog now re-fetches when stale — opening the model picker past the 5-minute TTL triggers a background refresh (covers VPN/network changes mid-session without a window reload), a failed fetch retries after 60 s instead of serving the static fallback list for a full TTL (covers startup before the network is up, which made the list diverge from the website), and a new **OpenCode: Refresh Model List** command forces an immediate re-fetch.
 
+
 ## [3.10.0](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.9.3...v3.10.0) (2026-08-25)
 
 ### Features
 
 * **auth:** separate API keys per OpenCode plan — new `OpenCode: Set Go API Key` / `OpenCode: Set Zen API Key` commands store the Go-subscription and Zen pay-as-you-go keys in their own secret slots, and a new `glm-copilot.opencodePlan` setting (`go` | `zen`, default `go`) picks the active plan. The plan drives the model catalog (Go shows only Go-subscription models; Zen shows the full catalog including Claude and the free tier), the default endpoint when nothing else is configured (`opencode-go` / `opencode-zen` — explicit `endpoint` settings and explicitly-configured legacy region/apiMode tuples still win), and which slot `Set API Key` writes. Requests select the key by endpoint URL, so a Zen-only model automatically uses the Zen key. Existing stored keys keep working as the Go fallback; `Clear API Key` now removes all stored keys.
 
-## [3.9.3](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.9.2...v3.9.3) (2026-08-25)
+
+## [3.9.3]
+
+### Features
+
+* **agents:** the swarm now sees the context users attach in Copilot Chat — pinned files/folders, URLs, symbol ranges from `ChatRequest.references`, plus the active editor selection — via an optional `contextPreamble` field on `PipelineTask`. Every sub-agent prompt (research, review, implement) prepends an `Attached context:` block when the preamble is non-empty; when nothing is attached, the prompt shape is unchanged (cache-stable prefix preserved). File / Location references are resolved to workspace-relative paths so they slot cleanly into the existing `read_file` / `list_dir` tool inputs. New pure helper `formatChatContext` (`src/runtime/chat-context.ts`); wiring in `src/runtime/agent-pipeline.ts`; sub-agent prompt builder `joinTaskPrompt` exported from `src/agents/loop.ts`.
+* **agents:** `extractFilePaths` regex tightened per the M4 note (earlier loose `[\w./-]+\.\w+` leaked bare version strings like `v2.0`, `v22.1` as paths) — the new regex requires either a `./` prefix or a path separator (`/` or `\`) somewhere in the candidate, plus a known alphanumeric extension, so `src/auth.ts` and `./config.ts` survive while bare dotted words are filtered out.
 
 ### Fixes
 
-* **models:** make the Go/Zen split visible — models only served on the OpenCode Zen pay-as-you-go endpoint (Claude, Grok Build, the free-tier models) now carry a "Zen pay-as-you-go only (not in the Go subscription)" note in the picker, and a 401 "Insufficient balance" from those models appends an explanation that the model — not the API key — is the problem, listing Go-subscription alternatives. Previously a Go subscriber picking one of these models got only a bare billing link.
+* **test:** `test/agents/research.test.ts` mock factory updated to preserve the real `joinTaskPrompt` (only `runSubAgent` is now stubbed) — earlier `vi.mock('../../src/agents/loop', () => ({ runSubAgent: vi.fn() }))` made `joinTaskPrompt` `undefined`, which silently swallowed all research sub-agent calls.
 
-## [3.9.2](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.9.1...v3.9.2) (2026-08-25)
+### Tests
+
+* **test:** add `test/runtime/chat-context.test.ts` (10 cases — formatter handles string/Uri/Location refs, drops unknown shapes, keeps input order, combines with selection, skips empty URIs; selection helper covers no-editor / empty-selection / no-path / happy paths) and `test/agents/loop-context-prompt.test.ts` (4 cases — `joinTaskPrompt` preserves the historical `Task: …\n<rest>` shape when no preamble, interpolates the preamble block, treats whitespace-only preamble as absent).
+
+### Chores
+
+* **chore:** bump version to 3.9.3
+
+
+## [3.9.2]
+
+### Features
+
+* **provider:** add a `glm-copilot.rules` setting — a `string[]` of project conventions (e.g. `Always use TypeScript rather than JavaScript`, `Keep responses concise`) injected as a `### USER RULES` block at the top of the system message for every coding request. Empty/whitespace entries are dropped automatically, and the block is stripped entirely on utility chats (chat-title, git-commit, …) so the prompt-cache prefix stays shared with utility requests. Rules are stacked UNDER Ponytail / Code Simplifier so the existing coding-posture defaults keep priority; rules express *project policy*. Inspired by Continue's `rules:` block. New module `src/provider/rules.ts`; wired in `src/provider/request.ts`.
+* **agents:** add an experimental `glm-copilot.allowExtraTools` boolean to release the agent swarm's curated tool-name whitelist. By default research/review/implement agents only see curated built-in tools (so the request stays under GLM's 128-tool cap and prompts stay small). With this on, MCP-discovered tools and other Copilot-registered external tools (`vscode.lm.tools`) are forwarded to the agents too — curated tools first, extras appended, hard cap preserved. Read-only extras (names containing `read`/`query`/`search`/`list`/`fetch`/`get`/`resolve`/`describe`) also enter the read-only research/review pool; mutators stay in the implementer pool only. Closes the latent gap where MCP tools the user configured in Copilot were silently dropped by `selectPipelineTools`'s name whitelist. Changes in `src/agents/tools.ts`; getter in `src/config.ts`.
+
+### Tests
+
+* **test:** add `test/provider/rules.test.ts` (8 cases — formatter + injector contract, no-op on empty/whitespace, immutability, ordering) and `test/agents/tools-allow-extra.test.ts` (8 cases — default whitelist enforcement, curated-first ordering under pass-through, 100-tool cap after pass-through, read-only name heuristic case-insensitivity). Extend `test/provider/system-instructions.test.ts` with 5 cases covering rules injection, utility-chat skip, and the simplifier→ponytail→rules stacking order.
+
+
+## [3.9.1](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.9.0...v3.9.1) (2026-08-12)
 
 ### Fixes
 
-* **models:** register the language-model provider under a unique `opencode` vendor (was `glm`) — model IDs are `vendor/id`, so with the upstream *GLM for Copilot* extension also installed under vendor `glm`, both extensions' models collided in the Copilot Chat picker: entries could be attributed to the wrong extension and selections could route to the other extension's provider. Model IDs now read `opencode/glm-5`, `opencode/kimi-k2`, …; re-select your model once in the picker after updating. The chat-model defaults seeding now targets the matching `opencode` group in `chatLanguageModels.json` (migration re-runs once), the agent-swarm default model refs select the new vendor, and the vision-proxy picker excludes our own `opencode` models instead of `glm`.
+* **agents:** add retry with exponential backoff (1s→2s→4s, cap 8s) for research decomposition, implementer `sendRequest`, and review calls — 429/5xx/network errors no longer silently kill a swarm stage (C1)
+* **agents:** thread a per-run `PipelineCostTracker` through every stage (research, review, implement) and report cumulative token usage in the final `@swarm` report (C2)
+* **agents:** cap tool-result cache to read-only tools (`read_file`/`list_dir`/`file_search`/`grep_search`) and add `clearToolResultCache()` so results are scoped to a single run — deduped identical calls are now reported instead of re-invoked, and cross-test leakage is gone (C4, C5)
+* **agents:** tighten research file-path extraction so only repo-relative paths (prefix `/`, `\`, or `./`) are collected, avoiding false hits on prose like `src/foo` tokens (M4)
+* **agents:** normalize implementer spin-guard keys so path-shaped inputs collapse to a stable call signature, and parse the test verdict from real `runTests` output (`N passed` / `N failed` markers) instead of keyword guessing (M1, M5)
+* **agents:** add `clearModelCache()` and reset the model picker cache at the start of each pipeline run so model selection reflects current configuration (C5)
 
-## [3.9.1](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.9.0...v3.9.1) (2026-08-25)
+### Chores
 
-### Fixes
+* **chore:** bump version to 3.9.1
 
-* **commands:** move all commands to a unique `opencode-for-copilot.*` namespace (was `glm-copilot.*`) — VS Code command IDs are global, so installing this extension alongside the upstream *GLM for Copilot* extension made whichever extension activated last own the shared IDs (notably *Set API Key*): the key was then stored in the other extension's SecretStorage (which is isolated per extension) and this extension kept reporting that no API key was configured. The settings section, stored secrets, and model vendor are unchanged, so existing configurations keep working.
 
 ## [3.9.0](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.8.3...v3.9.0) (2026-08-09)
 

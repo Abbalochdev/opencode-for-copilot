@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
-import { runSubAgent } from './loop';
+import type { PipelineCostTracker } from './cost';
+import { joinTaskPrompt, runSubAgent } from './loop';
 import { pickModel } from './modelSelect';
+import { withRetry } from './retry';
 import { selectReadOnlyTools } from './tools';
 import type { AgentRoleConfig, PipelineTask, ResearchFinding } from './types';
 
@@ -36,22 +38,23 @@ export async function runResearch(
 	tools: vscode.LanguageModelChatTool[],
 	token: vscode.CancellationToken,
 	progress?: vscode.Progress<{ message: string }>,
+	costTracker?: PipelineCostTracker,
 ): Promise<ResearchFinding[]> {
 	if (config.research.length === 0) {
 		throw new Error('AgentRoleConfig.research must list at least one model.');
 	}
 	const readOnlyTools = selectReadOnlyTools(tools);
-	// Decomposition and a whole-task scan start together so the first
-	// research agent is already working while decomposing the other areas.
-	// Each agent failure degrades to a marked finding instead of sinking the
-	// whole swarm — the implementer still gets the surviving areas.
+	// lazy: decomposition is one cheap call (~<1s); the overview scan overlaps
+	// it, so the only serialization is the `await decompose` gate before the
+	// narrow agents start. Accepting this ceiling: decomposition rarely blocks
+	// long enough to justify a speculative fan-out.
 	const decompose = deriveResearchAreas(task, config, token);
-	const overviewCall = researchOneArea(task, task.description, 0, config, readOnlyTools, token, progress)
+	const overviewCall = researchOneArea(task, task.description, 0, config, readOnlyTools, token, progress, costTracker)
 		.catch((err) => failedFinding(task.description, err));
 	const areas = await decompose;
 	const narrowAreas = areas.filter((area) => area !== task.description);
 	const narrowCalls = narrowAreas.map((area, i) =>
-		researchOneArea(task, area, i + 1, config, readOnlyTools, token, progress)
+		researchOneArea(task, area, i + 1, config, readOnlyTools, token, progress, costTracker)
 			.catch((err) => failedFinding(area, err)),
 	);
 	const [overview, ...narrow] = await Promise.all([overviewCall, ...narrowCalls]);
@@ -75,19 +78,28 @@ async function researchOneArea(
 	tools: vscode.LanguageModelChatTool[],
 	token: vscode.CancellationToken,
 	progress?: vscode.Progress<{ message: string }>,
+	costTracker?: PipelineCostTracker,
 ): Promise<ResearchFinding> {
 	const modelRef = config.research[index % config.research.length];
 	progress?.report({
 		message: `Researching (${modelRef.id ?? modelRef.family}): ${area.slice(0, 60)}`,
 	});
 	const model = await pickModel(modelRef);
+	// Hand the rest of the research rotation as a per-turn fallback: if this
+	// area's assigned model 429/5xx's through its 3 retries, the next turn
+	// tries the next model in the rotation instead of dying as a
+	// `failedFinding`. This is the runtime complement to the pre-run audit —
+	// a model that passed probe can still hit a quota during the actual call.
+	const fallbackRefs = config.research.filter((ref) => ref !== modelRef);
 	const { text } = await runSubAgent({
 		model,
 		systemPrompt: RESEARCH_SYSTEM_PROMPT,
-		prompt: `Task: ${task.description}\nFocus area: ${area}\nWorkspace root: ${task.workspaceRoot}`,
+		prompt: joinTaskPrompt(task, `Focus area: ${area}\nWorkspace root: ${task.workspaceRoot}`),
 		tools,
 		token,
 		maxTurns: MAX_RESEARCH_TURNS,
+		costTracker,
+		...(fallbackRefs.length > 0 ? { fallbackRefs } : {}),
 	});
 	return {
 		area,
@@ -112,7 +124,10 @@ async function deriveResearchAreas(
 		vscode.LanguageModelChatMessage.User(task.description),
 	];
 	try {
-		const response = await model.sendRequest(messages, {}, token);
+		const response = await withRetry(
+			() => model.sendRequest(messages, {}, token),
+			token,
+		);
 		let text = '';
 		for await (const chunk of response.text) {
 			text += chunk;
@@ -128,8 +143,27 @@ async function deriveResearchAreas(
 	}
 }
 
-/** Loose extraction of file-ish paths from research output. */
+/**
+ * Extract file-ish paths from research output.
+ *
+ * M4 fix: the old `[\w./-]+\.\w+` regex matched bare version strings like
+ * `v2.0`, `node v22.1` as paths. The tighter regex requires either (a) a
+ * leading `./` prefix (relative path form), or (b) a path separator
+ * (`/` or `\`) somewhere in the candidate, plus a known alphanumeric
+ * extension — so `src/auth.ts` and `./config.ts` survive while bare
+ * versions and bare dotted words are filtered out. Deduplicates via Set.
+ */
 function extractFilePaths(text: string): string[] {
-	const matches = text.match(/[\w./-]+\.\w+/g) ?? [];
+	// Path candidate: word chars, dots, dashes, slashes, backslashes. Must
+	// include at least one `/` or `\` OR start with `./`, and end with `.`alpha+.
+	const re = /(?:^|[^\w./\\-])(\.?[\w.\\-]+(?:\/|\\)[\w.\\/-]*\.[A-Za-z]{1,8}|\.{2}[\w.-]+\.[A-Za-z]{1,8}|\.[\\/][\w.\\/-]*\.[A-Za-z]{1,8})/g;
+	const matches: string[] = [];
+	for (let m: RegExpExecArray | null = re.exec(text); m !== null; m = re.exec(text)) {
+		// m[1] excludes the leading boundary char; trim any trailing punctuation.
+		const path = m[1].replace(/[),;:]+$/, '');
+		if (path) {
+			matches.push(path);
+		}
+	}
 	return [...new Set(matches)];
 }

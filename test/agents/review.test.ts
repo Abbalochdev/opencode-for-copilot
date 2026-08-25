@@ -84,6 +84,7 @@ vi.mock('vscode', async (importOriginal) => {
 });
 
 import { LanguageModelTextPart, __registerChatModel, __resetLm } from 'vscode';
+import { clearModelCache } from '../../src/agents/modelSelect';
 import { runPreImplementationReview } from '../../src/agents/review';
 import type { AgentRoleConfig, PipelineTask } from '../../src/agents/types';
 
@@ -119,6 +120,7 @@ const baseConfig: AgentRoleConfig = {
 describe('runPreImplementationReview', () => {
 	beforeEach(() => {
 		__resetLm();
+		clearModelCache();
 	});
 
 	it('returns null when no reviewers are configured', async () => {

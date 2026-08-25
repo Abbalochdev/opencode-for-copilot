@@ -3,7 +3,7 @@
   "displayName": "OpenCode for Copilot",
   "description": "Use OpenCode Go & Zen coding models (GLM, Kimi, DeepSeek, Claude, Grok, Qwen, free models) in the Copilot Chat model picker. Vision, thinking mode, agent tools — zero config, BYOK.",
   "icon": "resources/icon.png",
-  "version": "3.11.0",
+  "version": "3.11.1",
   "packageManager": "pnpm@11.7.0",
   "publisher": "abbalochdev",
   "license": "MIT",
@@ -196,6 +196,29 @@
             "review": {
               "type": "array",
               "markdownDescription": "%opencode-for-copilot.config.agentRoles.review.description%",
+              "items": {
+                "type": "object",
+                "required": [
+                  "vendor",
+                  "family"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "vendor": {
+                    "type": "string"
+                  },
+                  "family": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "implementFallback": {
+              "type": "array",
+              "markdownDescription": "%opencode-for-copilot.config.agentRoles.implementFallback.description%",
               "items": {
                 "type": "object",
                 "required": [
@@ -415,6 +438,25 @@
             "%opencode-for-copilot.config.stripThinkTags.never.description%"
           ],
           "markdownDescription": "%opencode-for-copilot.config.stripThinkTags.description%"
+        },
+        "opencode-for-copilot.rules": {
+          "type": "array",
+          "default": [],
+          "items": { "type": "string" },
+          "markdownDescription": "%opencode-for-copilot.config.rules.description%"
+        },
+        "opencode-for-copilot.allowExtraTools": {
+          "type": "boolean",
+          "default": false,
+          "tags": ["experimental"],
+          "markdownDescription": "%opencode-for-copilot.config.allowExtraTools.description%"
+        },
+        "opencode-for-copilot.auditFreeModelProbeMs": {
+          "type": "number",
+          "default": 6000,
+          "minimum": 500,
+          "maximum": 30000,
+          "markdownDescription": "%opencode-for-copilot.config.auditFreeModelProbeMs.description%"
         }
       }
     }

@@ -1,8 +1,10 @@
 import * as vscode from 'vscode';
 import { safeStringify } from '../json';
+import type { PipelineCostTracker } from './cost';
 import { stripToolCallMarkup, truncateToolResult } from './loop';
 import { pickModel, resultToText, resultToTextParts } from './modelSelect';
-import type { AgentRoleConfig, PipelineTask, ResearchFinding } from './types';
+import { withModelFailover, withRetry } from './retry';
+import type { AgentRoleConfig, ModelRef, PipelineTask, ResearchFinding } from './types';
 
 const IMPLEMENT_SYSTEM_PROMPT =
 	'You are the implementation agent. Make the requested change directly using the available tools. '
@@ -27,11 +29,80 @@ const EDIT_TOOL_NAMES = new Set([
 	'edit_notebook_file',
 ]);
 
+/**
+ * Parses a test-runner output string into a pass/fail verdict.
+ * M5: the old heuristic `/pass/i && !/fail/i` misread "6 passed, 4 failed"
+ * as a pass. This parser counts explicit passed/failed/failing markers and
+ * only returns `passed` when there are no failures *and* at least one pass.
+ * Falls back to `undefined` when the text is inconclusive (no markers found).
+ */
+function parseTestVerdict(text: string): boolean | undefined {
+	const passedMarkers = (text.match(/\b(\d+)\s+passed?\b/gi) ?? [])
+		.reduce((sum, m) => sum + Number(m.replace(/\D/g, '') || 0), 0);
+	const failedMarkers = (text.match(/\b(\d+)\s+failed?\b/gi) ?? [])
+		.reduce((sum, m) => sum + Number(m.replace(/\D/g, '') || 0), 0);
+	const hasFailing = /\bfail(?:ed|ing)\b/i.test(text) && !/\bpass(?:ed)\b/i.test(text);
+	if (failedMarkers > 0 || (hasFailing && passedMarkers === 0)) {
+		return false;
+	}
+	if (passedMarkers > 0) {
+		return true;
+	}
+	// No structured markers — fall back to the old heuristic (caller decides).
+	if (/pass/i.test(text) && !/fail/i.test(text)) {
+		return true;
+	}
+	return undefined;
+}
+
+/** Tools whose `input` carries a filesystem path that should be normalized for spin detection. */
+const PATH_TOOL_NAMES = new Set(['read_file', 'list_dir', 'file_search', 'grep_search' ]);
+
+/**
+ * Normalizes a filesystem path so the spin guard treats equivalent paths as
+ * identical: forward-slashes, no trailing slash, leading `./` stripped, lowercased
+ * drive letter on Windows. Prevents `read_file('a.ts')` then `read_file('./a.ts')`
+ * from counting as two different calls.
+ */
+function normalizePath(p: string): string {
+	let normalized = p.replace(/\\/g, '/').replace(/\/+/g, '/');
+	if (normalized.startsWith('./')) {
+		normalized = normalized.slice(2);
+	}
+	if (normalized.length > 1 && normalized.endsWith('/')) {
+		normalized = normalized.slice(0, -1);
+	}
+	// Windows drive-letter similarity: C:/foo ≡ c:/foo
+	if (/^[a-z]:\//i.test(normalized)) {
+		normalized = normalized.charAt(0).toLowerCase() + normalized.slice(1);
+	}
+	return normalized;
+}
+
+/** Path-like input keys the spin guard should normalize. */
+const PATH_INPUT_KEYS = new Set(['path', 'filePath', 'includePattern', 'dirPath']);
+
+/** Normalizes path-bearing keys in a tool-call input so equivalent paths collide on the spin key. */
+function normalizePathInput(input: unknown): unknown {
+	if (typeof input !== 'object' || input === null) {
+		return input;
+	}
+	const result = { ...(input as Record<string, unknown>) };
+	for (const key of Object.keys(result)) {
+		if (PATH_INPUT_KEYS.has(key) && typeof result[key] === 'string') {
+			result[key] = normalizePath(result[key] as string);
+		}
+	}
+	return result;
+}
+
 export interface ImplementationResult {
 	diffSummary: string;
 	testsPassed: boolean;
 	ranTests: boolean;
 	turns: number;
+	/** Ref of a fallback model that handled at least one turn when the primary chat-selected model 429/5xx'd through retries. `undefined` when the primary handled every turn. Surfaced to the swarm report via `PipelineResult.implementFallbackUsed`. */
+	fallbackUsed?: ModelRef;
 }
 
 /**
@@ -62,13 +133,17 @@ export async function runImplementation(
 	token: vscode.CancellationToken,
 	toolInvocationToken: vscode.ChatParticipantToolToken | undefined,
 	reviewNotes?: string,
+	progress?: vscode.Progress<{ message: string }>,
+	costTracker?: PipelineCostTracker,
 ): Promise<ImplementationResult> {
 	const model = await pickModel(config.implement);
 	const findingsBlock = findings.map((f) => `### ${f.area}\n${f.summary}`).join('\n\n');
+	const preamble = task.contextPreamble?.trim();
 	const messages: vscode.LanguageModelChatMessage[] = [
 		vscode.LanguageModelChatMessage.User(IMPLEMENT_SYSTEM_PROMPT),
 		vscode.LanguageModelChatMessage.User(
 			`Task: ${task.description}\n`
+			+ (preamble ? `\nAttached context:\n${preamble}\n` : '')
 			+ (findings.length > 0 ? `\nResearch findings:\n${findingsBlock}\n` : '')
 			+ (reviewNotes ? `\nReviewer feedback to address before finishing:\n${reviewNotes}\n` : '')
 			+ `\nWorkspace root: ${task.workspaceRoot}`,
@@ -83,9 +158,18 @@ export async function runImplementation(
 	let lastToolOutput = '';
 	let recentCallKeys: string[] = [];
 	let testNudgeSent = false;
+	let fallbackUsed: ModelRef | undefined;
 
 	while (turn < MAX_TURNS) {
 		turn++;
+		// M3: turn-by-turn progress — the implementer is the longest stage and
+		// was silent. Report each turn so the user sees the agent is working.
+		if (progress) {
+			const toolHint = recentCallKeys.length > 0
+				? ` (last: ${recentCallKeys[recentCallKeys.length - 1].split('::')[0]})`
+				: '';
+			progress.report({ message: `Implementing turn ${turn}/${MAX_TURNS}${toolHint}` });
+		}
 		// Deadline pressure: with two turns left and no test run yet, force the
 		// runTests call before the budget runs out.
 		if (!ranTests && !testNudgeSent && turn >= MAX_TURNS - 2) {
@@ -95,7 +179,25 @@ export async function runImplementation(
 				+ 'Call runTests now, then conclude with your final plain-text summary.',
 			));
 		}
-		const response = await model.sendRequest(messages, { tools }, token);
+		// original report.
+		const send = (m: vscode.LanguageModelChat) => m.sendRequest(messages, { tools }, token);
+		let response: vscode.LanguageModelChatResponse;
+		if (config.implementFallback && config.implementFallback.length > 0) {
+			const failover = await withModelFailover(
+				model,
+				config.implementFallback,
+				pickModel,
+				send,
+				token,
+			);
+			response = failover.result;
+			if (failover.usedFallback && failover.usedRef) {
+				fallbackUsed = failover.usedRef;
+			}
+		} else {
+			response = await withRetry(() => send(model), token);
+		}
+		costTracker?.countInput(messages);
 		let assistantText = '';
 		const textParts: vscode.LanguageModelTextPart[] = [];
 		const toolCalls: vscode.LanguageModelToolCallPart[] = [];
@@ -108,6 +210,7 @@ export async function runImplementation(
 			}
 		}
 		allText += assistantText + '\n';
+		costTracker?.countOutput(assistantText.length);
 		if (textParts.length > 0 || toolCalls.length > 0) {
 			messages.push(vscode.LanguageModelChatMessage.Assistant([...textParts, ...toolCalls]));
 		}
@@ -122,7 +225,13 @@ export async function runImplementation(
 				// Spin guard: repeating a call with no edit in between is a loop,
 				// not progress. Catches exact repeats (A,A,A) and oscillation
 				// (A,B,A,B); repeats around a real edit are legitimate re-reads.
-				const callKey = call.name + '::' + safeStringify(call.input);
+				// M1: path-bearing tools have their input path normalized so
+				// `read_file('a.ts')` and `read_file('./a.ts')` collapse to the
+				// same key — a different path encoding isn't real progress.
+				const isPathTool = PATH_TOOL_NAMES.has(call.name);
+				const callKey = call.name + '::' + (isPathTool
+					? safeStringify(normalizePathInput(call.input))
+					: safeStringify(call.input));
 				const isEdit = EDIT_TOOL_NAMES.has(call.name);
 				const prior = recentCallKeys.slice(-SPIN_WINDOW);
 				const isConsecutiveRepeat = prior.length > 0 && prior[prior.length - 1] === callKey;
@@ -177,7 +286,8 @@ export async function runImplementation(
 				]));
 				if (call.name === 'runTests') {
 					ranTests = true;
-					testsPassed = /pass/i.test(text) && !/fail/i.test(text);
+					const verdict = parseTestVerdict(text);
+					testsPassed = verdict ?? (/pass/i.test(text) && !/fail/i.test(text));
 				}
 			}
 		} else if (concluded) {
@@ -209,7 +319,8 @@ export async function runImplementation(
 			const text = resultToText(result);
 			if (text.trim()) {
 				ranTests = true;
-				testsPassed = /pass/i.test(text) && !/fail/i.test(text);
+				const verdict = parseTestVerdict(text);
+				testsPassed = verdict ?? (/pass/i.test(text) && !/fail/i.test(text));
 			}
 		} catch {
 			// Ignore — the report stays honest about what actually ran.
@@ -226,5 +337,6 @@ export async function runImplementation(
 		testsPassed,
 		ranTests,
 		turns: turn,
+		...(fallbackUsed ? { fallbackUsed } : {}),
 	};
 }

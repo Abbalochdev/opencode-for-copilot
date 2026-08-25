@@ -88,7 +88,16 @@ export function resolveOpencodePlanForBaseUrl(baseUrl: string): OpencodePlan | u
 	if (!isOpencodeBaseUrl(baseUrl)) {
 		return undefined;
 	}
-	return baseUrl.includes('/zen/go') ? 'go' : 'zen';
+	// Go endpoints live under `/zen/go` (OpenAI and Anthropic). Zen endpoints
+	// use `/zen/v1` or `/zen`. Anchor the check so a Zen URL containing
+	// `/zen/go` as a substring (e.g. `/zen/v1/models/zen/grok-x`) is not
+	// misclassified as Go and routed to the wrong key.
+	try {
+		const path = new URL(normalizeBaseUrl(baseUrl)).pathname;
+		return path === '/zen/go' || path.startsWith('/zen/go/') ? 'go' : 'zen';
+	} catch {
+		return undefined;
+	}
 }
 
 export function resolvePlanDefaultEndpoint(plan: OpencodePlan): EndpointPreset {

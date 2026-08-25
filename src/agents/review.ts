@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
-import { runSubAgent } from './loop';
+import type { PipelineCostTracker } from './cost';
+import { joinTaskPrompt, runSubAgent } from './loop';
 import { pickModel } from './modelSelect';
 import { selectReadOnlyTools } from './tools';
 import type { AgentRoleConfig, PipelineTask, ResearchFinding, ReviewResult } from './types';
@@ -29,6 +30,7 @@ export async function runPreImplementationReview(
 	tools: vscode.LanguageModelChatTool[],
 	token: vscode.CancellationToken,
 	progress?: vscode.Progress<{ message: string }>,
+	costTracker?: PipelineCostTracker,
 ): Promise<ReviewResult | null> {
 	const reviewers = config.review ?? [];
 	if (reviewers.length === 0) {
@@ -39,13 +41,16 @@ export async function runPreImplementationReview(
 	const calls = reviewers.map(async (ref): Promise<ReviewResult> => {
 		progress?.report({ message: `Reviewing research plan (${ref.id ?? ref.family})...` });
 		const model = await pickModel(ref);
+		const fallbackRefs = reviewers.filter((other) => other !== ref);
 		const { text } = await runSubAgent({
 			model,
 			systemPrompt: REVIEW_SYSTEM_PROMPT,
-			prompt: `Task: ${task.description}\n\nResearch findings:\n${findingsBlock}\n\nWorkspace root: ${task.workspaceRoot}`,
+			prompt: joinTaskPrompt(task, `Research findings:\n${findingsBlock}\n\nWorkspace root: ${task.workspaceRoot}`),
 			tools: readOnlyTools,
 			token,
 			maxTurns: MAX_REVIEW_TURNS,
+			costTracker,
+			...(fallbackRefs.length > 0 ? { fallbackRefs } : {}),
 		});
 		return {
 			verdict: /no issues|plan is sound|looks sound|\bcorrect\b/i.test(text) ? 'ok' : 'issues',

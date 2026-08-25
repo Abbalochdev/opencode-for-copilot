@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { runImplementation } from '../../src/agents/implement';
+import { clearModelCache } from '../../src/agents/modelSelect';
 import type { PipelineTask } from '../../src/agents/types';
 
 /**
@@ -120,6 +121,56 @@ function scriptedModel(streams: unknown[][]) {
 describe('runImplementation loop guard', () => {
 	beforeEach(() => {
 		__resetLm();
+		clearModelCache();
+	});
+
+	it('M5: treats "6 passed, 4 failed" as NOT passed (structured verdict)', async () => {
+		// Regression: the old /pass/i && !/fail/i heuristic misread
+		// "6 passed, 4 failed" as a pass because "passed" matched.
+		__registerChatModel(
+			scriptedModel([
+				[new LanguageModelToolCallPart('c1', 'runTests', { command: 'pnpm test' })],
+				[new LanguageModelTextPart('Done — tests passed')],
+			]),
+		);
+		__setInvokeTool((name) => ({
+			content: [
+				new LanguageModelTextPart(
+					name === 'runTests'
+						? 'Test Files 4 passed\n  Tests 6 passed, 4 failed'
+						: 'ok',
+				),
+			],
+		}));
+
+		const result = await runImplementation(task, [], config, [], undefined, undefined);
+
+		expect(result.ranTests).toBe(true);
+		// New structured parser sees "4 failed" → not a pass.
+		expect(result.testsPassed).toBe(false);
+	});
+
+	it('M5: treats an explicit "10 passed" verdict as a pass', async () => {
+		__registerChatModel(
+			scriptedModel([
+				[new LanguageModelToolCallPart('c1', 'runTests', { command: 'pnpm test' })],
+				[new LanguageModelTextPart('Done — tests passed')],
+			]),
+		);
+		__setInvokeTool((name) => ({
+			content: [
+				new LanguageModelTextPart(
+					name === 'runTests'
+						? 'Test Files 22 passed\n  Tests 160 passed'
+						: 'ok',
+				),
+			],
+		}));
+
+		const result = await runImplementation(task, [], config, [], undefined, undefined);
+
+		expect(result.ranTests).toBe(true);
+		expect(result.testsPassed).toBe(true);
 	});
 
 	it('suppresses the third identical tool call instead of looping to the turn cap', async () => {
@@ -194,6 +245,34 @@ describe('runImplementation loop guard', () => {
 		expect(result.ranTests).toBe(true);
 		// Safety-net output was "ok" — inconclusive, not a pass.
 		expect(result.testsPassed).toBe(false);
+	});
+
+	it('M1: treats equivalent paths as the same call (normalization)', async () => {
+		// read_file('a.ts') then read_file('./a.ts') then read_file('a.ts/')
+		// should all collapse to the same spin key — the third triggers the
+		// spin guard instead of re-reading the file.
+		__registerChatModel(
+			scriptedModel([
+				[new LanguageModelToolCallPart('c1', 'read_file', { path: 'a.ts' })],
+				[new LanguageModelToolCallPart('c2', 'read_file', { path: './a.ts' })],
+				[new LanguageModelToolCallPart('c3', 'read_file', { path: 'a.ts/' })],
+				[new LanguageModelTextPart('Done — tests passed')],
+			]),
+		);
+		const calls: string[] = [];
+		__setInvokeTool((name) => {
+			calls.push(name);
+			return { content: [new LanguageModelTextPart(name === 'runTests' ? 'All tests passed' : 'code')] };
+		});
+
+		const result = await runImplementation(task, [], config, [], undefined, undefined);
+
+		// Only the first two read_file calls executed; the third was a spin
+		// (same normalized path), and the safety net ran runTests.
+		expect(calls.filter((c) => c === 'read_file')).toHaveLength(2);
+		expect(calls).toContain('runTests');
+		expect(result.ranTests).toBe(true);
+		expect(result.testsPassed).toBe(true);
 	});
 
 	it('allows a repeated read after an edit (legitimate re-read)', async () => {

@@ -11,6 +11,7 @@ import {
     getMaxTokens,
     getOpencodePlan,
     getPonytailMode,
+    getRules,
 } from '../config';
 import {
     isManagedEndpointBaseUrl,
@@ -27,6 +28,7 @@ import { injectPonytailSystemMessage } from './ponytail';
 import { getPricingCurrencyForBaseUrl } from './pricing/currency';
 import type { ReplayMarkerMetadata } from './replay';
 import { resolveRequestMaxTokens, shouldForceThinkingNone, type RequestKind } from './routing';
+import { injectRulesSystemMessage } from './rules';
 import type { ConversationSegment } from './segment';
 import { REQUEST_KINDS_ELIGIBLE_FOR_TOOL_TRIMMING } from './tools/consts';
 import { collectTrailingToolResultIds, prepareRequestTools } from './tools/request';
@@ -163,8 +165,11 @@ export async function prepareChatRequest({
 	// off-task noise — so gate on the same set tool-trimming already uses.
 	const isCodingRequest = REQUEST_KINDS_ELIGIBLE_FOR_TOOL_TRIMMING.has(requestKind);
 	let glmMessagesWithPonytail = isCodingRequest
-		? injectPonytailSystemMessage(glmMessages, ponytailMode)
+		? injectRulesSystemMessage(glmMessages, getRules())
 		: glmMessages;
+	glmMessagesWithPonytail = isCodingRequest
+		? injectPonytailSystemMessage(glmMessagesWithPonytail, ponytailMode)
+		: glmMessagesWithPonytail;
 
 	// Code Simplifier runs on top of (downgraded) Ponytail for clean, refined output.
 	if (isCodingRequest && getCodeSimplifierEnabled()) {

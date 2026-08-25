@@ -1073,6 +1073,34 @@
 			"command": "git add -A",
 			"isBackground": false,
 			"group": "none"
+		},
+		{
+			"label": "git-staged",
+			"type": "shell",
+			"command": "git status --short",
+			"isBackground": false,
+			"group": "none"
+		},
+		{
+			"label": "git-commit",
+			"type": "shell",
+			"command": "git commit -m \"feat: agent swarm with loop hardening and markup defense (v3.9.0)\\n\\n- Convert agent pipeline to full agent swarm: parallel research agents,\\n  pre-implementation review, and self-correcting implementation agent\\n- Windowed spin guard: suppresses exact repeats (A,A,A) and oscillation\\n  (A,B,A,B) while allowing legitimate re-reads after edits\\n- Deadline nudge: forces runTests call when 2 turns remain without tests\\n- Safety-net test run: pipeline runs runTests itself if turn cap is hit\\n  without tests, so reports always carry a real verdict\\n- Tool-call markup defense: strips text markup written by models instead\\n  of real tool calls, nudges model to conclude with plain text\\n- Rename chat participant to Agent Swarm (@swarm)\\n- Context overflow retry, rate-limit fix, cost tracker\\n- 146 tests passing across 21 test files\\n- README redesign with Mermaid architecture diagrams\\n- CHANGELOG and docs updated\"",
+			"isBackground": false,
+			"group": "none"
+		},
+		{
+			"label": "git-commit-2",
+			"type": "shell",
+			"command": "git commit -F extracted/commit-msg.txt",
+			"isBackground": false,
+			"group": "none"
+		},
+		{
+			"label": "git-push",
+			"type": "shell",
+			"command": "git push origin main",
+			"isBackground": false,
+			"group": "none"
 		}
 	]
 }

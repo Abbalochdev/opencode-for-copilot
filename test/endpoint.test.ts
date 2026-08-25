@@ -54,6 +54,35 @@ describe('endpoint helpers', () => {
 	});
 });
 
+describe('resolveOpencodePlanForBaseUrl', () => {
+	it('classifies Go endpoint paths as the Go plan', () => {
+		expect(resolveOpencodePlanForBaseUrl(OPENCODE_GO_OPENAI_BASE_URL)).toBe('go');
+		expect(resolveOpencodePlanForBaseUrl(OPENCODE_GO_ANTHROPIC_BASE_URL)).toBe('go');
+		expect(
+			resolveOpencodePlanForBaseUrl(`https://${OPENCODE_GO_API_HOST}/zen/go/v1/chat/completions`),
+		).toBe('go');
+	});
+
+	it('classifies Zen endpoint paths as the Zen plan', () => {
+		expect(resolveOpencodePlanForBaseUrl(OPENCODE_ZEN_OPENAI_BASE_URL)).toBe('zen');
+		expect(resolveOpencodePlanForBaseUrl(OPENCODE_ZEN_ANTHROPIC_BASE_URL)).toBe('zen');
+	});
+
+	it('returns undefined for non-OpenCode hosts', () => {
+		expect(resolveOpencodePlanForBaseUrl('https://api.z.ai/api/paas/v4')).toBeUndefined();
+		expect(resolveOpencodePlanForBaseUrl('not a url')).toBeUndefined();
+	});
+
+	it('does not misclassify a Zen URL containing "/zen/go" as a substring', () => {
+		// Regression: a Zen model ID or path segment like `/zen/grok-x` must not
+		// match the Go prefix and route the request to the wrong key.
+		const zenWithSubstring = `https://${OPENCODE_GO_API_HOST}/zen/v1/models/zen/grok-4.5`;
+		expect(
+			resolveOpencodePlanForBaseUrl(zenWithSubstring),
+		).toBe('zen');
+	});
+});
+
 describe('endpoint preset resolver', () => {
 	it('resolves every OpenCode preset to its base URL', () => {
 		expect(resolveEndpointBaseUrl('opencode-go')).toBe(OPENCODE_GO_OPENAI_BASE_URL);
