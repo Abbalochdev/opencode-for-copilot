@@ -230,37 +230,19 @@
             "opencode-go",
             "opencode-go-anthropic",
             "opencode-zen",
-            "opencode-zen-anthropic",
-            "china-coding",
-            "china-standard",
-            "china-anthropic",
-            "international-coding",
-            "international-standard",
-            "international-anthropic"
+            "opencode-zen-anthropic"
           ],
           "enumItemLabels": [
             "%opencode-for-copilot.config.endpoint.opencodeGo.label%",
             "%opencode-for-copilot.config.endpoint.opencodeGoAnthropic.label%",
             "%opencode-for-copilot.config.endpoint.opencodeZen.label%",
-            "%opencode-for-copilot.config.endpoint.opencodeZenAnthropic.label%",
-            "%opencode-for-copilot.config.endpoint.chinaCoding.label%",
-            "%opencode-for-copilot.config.endpoint.chinaStandard.label%",
-            "%opencode-for-copilot.config.endpoint.chinaAnthropic.label%",
-            "%opencode-for-copilot.config.endpoint.internationalCoding.label%",
-            "%opencode-for-copilot.config.endpoint.internationalStandard.label%",
-            "%opencode-for-copilot.config.endpoint.internationalAnthropic.label%"
+            "%opencode-for-copilot.config.endpoint.opencodeZenAnthropic.label%"
           ],
           "markdownEnumDescriptions": [
             "%opencode-for-copilot.config.endpoint.opencodeGo.description%",
             "%opencode-for-copilot.config.endpoint.opencodeGoAnthropic.description%",
             "%opencode-for-copilot.config.endpoint.opencodeZen.description%",
-            "%opencode-for-copilot.config.endpoint.opencodeZenAnthropic.description%",
-            "%opencode-for-copilot.config.endpoint.chinaCoding.description%",
-            "%opencode-for-copilot.config.endpoint.chinaStandard.description%",
-            "%opencode-for-copilot.config.endpoint.chinaAnthropic.description%",
-            "%opencode-for-copilot.config.endpoint.internationalCoding.description%",
-            "%opencode-for-copilot.config.endpoint.internationalStandard.description%",
-            "%opencode-for-copilot.config.endpoint.internationalAnthropic.description%"
+            "%opencode-for-copilot.config.endpoint.opencodeZenAnthropic.description%"
           ],
           "markdownDescription": "%opencode-for-copilot.config.endpoint.description%"
         },

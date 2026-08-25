@@ -55,6 +55,21 @@ export function shouldForceThinkingNone(requestKind: RequestKind): boolean {
 	return REQUEST_KINDS_WITH_FORCED_NONE_THINKING.has(requestKind);
 }
 
+const HELPER_MAX_OUTPUT_TOKENS = 512;
+
+export function resolveRequestMaxTokens(
+	requestKind: RequestKind,
+	configuredMax: number | undefined,
+): number | undefined {
+	if (!shouldForceThinkingNone(requestKind)) {
+		return configuredMax;
+	}
+	if (configuredMax === undefined) {
+		return HELPER_MAX_OUTPUT_TOKENS;
+	}
+	return Math.min(configuredMax, HELPER_MAX_OUTPUT_TOKENS);
+}
+
 export function classifyProviderRequest(input: {
 	messages: readonly vscode.LanguageModelChatRequestMessage[];
 	tools?: readonly vscode.LanguageModelChatTool[];

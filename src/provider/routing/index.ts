@@ -3,6 +3,7 @@ export {
 	classifyProviderRequest,
 	formatModelFields,
 	formatRequestLogLine,
+	resolveRequestMaxTokens,
 	shouldForceThinkingNone,
 	type RequestKind,
 } from './classifier';

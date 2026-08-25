@@ -9,9 +9,14 @@ import {
     getBaseUrlOverride,
     getCodeSimplifierEnabled,
     getMaxTokens,
+    getOpencodePlan,
     getPonytailMode,
 } from '../config';
-import { isOfficialGLMBaseUrl, resolveEndpointBaseUrl, resolveEndpointProtocol } from '../endpoint';
+import {
+    isManagedEndpointBaseUrl,
+    resolveEndpointBaseUrl,
+    resolveEndpointProtocol,
+} from '../endpoint';
 import { t } from '../i18n';
 import type { ApiProtocol, GLMRequest, ModelDefinition, PricingCurrency } from '../types';
 import { injectCodeSimplifierSystemMessage } from './code-simplifier';
@@ -21,7 +26,7 @@ import { getConfiguredThinkingEffort, type ModelConfigurationOptions } from './m
 import { injectPonytailSystemMessage } from './ponytail';
 import { getPricingCurrencyForBaseUrl } from './pricing/currency';
 import type { ReplayMarkerMetadata } from './replay';
-import { shouldForceThinkingNone, type RequestKind } from './routing';
+import { resolveRequestMaxTokens, shouldForceThinkingNone, type RequestKind } from './routing';
 import type { ConversationSegment } from './segment';
 import { REQUEST_KINDS_ELIGIBLE_FOR_TOOL_TRIMMING } from './tools/consts';
 import { collectTrailingToolResultIds, prepareRequestTools } from './tools/request';
@@ -49,6 +54,22 @@ function getCachedClient(baseUrl: string, apiKey: string, protocol: ApiProtocol)
  */
 export function clearClientCache(): void {
 	clientCache.clear();
+}
+
+/** Utility models follow the active OpenCode plan endpoint. */
+function resolvePinnedEndpoint(
+	modelId: string | undefined,
+	preset: ModelDefinition['endpointPreset'],
+): ModelDefinition['endpointPreset'] {
+	if (!preset?.startsWith('opencode-')) {
+		return preset;
+	}
+	const isUtility =
+		modelId === 'copilot-utility' || modelId === 'copilot-utility-small';
+	if (isUtility && getOpencodePlan() === 'zen') {
+		return preset === 'opencode-go-anthropic' ? 'opencode-zen-anthropic' : 'opencode-zen';
+	}
+	return preset;
 }
 
 export interface PreparedChatRequest {
@@ -101,7 +122,7 @@ export async function prepareChatRequest({
 	// pinned protocol is respected so the request shape matches what the model
 	// expects. Unpinned models (e.g. GLM-5.2) follow the active endpoint preset.
 	const baseUrlOverride = getBaseUrlOverride();
-	const modelEndpoint = modelDef?.endpointPreset;
+	const modelEndpoint = resolvePinnedEndpoint(modelInfo.id, modelDef?.endpointPreset);
 	let baseUrl: string;
 	let apiProtocol: ApiProtocol;
 	if (baseUrlOverride) {
@@ -122,7 +143,7 @@ export async function prepareChatRequest({
 	}
 	const client = getCachedClient(baseUrl, apiKey, apiProtocol);
 	const isThinkingModel = modelDef?.capabilities.thinking ?? false;
-	const maxTokens = getMaxTokens();
+	const maxTokens = resolveRequestMaxTokens(requestKind, getMaxTokens());
 	const apiModelId = getApiModelId(modelInfo.id);
 
 	const visionResolution = await resolveImageMessages(messages, token, getVisionDescriber);
@@ -158,17 +179,16 @@ export async function prepareChatRequest({
 		stream_options: { include_usage: true },
 		tools,
 		tool_choice: tools && tools.length > 0 ? ('auto' as const) : undefined,
-		// tool_stream: tools && tools.length > 0 ? true : undefined,
-		tool_stream: tools && tools.length > 0 && isOfficialGLMBaseUrl(baseUrl) ? true : undefined,
 
 		max_tokens: maxTokens,
 	};
 	const configuredThinkingEffort = getConfiguredThinkingEffort(
 		options as ModelConfigurationOptions,
 	);
-	// Only force helper requests into disabled thinking on the official API.
-	// Custom endpoints keep their configured effort to preserve pre-#137 request shape.
-	const forceNoneThinking = shouldForceThinkingNone(requestKind) && isOfficialGLMBaseUrl(baseUrl);
+	const forceNoneThinking =
+		shouldForceThinkingNone(requestKind) &&
+		!baseUrlOverride &&
+		isManagedEndpointBaseUrl(baseUrl);
 	const thinkingEffort = forceNoneThinking ? 'none' : configuredThinkingEffort;
 	const supportsReasoningEffort = modelDef?.supportsReasoningEffort ?? false;
 	const request: GLMRequest = {

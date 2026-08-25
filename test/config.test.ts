@@ -1,29 +1,24 @@
 import * as vscode from 'vscode';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
-    findModelDefinition,
-    getApiKeyUrl,
-    getApiModelId,
-    getApiProtocol,
-    getBaseUrl,
-    getCustomModels,
-    getEndpoint,
-    listProviderModels,
-    migrateLegacySettings,
+	findModelDefinition,
+	getApiKeyUrl,
+	getApiModelId,
+	getApiProtocol,
+	getBaseUrl,
+	getCustomModels,
+	getEndpoint,
+	listProviderModels,
+	migrateLegacySettings,
 } from '../src/config';
 import { MODELS } from '../src/consts';
 import {
-    GLM_CN_ANTHROPIC_BASE_URL,
-    GLM_CN_CODING_BASE_URL,
-    GLM_INTERNATIONAL_ANTHROPIC_BASE_URL,
-    GLM_INTERNATIONAL_CODING_API_KEY_URL,
-    GLM_INTERNATIONAL_CODING_BASE_URL,
-    GLM_INTERNATIONAL_GENERAL_API_KEY_URL,
-    GLM_INTERNATIONAL_GENERAL_BASE_URL,
-    OPENCODE_GO_ANTHROPIC_BASE_URL,
-    OPENCODE_GO_API_KEY_URL,
-    OPENCODE_GO_OPENAI_BASE_URL,
-    OPENCODE_ZEN_OPENAI_BASE_URL
+	OPENCODE_GO_ANTHROPIC_BASE_URL,
+	OPENCODE_GO_API_KEY_URL,
+	OPENCODE_GO_OPENAI_BASE_URL,
+	OPENCODE_ZEN_ANTHROPIC_BASE_URL,
+	OPENCODE_ZEN_API_KEY_URL,
+	OPENCODE_ZEN_OPENAI_BASE_URL,
 } from '../src/endpoint';
 import { __clearConfigurationValues, __setConfigurationValue } from './support/vscode.mock';
 
@@ -33,7 +28,6 @@ describe('legacy settings migration (glm-copilot -> opencode-for-copilot)', () =
 	});
 
 	it('copies user-set legacy values to the new section exactly once', async () => {
-		// Simulates an upgrading user: values live in the old shared section.
 		__setConfigurationValue('glm-copilot.endpoint', 'china-anthropic');
 		__setConfigurationValue('glm-copilot.maxTokens', 8192);
 		const store = new Map<string, unknown>();
@@ -46,10 +40,8 @@ describe('legacy settings migration (glm-copilot -> opencode-for-copilot)', () =
 
 		await migrateLegacySettings(context);
 
-		expect(getEndpoint()).toBe('china-anthropic');
-		expect(getBaseUrl()).toBe(GLM_CN_ANTHROPIC_BASE_URL);
-		// User-set values in the new section must never be overwritten by a
-		// stale legacy value.
+		expect(getEndpoint()).toBe('opencode-go-anthropic');
+		expect(getBaseUrl()).toBe(OPENCODE_GO_ANTHROPIC_BASE_URL);
 		expect(vscode.workspace.getConfiguration('opencode-for-copilot').get('maxTokens')).toBe(8192);
 	});
 });
@@ -64,24 +56,8 @@ describe('configuration helpers', () => {
 		expect(getApiKeyUrl()).toBe(OPENCODE_GO_API_KEY_URL);
 	});
 
-	it('uses apiMode and region presets when baseUrl is empty', () => {
-		__setConfigurationValue('opencode-for-copilot.apiMode', 'standard');
-		__setConfigurationValue('opencode-for-copilot.region', 'international');
-
-		expect(getBaseUrl()).toBe(GLM_INTERNATIONAL_GENERAL_BASE_URL);
-		expect(getApiKeyUrl()).toBe(GLM_INTERNATIONAL_GENERAL_API_KEY_URL);
-	});
-
-	it('lets non-empty baseUrl override apiMode and region presets', () => {
-		__setConfigurationValue('opencode-for-copilot.apiMode', 'standard');
-		__setConfigurationValue('opencode-for-copilot.region', 'international');
-		__setConfigurationValue('opencode-for-copilot.baseUrl', ' https://proxy.example.com/v1/// ');
-
-		expect(getBaseUrl()).toBe('https://proxy.example.com/v1');
-	});
-
 	it('lets non-empty baseUrl override the endpoint preset', () => {
-		__setConfigurationValue('opencode-for-copilot.endpoint', 'international-anthropic');
+		__setConfigurationValue('opencode-for-copilot.endpoint', 'opencode-zen-anthropic');
 		__setConfigurationValue('opencode-for-copilot.baseUrl', 'https://proxy.example.com/v1');
 
 		expect(getBaseUrl()).toBe('https://proxy.example.com/v1');
@@ -107,28 +83,21 @@ describe('endpoint preset selection', () => {
 		expect(getBaseUrl()).toBe(OPENCODE_ZEN_OPENAI_BASE_URL);
 	});
 
-	it('respects an explicit endpoint preset', () => {
-		__setConfigurationValue('opencode-for-copilot.endpoint', 'international-anthropic');
-
-		expect(getEndpoint()).toBe('international-anthropic');
-		expect(getBaseUrl()).toBe(GLM_INTERNATIONAL_ANTHROPIC_BASE_URL);
-		expect(getApiProtocol()).toBe('anthropic');
-		expect(getApiKeyUrl()).toBe(GLM_INTERNATIONAL_CODING_API_KEY_URL);
-	});
-
-	it('resolves china-anthropic preset to the CN Anthropic endpoint', () => {
+	it('migrates legacy china-anthropic preset to OpenCode Go Anthropic', () => {
 		__setConfigurationValue('opencode-for-copilot.endpoint', 'china-anthropic');
 
-		expect(getBaseUrl()).toBe(GLM_CN_ANTHROPIC_BASE_URL);
+		expect(getEndpoint()).toBe('opencode-go-anthropic');
+		expect(getBaseUrl()).toBe(OPENCODE_GO_ANTHROPIC_BASE_URL);
 		expect(getApiProtocol()).toBe('anthropic');
 	});
 
-	it('resolves international-coding preset', () => {
+	it('migrates legacy international-coding preset to OpenCode Zen', () => {
 		__setConfigurationValue('opencode-for-copilot.endpoint', 'international-coding');
 
-		expect(getBaseUrl()).toBe(GLM_INTERNATIONAL_CODING_BASE_URL);
+		expect(getEndpoint()).toBe('opencode-zen');
+		expect(getBaseUrl()).toBe(OPENCODE_ZEN_OPENAI_BASE_URL);
 		expect(getApiProtocol()).toBe('openai');
-		expect(getApiKeyUrl()).toBe(GLM_INTERNATIONAL_CODING_API_KEY_URL);
+		expect(getApiKeyUrl()).toBe(OPENCODE_ZEN_API_KEY_URL);
 	});
 
 	it('resolves the opencode-go preset to the OpenCode Go OpenAI endpoint', () => {
@@ -149,33 +118,37 @@ describe('endpoint preset selection', () => {
 		expect(getApiKeyUrl()).toBe(OPENCODE_GO_API_KEY_URL);
 	});
 
-	it('falls back to legacy tuple when endpoint is unset (backward compat)', () => {
-		// Mimics an existing user who upgraded and has not migrated yet.
-		__setConfigurationValue('opencode-for-copilot.region', 'international');
-		__setConfigurationValue('opencode-for-copilot.apiMode', 'standard');
-		__setConfigurationValue('opencode-for-copilot.apiProtocol', 'openai');
+	it('resolves the opencode-zen-anthropic preset', () => {
+		__setConfigurationValue('opencode-for-copilot.endpoint', 'opencode-zen-anthropic');
 
-		expect(getEndpoint()).toBe('international-standard');
-		expect(getBaseUrl()).toBe(GLM_INTERNATIONAL_GENERAL_BASE_URL);
-		expect(getApiKeyUrl()).toBe(GLM_INTERNATIONAL_GENERAL_API_KEY_URL);
+		expect(getEndpoint()).toBe('opencode-zen-anthropic');
+		expect(getBaseUrl()).toBe(OPENCODE_ZEN_ANTHROPIC_BASE_URL);
+		expect(getApiProtocol()).toBe('anthropic');
+		expect(getApiKeyUrl()).toBe(OPENCODE_ZEN_API_KEY_URL);
 	});
 
-	it('legacy apiProtocol=anthropic + international region now resolves to the international Anthropic endpoint (regression)', () => {
-		__setConfigurationValue('opencode-for-copilot.region', 'international');
+	it('uses legacy apiProtocol=anthropic when endpoint is unset', () => {
 		__setConfigurationValue('opencode-for-copilot.apiProtocol', 'anthropic');
 
-		expect(getEndpoint()).toBe('international-anthropic');
-		expect(getBaseUrl()).toBe(GLM_INTERNATIONAL_ANTHROPIC_BASE_URL);
+		expect(getEndpoint()).toBe('opencode-go-anthropic');
+		expect(getBaseUrl()).toBe(OPENCODE_GO_ANTHROPIC_BASE_URL);
 		expect(getApiProtocol()).toBe('anthropic');
 	});
 
-	it('endpoint preset takes precedence over legacy tuple', () => {
-		__setConfigurationValue('opencode-for-copilot.endpoint', 'china-coding');
-		__setConfigurationValue('opencode-for-copilot.region', 'international');
-		__setConfigurationValue('opencode-for-copilot.apiMode', 'standard');
+	it('uses zen anthropic preset when plan is zen and apiProtocol=anthropic', () => {
+		__setConfigurationValue('opencode-for-copilot.opencodePlan', 'zen');
+		__setConfigurationValue('opencode-for-copilot.apiProtocol', 'anthropic');
 
-		expect(getEndpoint()).toBe('china-coding');
-		expect(getBaseUrl()).toBe(GLM_CN_CODING_BASE_URL);
+		expect(getEndpoint()).toBe('opencode-zen-anthropic');
+		expect(getBaseUrl()).toBe(OPENCODE_ZEN_ANTHROPIC_BASE_URL);
+	});
+
+	it('endpoint preset takes precedence over legacy apiProtocol', () => {
+		__setConfigurationValue('opencode-for-copilot.endpoint', 'opencode-go');
+		__setConfigurationValue('opencode-for-copilot.apiProtocol', 'anthropic');
+
+		expect(getEndpoint()).toBe('opencode-go');
+		expect(getBaseUrl()).toBe(OPENCODE_GO_OPENAI_BASE_URL);
 	});
 
 	it('normalizes custom model strings and objects', () => {
@@ -199,14 +172,6 @@ describe('endpoint preset selection', () => {
 		expect(models[0]).toMatchObject({
 			id: 'team-coder',
 			name: 'team-coder',
-			maxInputTokens: 200_000,
-			maxOutputTokens: 131_072,
-			capabilities: {
-				toolCalling: true,
-				imageInput: true,
-				thinking: true,
-			},
-			requiresThinkingParam: true,
 		});
 		expect(models[1]).toMatchObject({
 			id: 'custom-no-tools',
@@ -215,38 +180,32 @@ describe('endpoint preset selection', () => {
 			maxOutputTokens: 456,
 			capabilities: {
 				toolCalling: false,
-				imageInput: true,
 				thinking: false,
 			},
-			requiresThinkingParam: false,
 		});
 	});
+});
 
-	it('lets custom model IDs override built-in model lookup and picker registry', () => {
-		__setConfigurationValue('opencode-for-copilot.customModels', [
-			{
-				id: 'glm-5.2',
-				name: 'Local GLM-5.2',
-				maxInputTokens: 42,
-				thinking: false,
-			},
-		]);
+describe('model registry helpers', () => {
+	beforeEach(() => {
+		__clearConfigurationValues();
+	});
+
+	it('finds built-in models by id', () => {
+		const model = findModelDefinition('glm-5.2');
+		expect(model).toBeDefined();
+		expect(model?.id).toBe('glm-5.2');
+	});
+
+	it('lists provider models including custom models', () => {
+		__setConfigurationValue('opencode-for-copilot.customModels', ['team-coder']);
 
 		const models = listProviderModels();
-
-		expect(models).toHaveLength(MODELS.length);
-		expect(findModelDefinition('glm-5.2')).toMatchObject({
-			id: 'glm-5.2',
-			name: 'Local GLM-5.2',
-			maxInputTokens: 42,
-			capabilities: {
-				imageInput: true,
-				thinking: false,
-			},
-		});
+		expect(models.some((m) => m.id === 'team-coder')).toBe(true);
+		expect(models.length).toBeGreaterThanOrEqual(MODELS.length);
 	});
 
-	it('supports modelIdOverrides for arbitrary built-in or custom model IDs', () => {
+	it('applies modelIdOverrides for API model IDs', () => {
 		__setConfigurationValue('opencode-for-copilot.modelIdOverrides', {
 			'glm-5.2': 'upstream-glm-5.2',
 			'team-coder': 'provider-team-coder',

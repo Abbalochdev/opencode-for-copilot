@@ -1,9 +1,13 @@
 import vscode from 'vscode';
 import type { AuthManager } from '../../auth';
-import { getApiModelId, getApiProtocol, getBaseUrl } from '../../config';
-import { GLM_CN_CODING_BASE_URL } from '../../endpoint';
+import { getApiModelId, getBaseUrl, getBaseUrlOverride, getEndpoint } from '../../config';
+import {
+    OPENCODE_GO_OPENAI_BASE_URL,
+    OPENCODE_ZEN_OPENAI_BASE_URL,
+    resolveEndpointBaseUrl,
+} from '../../endpoint';
 import { t } from '../../i18n';
-import { DEFAULT_GLM_VISION_MODEL_ID } from './consts';
+import { DEFAULT_OPENCODE_VISION_MODEL_ID } from './consts';
 import {
     logAutomaticGLMVisionFallback,
     logAutomaticGLMVisionModelSelected,
@@ -81,7 +85,7 @@ export function createVisionService(
 				}
 			}
 
-			const config = createAutomaticGLMVisionConfig();
+			const config = createAutomaticOpenCodeVisionConfig();
 			const apiKey = await authManager.getApiKeyForEndpoint(config.url);
 			const primary = createEndpointVisionDescriber(config, apiKey);
 			logAutomaticGLMVisionModelSelected(primary.id, config.url);
@@ -125,20 +129,32 @@ class AutomaticVisionDescriber implements VisionDescriber {
 	}
 }
 
-function createAutomaticGLMVisionConfig(): VisionProxyConfig {
-	// When the main chat protocol is Anthropic, the vision proxy still needs to use
-	// the OpenAI-compatible endpoint because Anthropic vision endpoint availability
-	// may differ. Fall back to the Coding Plan endpoint for vision descriptions.
-	const protocol = getApiProtocol();
-	const visionBaseUrl = protocol === 'anthropic' ? GLM_CN_CODING_BASE_URL : getBaseUrl();
+function createAutomaticOpenCodeVisionConfig(): VisionProxyConfig {
+	// Always use the OpenAI-compatible OpenCode base URL — even when main chat
+	// uses the Anthropic wire protocol.
+	const visionBaseUrl = resolveOpenCodeVisionBaseUrl();
 
 	return {
 		providerFamily: 'openai-compatible',
 		apiType: 'chat-completions',
 		url: `${visionBaseUrl}/chat/completions`,
-		modelId: getApiModelId(DEFAULT_GLM_VISION_MODEL_ID),
+		modelId: getApiModelId(DEFAULT_OPENCODE_VISION_MODEL_ID),
 		updatedAt: Date.now(),
 	};
+}
+
+function resolveOpenCodeVisionBaseUrl(): string {
+	if (getBaseUrlOverride()) {
+		return getBaseUrl();
+	}
+	const preset = getEndpoint();
+	if (preset === 'opencode-go-anthropic') {
+		return OPENCODE_GO_OPENAI_BASE_URL;
+	}
+	if (preset === 'opencode-zen-anthropic') {
+		return OPENCODE_ZEN_OPENAI_BASE_URL;
+	}
+	return resolveEndpointBaseUrl(preset);
 }
 
 function isCancelledVisionError(error: unknown): boolean {

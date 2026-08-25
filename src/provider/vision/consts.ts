@@ -1,5 +1,8 @@
-/** Built-in GLM multimodal model used first when the vision proxy is automatic. */
-export const DEFAULT_GLM_VISION_MODEL_ID = 'glm-4.6v-flash';
+/** Default OpenCode vision model for automatic image description. */
+export const DEFAULT_OPENCODE_VISION_MODEL_ID = 'glm-5.2';
+
+/** @deprecated Use {@link DEFAULT_OPENCODE_VISION_MODEL_ID}. */
+export const DEFAULT_GLM_VISION_MODEL_ID = DEFAULT_OPENCODE_VISION_MODEL_ID;
 
 /** Default VS Code model ID used when GLM vision falls back to Copilot/VS Code models. */
 export const DEFAULT_VISION_MODEL_ID = 'oswe-vscode-prime';

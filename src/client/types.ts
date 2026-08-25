@@ -22,7 +22,7 @@ export interface HttpErrorLinkDefinition {
 	url: string;
 }
 
-export type ApiProviderId = 'glm';
+export type ApiProviderId = 'opencode';
 export type HttpErrorLinkStatusKey = 401 | 402 | '5xx';
 
 export type GLMRequestErrorKind = 'http' | 'network' | 'unknown';

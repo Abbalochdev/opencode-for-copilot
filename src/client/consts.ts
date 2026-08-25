@@ -12,23 +12,18 @@ export const API_PROVIDER_HTTP_ERROR_LINKS: Readonly<
 	Record<HttpErrorLinkStatusKey, Readonly<Partial<Record<ApiProviderId, HttpErrorLinkDefinition>>>>
 > = {
 	401: {
-		glm: {
+		opencode: {
 			labelKey: 'error.action.createApiKey',
-			url: EXTERNAL_URLS.glm.apiKeys,
+			url: EXTERNAL_URLS.opencode.apiKeys,
 		},
 	},
 	402: {
-		glm: {
+		opencode: {
 			labelKey: 'error.action.viewUsage',
-			url: EXTERNAL_URLS.glm.usage,
+			url: EXTERNAL_URLS.opencode.usage,
 		},
 	},
-	'5xx': {
-		glm: {
-			labelKey: 'error.action.checkGLMStatus',
-			url: EXTERNAL_URLS.glm.status,
-		},
-	},
+	'5xx': {},
 };
 
 /**
@@ -59,14 +54,14 @@ export const GLM_BUSINESS_ERROR_CODES: Readonly<Record<string, GlmBusinessErrorD
 		messageKey: 'error.glm.1001',
 		action: {
 			labelKey: 'error.action.createApiKey',
-			url: EXTERNAL_URLS.glm.apiKeys,
+			url: EXTERNAL_URLS.opencode.apiKeys,
 		},
 	},
 	'1003': {
 		messageKey: 'error.glm.1003',
 		action: {
 			labelKey: 'error.action.createApiKey',
-			url: EXTERNAL_URLS.glm.apiKeys,
+			url: EXTERNAL_URLS.opencode.apiKeys,
 		},
 	},
 	'1005': { messageKey: 'error.glm.1005' },
@@ -74,7 +69,7 @@ export const GLM_BUSINESS_ERROR_CODES: Readonly<Record<string, GlmBusinessErrorD
 	// ---- 速率 / 配额限制 (429) ----
 	'1113': {
 		messageKey: 'error.glm.1113',
-		action: { labelKey: 'error.action.topUp', url: EXTERNAL_URLS.glm.topUp },
+		action: { labelKey: 'error.action.topUp', url: EXTERNAL_URLS.opencode.usage },
 	},
 	'1302': { messageKey: 'error.glm.1302' },
 	'1305': { messageKey: 'error.glm.1305' },
@@ -83,7 +78,7 @@ export const GLM_BUSINESS_ERROR_CODES: Readonly<Record<string, GlmBusinessErrorD
 		messageKey: 'error.glm.1309',
 		action: {
 			labelKey: 'error.action.renewCodingPlan',
-			url: EXTERNAL_URLS.glm.codingPlan,
+			url: EXTERNAL_URLS.opencode.usage,
 		},
 	},
 	'1310': { messageKey: 'error.glm.1310' },
@@ -91,14 +86,14 @@ export const GLM_BUSINESS_ERROR_CODES: Readonly<Record<string, GlmBusinessErrorD
 		messageKey: 'error.glm.1311',
 		action: {
 			labelKey: 'error.action.renewCodingPlan',
-			url: EXTERNAL_URLS.glm.codingPlan,
+			url: EXTERNAL_URLS.opencode.usage,
 		},
 	},
 	'1313': {
 		messageKey: 'error.glm.1313',
 		action: {
 			labelKey: 'error.action.fairUsePolicy',
-			url: EXTERNAL_URLS.glm.fairUsePolicy,
+			url: EXTERNAL_URLS.opencode.usage,
 		},
 	},
 	'1314': { messageKey: 'error.glm.1314' },
@@ -106,16 +101,16 @@ export const GLM_BUSINESS_ERROR_CODES: Readonly<Record<string, GlmBusinessErrorD
 		messageKey: 'error.glm.1315',
 		action: {
 			labelKey: 'error.action.createApiKey',
-			url: EXTERNAL_URLS.glm.apiKeys,
+			url: EXTERNAL_URLS.opencode.apiKeys,
 		},
 	},
 	'1316': {
 		messageKey: 'error.glm.1316',
-		action: { labelKey: 'error.action.topUp', url: EXTERNAL_URLS.glm.topUp },
+		action: { labelKey: 'error.action.topUp', url: EXTERNAL_URLS.opencode.usage },
 	},
 	'1317': {
 		messageKey: 'error.glm.1317',
-		action: { labelKey: 'error.action.topUp', url: EXTERNAL_URLS.glm.topUp },
+		action: { labelKey: 'error.action.topUp', url: EXTERNAL_URLS.opencode.usage },
 	},
 	'1318': { messageKey: 'error.glm.1318' },
 	'1319': { messageKey: 'error.glm.1319' },
@@ -134,27 +129,9 @@ export const GLM_BUSINESS_ERROR_CODES: Readonly<Record<string, GlmBusinessErrorD
 	'1301': { messageKey: 'error.glm.1301' },
 
 	// ---- 服务端错误 (500) ----
-	'1200': {
-		messageKey: 'error.glm.1200',
-		action: {
-			labelKey: 'error.action.checkGLMStatus',
-			url: EXTERNAL_URLS.glm.status,
-		},
-	},
-	'1230': {
-		messageKey: 'error.glm.1230',
-		action: {
-			labelKey: 'error.action.checkGLMStatus',
-			url: EXTERNAL_URLS.glm.status,
-		},
-	},
-	'1234': {
-		messageKey: 'error.glm.1234',
-		action: {
-			labelKey: 'error.action.checkGLMStatus',
-			url: EXTERNAL_URLS.glm.status,
-		},
-	},
+	'1200': { messageKey: 'error.glm.1200' },
+	'1230': { messageKey: 'error.glm.1230' },
+	'1234': { messageKey: 'error.glm.1234' },
 };
 
 /**

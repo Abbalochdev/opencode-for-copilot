@@ -10,11 +10,7 @@ import {
     refreshDynamicModels,
 } from '../config';
 import { API_KEY_GO_SECRET, API_KEY_SECRET, API_KEY_ZEN_SECRET, CONFIG_SECTION } from '../consts';
-import {
-    isOpencodeBaseUrl,
-    OPENCODE_GO_USAGE_CONSOLE_URL,
-    type OpencodePlan,
-} from '../endpoint';
+import { OPENCODE_GO_USAGE_CONSOLE_URL, isOpencodeBaseUrl } from '../endpoint';
 import { t } from '../i18n';
 import { logger } from '../logger';
 import { createCacheDiagnosticsRecorder, dumpProviderInput } from './debug';
@@ -29,7 +25,6 @@ import { resolveConversationSegment } from './segment';
 import { streamChatCompletion } from './stream';
 import { estimateTokenCount } from './tokens';
 import { processToolFlow } from './tools/flow';
-import { formatGLMPlanUsageForLog, queryGLMPlanUsage, supportsGLMPlanUsage } from './usage';
 import { createVisionService } from './vision';
 
 // ---- Request deduplication for utility kinds ----
@@ -184,36 +179,19 @@ export class GLMChatProvider implements vscode.LanguageModelChatProvider {
 	}
 
 	async queryUsage(): Promise<void> {
-		const apiKey = await this.authManager.getApiKey();
-		if (!apiKey) {
-			void vscode.window.showWarningMessage(t('usage.notConfigured'));
-			return;
-		}
-
 		const baseUrl = getBaseUrl();
-		// OpenCode Go does not expose the GLM monitor API; point subscribers at
-		// the OpenCode console where Go usage limits are tracked.
-		if (isOpencodeBaseUrl(baseUrl)) {
-			void vscode.window.showInformationMessage(t('usage.opencodeConsole'));
-			await vscode.env.openExternal(vscode.Uri.parse(OPENCODE_GO_USAGE_CONSOLE_URL));
-			return;
-		}
-		if (!supportsGLMPlanUsage(baseUrl)) {
+		if (!isOpencodeBaseUrl(baseUrl)) {
 			void vscode.window.showWarningMessage(t('usage.unsupportedBaseUrl'));
 			return;
 		}
-
-		logger.show();
-		logger.info(t('usage.queryStarted'));
-		try {
-			const usage = await queryGLMPlanUsage(baseUrl, apiKey);
-			logger.info(formatGLMPlanUsageForLog(usage));
-			void vscode.window.showInformationMessage(t('usage.querySucceeded'));
-		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
-			logger.warn('Failed to query GLM Coding Plan usage', error);
-			void vscode.window.showErrorMessage(t('usage.queryFailed', message));
+		const plan = getOpencodePlan();
+		const hasKey = await this.authManager.hasPlanApiKey(plan);
+		if (!hasKey) {
+			void vscode.window.showWarningMessage(t('usage.notConfigured'));
+			return;
 		}
+		void vscode.window.showInformationMessage(t('usage.opencodeConsole'));
+		await vscode.env.openExternal(vscode.Uri.parse(OPENCODE_GO_USAGE_CONSOLE_URL));
 	}
 
 	async hasApiKey(): Promise<boolean> {

@@ -95,30 +95,15 @@ export interface StreamCallbacks {
 
 // ---- Configuration types ----
 
-export type ApiMode = 'coding-plan' | 'standard';
-
-export type ApiRegion = 'china' | 'international';
-
 export type ApiProtocol = 'openai' | 'anthropic';
 
 /**
- * Single-value endpoint selector that folds the legacy
- * (region, apiMode, apiProtocol) tuple into one enum.
+ * OpenCode endpoint preset — each value resolves to one base URL + wire protocol.
  *
- * Each value uniquely resolves to a base URL + wire protocol, so users pick
- * exactly what they want from one dropdown instead of three interacting ones.
- *
- * The `opencode-go*` values target the OpenCode Go subscription
- * (https://opencode.ai/docs/go), which serves a curated set of open coding
- * models behind a single API key from `https://opencode.ai/auth`.
+ * Go presets: https://opencode.ai/docs/go
+ * Zen presets: https://opencode.ai/docs/zen
  */
 export type EndpointPreset =
-	| 'china-coding'
-	| 'china-standard'
-	| 'china-anthropic'
-	| 'international-coding'
-	| 'international-standard'
-	| 'international-anthropic'
 	| 'opencode-go'
 	| 'opencode-go-anthropic'
 	| 'opencode-zen'

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { GLMRequestError, createHttpError, createUserFacingError } from '../../src/client/error';
 import type { GLMRequest } from '../../src/types';
 
-const GLM_ANTHROPIC_BASE_URL = 'https://open.bigmodel.cn/api/anthropic';
+const OPENCODE_ANTHROPIC_BASE_URL = 'https://opencode.ai/zen/go';
 const PROXY_BASE_URL = 'https://proxy.example.com/v1';
 
 function buildRequest(overrides: Partial<GLMRequest> = {}): GLMRequest {
@@ -42,7 +42,7 @@ describe('createHttpError', () => {
 		);
 
 		const error = await createHttpError(response, {
-			baseUrl: GLM_ANTHROPIC_BASE_URL,
+			baseUrl: OPENCODE_ANTHROPIC_BASE_URL,
 			request: buildRequest(),
 		});
 
@@ -69,7 +69,7 @@ describe('createHttpError', () => {
 		});
 
 		const error = await createHttpError(response, {
-			baseUrl: GLM_ANTHROPIC_BASE_URL,
+			baseUrl: OPENCODE_ANTHROPIC_BASE_URL,
 			request: buildRequest(),
 		});
 
@@ -116,7 +116,7 @@ describe('createHttpError', () => {
 		});
 
 		const error = await createHttpError(response, {
-			baseUrl: GLM_ANTHROPIC_BASE_URL,
+			baseUrl: OPENCODE_ANTHROPIC_BASE_URL,
 			request: buildRequest(),
 		});
 
@@ -151,7 +151,7 @@ describe('createHttpError', () => {
 		});
 
 		const error = await createHttpError(response, {
-			baseUrl: GLM_ANTHROPIC_BASE_URL,
+			baseUrl: OPENCODE_ANTHROPIC_BASE_URL,
 			request: buildRequest(),
 		});
 
@@ -169,7 +169,7 @@ describe('createHttpError', () => {
 		});
 
 		const error = await createHttpError(response, {
-			baseUrl: GLM_ANTHROPIC_BASE_URL,
+			baseUrl: OPENCODE_ANTHROPIC_BASE_URL,
 			request: buildRequest(),
 		});
 
@@ -187,7 +187,7 @@ describe('createHttpError', () => {
 		});
 
 		const error = await createHttpError(response, {
-			baseUrl: GLM_ANTHROPIC_BASE_URL,
+			baseUrl: OPENCODE_ANTHROPIC_BASE_URL,
 			request: buildRequest(),
 		});
 
@@ -208,7 +208,7 @@ describe('createUserFacingError', () => {
 		});
 
 		const httpError = await createHttpError(response, {
-			baseUrl: GLM_ANTHROPIC_BASE_URL,
+			baseUrl: OPENCODE_ANTHROPIC_BASE_URL,
 			request: buildRequest(),
 		});
 		const facing = createUserFacingError(httpError);

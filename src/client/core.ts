@@ -147,13 +147,10 @@ export class GLMClient {
 				await dispatch(retriedRequest);
 				return; // success with fewer tools
 			} catch {
-				logger.warn('Reactive tool-halving retry also failed, continuing to failover');
+				logger.warn('Reactive tool-halving retry also failed');
 			}
-			// Fall through to failover — don't swallow the error here.
 		}
 
-		// Phase 2.5: context-overflow retry — HTTP 400 whose message carries
-		// authoritative token counts; retry once with a reduced output budget.
 		if (error instanceof GLMRequestError && error.status === 400) {
 			const overflow = analyzeContextOverflow(
 				error.serverMessage ?? error.message,
@@ -167,33 +164,18 @@ export class GLMClient {
 				);
 				try {
 					await dispatch({ ...request, max_tokens: overflow.maxTokens });
-					return; // success with reduced output budget
+					return;
 				} catch {
-					logger.warn('[overflow-retry] retry also failed, continuing to failover');
+					logger.warn('[overflow-retry] retry also failed');
 				}
-				// Fall through to failover — don't swallow the error here.
 			}
 		}
 
-		// Phase 3: try failover endpoint if available.
 		const normalizedError = normalizeRequestError(
 			shouldHalveTools ? error! : error,
 			{ baseUrl: this.baseUrl, request },
 		);
 		logger.error('GLM request failed:', formatRequestError(normalizedError));
-
-		const failoverUrl = resolveFailoverBaseUrl(this.baseUrl);
-		if (failoverUrl) {
-			logger.warn(`[failover] Primary ${this.baseUrl} failed, trying ${failoverUrl}`);
-			const failoverClient = new GLMClient(failoverUrl, this.apiKey, this.protocol);
-			try {
-				await failoverClient.streamChatCompletion(request, callbacks, cancellationToken);
-				return;
-			} catch (failoverError) {
-				logger.warn('[failover] Secondary endpoint also failed:', failoverError);
-			}
-		}
-
 		callbacks.onError(normalizedError);
 	}
 
@@ -502,26 +484,4 @@ function computeRetryDelay(error: GLMRequestError, attempt: number): number {
 	const exponential = BASE_RETRY_DELAY_MS * 2 ** attempt;
 	const jitter = Math.random() * BASE_RETRY_DELAY_MS;
 	return Math.min(exponential + jitter, MAX_RETRY_DELAY_MS);
-}
-
-// ---- Failover endpoint mapping ----
-// Maps primary endpoint hosts to their regional alternate.
-// Only applies to official GLM platforms (Zhipu CN ↔ Z.ai International).
-const FAILOVER_HOST_MAP: Record<string, string> = {
-	'open.bigmodel.cn': 'api.z.ai',
-	'api.z.ai': 'open.bigmodel.cn',
-};
-
-function resolveFailoverBaseUrl(baseUrl: string): string | undefined {
-	try {
-		const url = new URL(baseUrl);
-		const altHost = FAILOVER_HOST_MAP[url.hostname];
-		if (!altHost) {
-			return undefined;
-		}
-		url.hostname = altHost;
-		return url.toString();
-	} catch {
-		return undefined;
-	}
 }

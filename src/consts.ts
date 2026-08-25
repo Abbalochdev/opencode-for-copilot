@@ -20,16 +20,9 @@ export const CONFIG_SECTION = 'opencode-for-copilot';
 export const LEGACY_CONFIG_SECTION = 'glm-copilot';
 
 export const EXTERNAL_URLS = {
-	glm: {
-		apiKeys: 'https://www.bigmodel.cn/usercenter/proj-mgmt/apikeys',
-		usage: 'https://www.bigmodel.cn/usercenter/resourcepack',
-		status: 'https://docs.bigmodel.cn/cn/api/status-code/status-code-v4',
-		// 1113 账户欠费、402 余额不足 等场景的充值入口。
-		topUp: 'https://www.bigmodel.cn/usercenter/proj-mgmt/resourcepack',
-		// 1309 GLM Coding Plan 套餐到期、1311 套餐未包含模型 等场景的续订入口。
-		codingPlan: 'https://bigmodel.cn/claude-code',
-		// 1313 公平使用策略被限制时的解除入口（个人中心-编程套餐总览）。
-		fairUsePolicy: 'https://www.bigmodel.cn/usercenter/valuepack',
+	opencode: {
+		apiKeys: 'https://opencode.ai/auth',
+		usage: 'https://opencode.ai/auth',
 	},
 } as const;
 

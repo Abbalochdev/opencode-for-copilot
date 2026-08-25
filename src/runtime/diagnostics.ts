@@ -1,12 +1,12 @@
 import { execFileSync } from 'node:child_process';
 import vscode from 'vscode';
 import {
-	getApiMode,
 	getApiProtocol,
 	getBaseUrl,
 	getCodeSimplifierEnabled,
 	getDebugMode,
 	getEndpoint,
+	getOpencodePlan,
 	getPonytailMode,
 } from '../config';
 import { CONFIG_SECTION } from '../consts';
@@ -63,7 +63,7 @@ export function buildRuntimeDiagnosticsReport(context: vscode.ExtensionContext):
 		'## Configuration',
 		`- Endpoint preset: ${getEndpoint()}`,
 		`- Base URL: ${getBaseUrl()}`,
-		`- API mode: ${getApiMode()}`,
+		`- OpenCode plan: ${getOpencodePlan()}`,
 		`- API protocol: ${getApiProtocol()}`,
 		`- Debug mode: ${getDebugMode()}`,
 		`- Ponytail mode: ${getPonytailMode()}`,

@@ -180,7 +180,7 @@ describe('model metadata helpers', () => {
 		expect(custom).toMatchObject({
 			id: 'team-coder',
 			name: 'team-coder',
-			detail: 'Custom GLM-compatible model',
+			detail: 'Custom OpenCode-compatible model',
 			capabilities: {
 				toolCalling: true,
 				imageInput: true,
