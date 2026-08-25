@@ -1,4 +1,4 @@
-import { isOfficialGLMBaseUrl } from '../../endpoint';
+import { isOfficialGLMBaseUrl, isOpencodeBaseUrl } from '../../endpoint';
 import { t } from '../../i18n';
 import { safeStringify } from '../../json';
 import {
@@ -206,6 +206,20 @@ function getHttpErrorMessage(params: {
 }): string {
 	const { status, baseUrl, businessCode, serverMessage, toolCount } = params;
 	const isOfficialGlm = isOfficialGLMBaseUrl(baseUrl);
+
+	// OpenCode Zen-only model + Go-subscription key → 401 "Insufficient balance".
+	// The raw server message is just a billing link; explain that the model
+	// choice is the problem so Go subscribers know to switch models, not keys.
+	if (
+		status === 401 &&
+		isOpencodeBaseUrl(baseUrl) &&
+		serverMessage !== undefined &&
+		/insufficient balance/i.test(serverMessage)
+	) {
+		return `${t('error.http.withServerMessage', status, serverMessage)} — ${t(
+			'error.opencode.zenOnlyModel',
+		)}`;
+	}
 
 	// 1) 已知业务错误码 → 使用官方错误表对应的精确文案。GLM 的服务端消息通常
 	//    是 `[code][detail][request_id]` 包裹格式，detail 里包含动态参数

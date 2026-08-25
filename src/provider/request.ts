@@ -10,7 +10,7 @@ import {
     getCodeSimplifierEnabled,
     getMaxTokens,
     getPonytailMode,
-    getRules
+    getRules,
 } from '../config';
 import { isOfficialGLMBaseUrl, resolveEndpointBaseUrl, resolveEndpointProtocol } from '../endpoint';
 import { t } from '../i18n';
@@ -20,10 +20,10 @@ import { convertMessages, countMessageChars } from './convert';
 import { dumpGLMRequest, type CacheDiagnosticsRecorder, type CacheDiagnosticsRun } from './debug';
 import { getConfiguredThinkingEffort, type ModelConfigurationOptions } from './models';
 import { injectPonytailSystemMessage } from './ponytail';
+import { injectRulesSystemMessage } from './rules';
 import { getPricingCurrencyForBaseUrl } from './pricing/currency';
 import type { ReplayMarkerMetadata } from './replay';
 import { shouldForceThinkingNone, type RequestKind } from './routing';
-import { injectRulesSystemMessage } from './rules';
 import type { ConversationSegment } from './segment';
 import { REQUEST_KINDS_ELIGIBLE_FOR_TOOL_TRIMMING } from './tools/consts';
 import { collectTrailingToolResultIds, prepareRequestTools } from './tools/request';
@@ -94,11 +94,6 @@ export async function prepareChatRequest({
 	getVisionDescriber,
 	requestKind,
 }: PrepareChatRequestOptions): Promise<PreparedChatRequest> {
-	const apiKey = await authManager.getApiKey();
-	if (!apiKey) {
-		throw new Error(t('auth.notConfigured'));
-	}
-
 	const modelDef = findModelDefinition(modelInfo.id);
 	// Per-model endpoint pinning: OpenCode Go models that are only reachable
 	// through a specific wire protocol (Anthropic for MiniMax/Qwen, OpenAI for
@@ -121,6 +116,12 @@ export async function prepareChatRequest({
 		baseUrl = getBaseUrl();
 		apiProtocol = getApiProtocol();
 	}
+	// Key follows the endpoint: Go URLs use the Go-subscription key, Zen URLs
+	// the Zen pay-as-you-go key, everything else the legacy single key.
+	const apiKey = await authManager.getApiKeyForEndpoint(baseUrl);
+	if (!apiKey) {
+		throw new Error(t('auth.notConfigured'));
+	}
 	const client = getCachedClient(baseUrl, apiKey, apiProtocol);
 	const isThinkingModel = modelDef?.capabilities.thinking ?? false;
 	const maxTokens = getMaxTokens();
@@ -142,12 +143,6 @@ export async function prepareChatRequest({
 	// rename, classifiers) wastes tokens, pollutes the prompt cache, and adds
 	// off-task noise — so gate on the same set tool-trimming already uses.
 	const isCodingRequest = REQUEST_KINDS_ELIGIBLE_FOR_TOOL_TRIMMING.has(requestKind);
-	// Each injector prepends to the first system message, so calling order is
-	// bottom-up: rules first (deepest), then Ponytail, then Code Simplifier.
-	// Final top-to-bottom order in the prompt: simplifier, ponytail, rules,
-	// Copilot's dynamic content. Rules express project policy; Ponytail /
-	// Code Simplifier express coding posture, so stacking posture above rules
-	// is intentional.
 	let glmMessagesWithPonytail = isCodingRequest
 		? injectRulesSystemMessage(glmMessages, getRules())
 		: glmMessages;

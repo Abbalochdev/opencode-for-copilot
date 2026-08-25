@@ -38,7 +38,7 @@ export async function pickModel(ref: ModelRef): Promise<vscode.LanguageModelChat
 	if (models.length === 0) {
 		throw new Error(
 			`No model found for vendor="${ref.vendor}" family="${ref.family}"${ref.id ? ` id="${ref.id}"` : ''}. `
-			+ 'Check glm-copilot.modelIdOverrides for the exact id string this model registers under.',
+			+ 'Check opencode-for-copilot.modelIdOverrides for the exact id string this model registers under.',
 		);
 	}
 	const model = models[0];

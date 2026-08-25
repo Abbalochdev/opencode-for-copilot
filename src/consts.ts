@@ -9,7 +9,15 @@ import type { ModelDefinition } from './types';
  */
 
 /** VS Code configuration section prefix for all extension settings. */
-export const CONFIG_SECTION = 'glm-copilot';
+export const CONFIG_SECTION = 'opencode-for-copilot';
+
+/**
+ * Pre-3.11 settings section, shared with the upstream GLM extension this
+ * fork originated from. Only read once during `migrateLegacySettings` —
+ * never at runtime — so both extensions can be installed side by side with
+ * fully independent settings.
+ */
+export const LEGACY_CONFIG_SECTION = 'glm-copilot';
 
 export const EXTERNAL_URLS = {
 	glm: {
@@ -41,6 +49,10 @@ export const LANGUAGE_MODEL_CHAT_SYSTEM_ROLE = 3;
 
 /** SecretStorage key for the GLM API key. */
 export const API_KEY_SECRET = 'glm-copilot.apiKey';
+
+/** SecretStorage keys for the OpenCode Go / Zen plan API keys. */
+export const API_KEY_GO_SECRET = 'glm-copilot.apiKey.go';
+export const API_KEY_ZEN_SECRET = 'glm-copilot.apiKey.zen';
 
 /** memento key tracking whether the welcome walkthrough has been shown. */
 export const WELCOME_SHOWN_KEY = 'glm-copilot.welcomeShown';

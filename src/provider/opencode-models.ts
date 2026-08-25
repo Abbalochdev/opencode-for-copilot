@@ -17,8 +17,9 @@
  */
 
 import {
-	OPENCODE_GO_OPENAI_BASE_URL,
-	OPENCODE_ZEN_OPENAI_BASE_URL,
+    OPENCODE_GO_OPENAI_BASE_URL,
+    OPENCODE_ZEN_OPENAI_BASE_URL,
+    type OpencodePlan,
 } from '../endpoint';
 import { logger } from '../logger';
 import type { EndpointPreset, ModelDefinition, ModelPricing, PriceCategory, PricingCurrency } from '../types';
@@ -33,6 +34,8 @@ const OPENCODE_ZEN_MODELS_URL = `${OPENCODE_ZEN_OPENAI_BASE_URL}/models`;
 // ---- Cache ----
 
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+/** After a failed fetch, retry this soon instead of serving the static fallback for a full TTL. */
+const FAILED_FETCH_RETRY_MS = 60 * 1000;
 
 let cachedModels: ModelDefinition[] | undefined;
 let cacheTimestamp = 0;
@@ -818,17 +821,14 @@ async function fetchModelIdsFromEndpoint(url: string): Promise<ReadonlySet<strin
 }
 
 /**
- * Fetch model IDs from both the Go and Zen API endpoints.
- * Returns a combined set of all available model IDs.
+ * Fetch model IDs for one OpenCode plan's catalog (Go subscription or Zen
+ * pay-as-you-go). Returns an empty set on error so callers fall back.
  */
-export async function fetchAllOpenCodeModelIds(): Promise<ReadonlySet<string>> {
-	const [goIds, zenIds] = await Promise.all([
-		fetchModelIdsFromEndpoint(OPENCODE_GO_MODELS_URL),
-		fetchModelIdsFromEndpoint(OPENCODE_ZEN_MODELS_URL),
-	]);
-	const allIds = new Set([...goIds, ...zenIds]);
-	logger.info(`Fetched ${allIds.size} models from OpenCode API (Go: ${goIds.size}, Zen: ${zenIds.size})`);
-	return allIds;
+export async function fetchAllOpenCodeModelIds(plan: OpencodePlan): Promise<ReadonlySet<string>> {
+	const url = plan === 'go' ? OPENCODE_GO_MODELS_URL : OPENCODE_ZEN_MODELS_URL;
+	const ids = await fetchModelIdsFromEndpoint(url);
+	logger.info(`Fetched ${ids.size} models from the OpenCode ${plan} catalog`);
+	return ids;
 }
 
 // ---- Auto-generation for unknown models ----
@@ -859,7 +859,7 @@ function familyFromId(id: string): string {
 }
 
 /** Build a ModelDefinition for an unknown model not in the overlay. */
-function generateDefaultModel(id: string): ModelDefinition {
+function generateDefaultModel(id: string, plan: OpencodePlan): ModelDefinition {
 	return {
 		id,
 		name: displayNameFromId(id),
@@ -870,7 +870,7 @@ function generateDefaultModel(id: string): ModelDefinition {
 		maxOutputTokens: 32_768,
 		capabilities: { toolCalling: GLM_TOOLS_LIMIT, imageInput: false, thinking: false },
 		requiresThinkingParam: false,
-		endpointPreset: 'opencode-zen',
+		endpointPreset: plan === 'go' ? 'opencode-go' : 'opencode-zen',
 	};
 }
 
@@ -891,6 +891,7 @@ const UTILITY_MODEL_IDS = new Set(['copilot-utility', 'copilot-utility-small']);
 export function buildDynamicModels(
 	fetchedIds: ReadonlySet<string>,
 	customModels: readonly ModelDefinition[],
+	plan: OpencodePlan,
 ): ModelDefinition[] {
 	const byId = new Map<string, ModelDefinition>();
 
@@ -900,7 +901,7 @@ export function buildDynamicModels(
 		if (meta) {
 			byId.set(id, { id, ...meta });
 		} else {
-			byId.set(id, generateDefaultModel(id));
+			byId.set(id, generateDefaultModel(id, plan));
 		}
 	}
 
@@ -932,13 +933,14 @@ export function buildDynamicModels(
 export async function getDynamicModels(
 	customModels: readonly ModelDefinition[],
 	fallbackModels: readonly ModelDefinition[],
+	plan: OpencodePlan,
 ): Promise<readonly ModelDefinition[]> {
 	const now = Date.now();
 	if (cachedModels && now - cacheTimestamp < CACHE_TTL_MS) {
 		return cachedModels;
 	}
 
-	const fetchedIds = await fetchAllOpenCodeModelIds();
+	const fetchedIds = await fetchAllOpenCodeModelIds(plan);
 
 	// If the API returned zero models (likely a network issue), use fallback
 	if (fetchedIds.size === 0) {
@@ -948,17 +950,24 @@ export async function getDynamicModels(
 			byId.set(model.id, model);
 		}
 		cachedModels = [...byId.values()];
-		cacheTimestamp = now;
+		// Backdate the cache so a failed fetch (e.g. startup before the VPN is
+		// up) is retried after FAILED_FETCH_RETRY_MS, not after a full TTL.
+		cacheTimestamp = now - (CACHE_TTL_MS - FAILED_FETCH_RETRY_MS);
 		return cachedModels;
 	}
 
-	cachedModels = buildDynamicModels(fetchedIds, customModels);
+	cachedModels = buildDynamicModels(fetchedIds, customModels, plan);
 	// Enrich with models.dev metadata (context windows, pricing, capabilities).
 	// Falls back silently to overlay-only data on network failure.
 	const enriched = [...await mergeModelListWithModelsDev(cachedModels)];
 	cachedModels = enriched;
 	cacheTimestamp = now;
 	return enriched;
+}
+
+/** Whether the dynamic catalog is past its TTL (or was never fetched) and should be re-fetched. */
+export function isDynamicModelsStale(): boolean {
+	return !cachedModels || Date.now() - cacheTimestamp >= CACHE_TTL_MS;
 }
 
 /**

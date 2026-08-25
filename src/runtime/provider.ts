@@ -8,13 +8,15 @@ export async function registerProvider(context: vscode.ExtensionContext): Promis
 	const provider = new GLMChatProvider(context);
 
 	context.subscriptions.push(
-		vscode.commands.registerCommand('glm-copilot.setApiKey', () => provider.configureApiKey()),
-		vscode.commands.registerCommand('glm-copilot.queryUsage', () => provider.queryUsage()),
-		vscode.commands.registerCommand('glm-copilot.clearApiKey', () => provider.clearApiKey()),
-		vscode.commands.registerCommand('glm-copilot.setVisionModel', () => provider.setVisionModel()),
-		vscode.commands.registerCommand('glm-copilot.setPonytailMode', () => setPonytailModeCommand()),
-		vscode.commands.registerCommand('glm-copilot.toggleCodeSimplifier', () => toggleCodeSimplifierCommand()),
-		vscode.lm.registerLanguageModelChatProvider('glm', provider),
+		vscode.commands.registerCommand('opencode-for-copilot.setGoApiKey', () => provider.configureApiKey('go')),
+		vscode.commands.registerCommand('opencode-for-copilot.setZenApiKey', () => provider.configureApiKey('zen')),
+		vscode.commands.registerCommand('opencode-for-copilot.refreshModels', () => provider.refreshModels()),
+		vscode.commands.registerCommand('opencode-for-copilot.queryUsage', () => provider.queryUsage()),
+		vscode.commands.registerCommand('opencode-for-copilot.clearApiKey', () => provider.clearApiKey()),
+		vscode.commands.registerCommand('opencode-for-copilot.setVisionModel', () => provider.setVisionModel()),
+		vscode.commands.registerCommand('opencode-for-copilot.setPonytailMode', () => setPonytailModeCommand()),
+		vscode.commands.registerCommand('opencode-for-copilot.toggleCodeSimplifier', () => toggleCodeSimplifierCommand()),
+		vscode.lm.registerLanguageModelChatProvider('opencode', provider),
 	);
 
 	// Copilot Chat can serve cached model info without configurationSchema.

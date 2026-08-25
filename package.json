@@ -3,7 +3,7 @@
   "displayName": "OpenCode for Copilot",
   "description": "Use OpenCode Go & Zen coding models (GLM, Kimi, DeepSeek, Claude, Grok, Qwen, free models) in the Copilot Chat model picker. Vision, thinking mode, agent tools — zero config, BYOK.",
   "icon": "resources/icon.png",
-  "version": "3.9.3",
+  "version": "3.11.0",
   "packageManager": "pnpm@11.7.0",
   "publisher": "abbalochdev",
   "license": "MIT",
@@ -51,13 +51,13 @@
   "contributes": {
     "languageModelChatProviders": [
       {
-        "vendor": "glm",
+        "vendor": "opencode",
         "displayName": "OpenCode"
       }
     ],
     "chatParticipants": [
       {
-        "id": "glm-copilot.pipeline",
+        "id": "opencode-for-copilot.pipeline",
         "name": "swarm",
         "fullName": "OpenCode Agent Swarm",
         "description": "Runs the agent swarm: parallel research agents, pre-implementation review, then implementation on the current model."
@@ -65,79 +65,87 @@
     ],
     "commands": [
       {
-        "command": "glm-copilot.setApiKey",
-        "title": "%glm-copilot.command.setApiKey%"
+        "command": "opencode-for-copilot.setGoApiKey",
+        "title": "%opencode-for-copilot.command.setGoApiKey%"
       },
       {
-        "command": "glm-copilot.getApiKey",
-        "title": "%glm-copilot.command.getApiKey%"
+        "command": "opencode-for-copilot.setZenApiKey",
+        "title": "%opencode-for-copilot.command.setZenApiKey%"
       },
       {
-        "command": "glm-copilot.queryUsage",
-        "title": "%glm-copilot.command.queryUsage%"
+        "command": "opencode-for-copilot.getApiKey",
+        "title": "%opencode-for-copilot.command.getApiKey%"
       },
       {
-        "command": "glm-copilot.clearApiKey",
-        "title": "%glm-copilot.command.clearApiKey%"
+        "command": "opencode-for-copilot.queryUsage",
+        "title": "%opencode-for-copilot.command.queryUsage%"
       },
       {
-        "command": "glm-copilot.setVisionModel",
-        "title": "%glm-copilot.command.setVisionModel%"
+        "command": "opencode-for-copilot.clearApiKey",
+        "title": "%opencode-for-copilot.command.clearApiKey%"
       },
       {
-        "command": "glm-copilot.openSettings",
-        "title": "%glm-copilot.command.openSettings%"
+        "command": "opencode-for-copilot.setVisionModel",
+        "title": "%opencode-for-copilot.command.setVisionModel%"
       },
       {
-        "command": "glm-copilot.showLogs",
-        "title": "%glm-copilot.command.showLogs%"
+        "command": "opencode-for-copilot.openSettings",
+        "title": "%opencode-for-copilot.command.openSettings%"
       },
       {
-        "command": "glm-copilot.showDiagnostics",
-        "title": "%glm-copilot.command.showDiagnostics%"
+        "command": "opencode-for-copilot.showLogs",
+        "title": "%opencode-for-copilot.command.showLogs%"
       },
       {
-        "command": "glm-copilot.openRequestDumpsFolder",
-        "title": "%glm-copilot.command.openRequestDumpsFolder%"
+        "command": "opencode-for-copilot.showDiagnostics",
+        "title": "%opencode-for-copilot.command.showDiagnostics%"
       },
       {
-        "command": "glm-copilot.setPonytailMode",
-        "title": "%glm-copilot.command.setPonytailMode%"
+        "command": "opencode-for-copilot.openRequestDumpsFolder",
+        "title": "%opencode-for-copilot.command.openRequestDumpsFolder%"
       },
       {
-        "command": "glm-copilot.toggleCodeSimplifier",
-        "title": "%glm-copilot.command.toggleCodeSimplifier%"
+        "command": "opencode-for-copilot.setPonytailMode",
+        "title": "%opencode-for-copilot.command.setPonytailMode%"
+      },
+      {
+        "command": "opencode-for-copilot.toggleCodeSimplifier",
+        "title": "%opencode-for-copilot.command.toggleCodeSimplifier%"
+      },
+      {
+        "command": "opencode-for-copilot.refreshModels",
+        "title": "%opencode-for-copilot.command.refreshModels%"
       }
     ],
     "walkthroughs": [
       {
         "id": "glmGettingStarted",
-        "title": "%glm-copilot.walkthrough.title%",
-        "description": "%glm-copilot.walkthrough.description%",
+        "title": "%opencode-for-copilot.walkthrough.title%",
+        "description": "%opencode-for-copilot.walkthrough.description%",
         "steps": [
           {
             "id": "setApiKey",
-            "title": "%glm-copilot.walkthrough.setApiKey.title%",
-            "description": "%glm-copilot.walkthrough.setApiKey.description%",
+            "title": "%opencode-for-copilot.walkthrough.setApiKey.title%",
+            "description": "%opencode-for-copilot.walkthrough.setApiKey.description%",
             "media": {
               "markdown": "resources/walkthrough/set-api-key.md"
             },
             "completionEvents": [
-              "onCommand:glm-copilot.setApiKey"
+              "onCommand:opencode-for-copilot.setGoApiKey"
             ]
           },
           {
             "id": "showModels",
-            "title": "%glm-copilot.walkthrough.showModels.title%",
-            "description": "%glm-copilot.walkthrough.showModels.description%",
+            "title": "%opencode-for-copilot.walkthrough.showModels.title%",
+            "description": "%opencode-for-copilot.walkthrough.showModels.description%",
             "media": {
               "markdown": "resources/walkthrough/show-models.md"
             }
           },
           {
             "id": "advancedSettings",
-            "title": "%glm-copilot.walkthrough.advancedSettings.title%",
-            "description": "%glm-copilot.walkthrough.advancedSettings.description%",
+            "title": "%opencode-for-copilot.walkthrough.advancedSettings.title%",
+            "description": "%opencode-for-copilot.walkthrough.advancedSettings.description%",
             "media": {
               "markdown": "resources/walkthrough/advanced-settings.md"
             }
@@ -146,16 +154,25 @@
       }
     ],
     "configuration": {
-      "title": "%glm-copilot.config.title%",
+      "title": "%opencode-for-copilot.config.title%",
       "properties": {
-        "glm-copilot.agentRoles": {
+        "opencode-for-copilot.opencodePlan": {
+          "type": "string",
+          "enum": [
+            "go",
+            "zen"
+          ],
+          "default": "go",
+          "markdownDescription": "%opencode-for-copilot.config.opencodePlan.description%"
+        },
+        "opencode-for-copilot.agentRoles": {
           "type": "object",
           "default": {},
-          "markdownDescription": "%glm-copilot.config.agentRoles.description%",
+          "markdownDescription": "%opencode-for-copilot.config.agentRoles.description%",
           "properties": {
             "research": {
               "type": "array",
-              "markdownDescription": "%glm-copilot.config.agentRoles.research.description%",
+              "markdownDescription": "%opencode-for-copilot.config.agentRoles.research.description%",
               "items": {
                 "type": "object",
                 "required": [
@@ -178,7 +195,7 @@
             },
             "review": {
               "type": "array",
-              "markdownDescription": "%glm-copilot.config.agentRoles.review.description%",
+              "markdownDescription": "%opencode-for-copilot.config.agentRoles.review.description%",
               "items": {
                 "type": "object",
                 "required": [
@@ -201,12 +218,12 @@
             }
           }
         },
-        "glm-copilot.baseUrl": {
+        "opencode-for-copilot.baseUrl": {
           "type": "string",
           "default": "",
-          "markdownDescription": "%glm-copilot.config.baseUrl.description%"
+          "markdownDescription": "%opencode-for-copilot.config.baseUrl.description%"
         },
-        "glm-copilot.endpoint": {
+        "opencode-for-copilot.endpoint": {
           "type": "string",
           "default": "opencode-go",
           "enum": [
@@ -222,57 +239,57 @@
             "international-anthropic"
           ],
           "enumItemLabels": [
-            "%glm-copilot.config.endpoint.opencodeGo.label%",
-            "%glm-copilot.config.endpoint.opencodeGoAnthropic.label%",
-            "%glm-copilot.config.endpoint.opencodeZen.label%",
-            "%glm-copilot.config.endpoint.opencodeZenAnthropic.label%",
-            "%glm-copilot.config.endpoint.chinaCoding.label%",
-            "%glm-copilot.config.endpoint.chinaStandard.label%",
-            "%glm-copilot.config.endpoint.chinaAnthropic.label%",
-            "%glm-copilot.config.endpoint.internationalCoding.label%",
-            "%glm-copilot.config.endpoint.internationalStandard.label%",
-            "%glm-copilot.config.endpoint.internationalAnthropic.label%"
+            "%opencode-for-copilot.config.endpoint.opencodeGo.label%",
+            "%opencode-for-copilot.config.endpoint.opencodeGoAnthropic.label%",
+            "%opencode-for-copilot.config.endpoint.opencodeZen.label%",
+            "%opencode-for-copilot.config.endpoint.opencodeZenAnthropic.label%",
+            "%opencode-for-copilot.config.endpoint.chinaCoding.label%",
+            "%opencode-for-copilot.config.endpoint.chinaStandard.label%",
+            "%opencode-for-copilot.config.endpoint.chinaAnthropic.label%",
+            "%opencode-for-copilot.config.endpoint.internationalCoding.label%",
+            "%opencode-for-copilot.config.endpoint.internationalStandard.label%",
+            "%opencode-for-copilot.config.endpoint.internationalAnthropic.label%"
           ],
           "markdownEnumDescriptions": [
-            "%glm-copilot.config.endpoint.opencodeGo.description%",
-            "%glm-copilot.config.endpoint.opencodeGoAnthropic.description%",
-            "%glm-copilot.config.endpoint.opencodeZen.description%",
-            "%glm-copilot.config.endpoint.opencodeZenAnthropic.description%",
-            "%glm-copilot.config.endpoint.chinaCoding.description%",
-            "%glm-copilot.config.endpoint.chinaStandard.description%",
-            "%glm-copilot.config.endpoint.chinaAnthropic.description%",
-            "%glm-copilot.config.endpoint.internationalCoding.description%",
-            "%glm-copilot.config.endpoint.internationalStandard.description%",
-            "%glm-copilot.config.endpoint.internationalAnthropic.description%"
+            "%opencode-for-copilot.config.endpoint.opencodeGo.description%",
+            "%opencode-for-copilot.config.endpoint.opencodeGoAnthropic.description%",
+            "%opencode-for-copilot.config.endpoint.opencodeZen.description%",
+            "%opencode-for-copilot.config.endpoint.opencodeZenAnthropic.description%",
+            "%opencode-for-copilot.config.endpoint.chinaCoding.description%",
+            "%opencode-for-copilot.config.endpoint.chinaStandard.description%",
+            "%opencode-for-copilot.config.endpoint.chinaAnthropic.description%",
+            "%opencode-for-copilot.config.endpoint.internationalCoding.description%",
+            "%opencode-for-copilot.config.endpoint.internationalStandard.description%",
+            "%opencode-for-copilot.config.endpoint.internationalAnthropic.description%"
           ],
-          "markdownDescription": "%glm-copilot.config.endpoint.description%"
+          "markdownDescription": "%opencode-for-copilot.config.endpoint.description%"
         },
-        "glm-copilot.maxTokens": {
+        "opencode-for-copilot.maxTokens": {
           "type": "number",
           "default": 0,
           "minimum": 0,
-          "description": "%glm-copilot.config.maxTokens.description%"
+          "description": "%opencode-for-copilot.config.maxTokens.description%"
         },
-        "glm-copilot.showProviderPrefix": {
+        "opencode-for-copilot.showProviderPrefix": {
           "type": "boolean",
           "default": false,
-          "markdownDescription": "%glm-copilot.config.showProviderPrefix.description%"
+          "markdownDescription": "%opencode-for-copilot.config.showProviderPrefix.description%"
         },
-        "glm-copilot.experimental.stabilizeToolList": {
+        "opencode-for-copilot.experimental.stabilizeToolList": {
           "type": "boolean",
           "default": false,
-          "markdownDescription": "%glm-copilot.config.experimental.stabilizeToolList.description%",
+          "markdownDescription": "%opencode-for-copilot.config.experimental.stabilizeToolList.description%",
           "tags": [
             "experimental"
           ]
         },
-        "glm-copilot.modelIdOverrides": {
+        "opencode-for-copilot.modelIdOverrides": {
           "type": "object",
           "default": {
             "copilot-utility": "deepseek-v4-flash",
             "copilot-utility-small": "deepseek-v4-flash"
           },
-          "markdownDescription": "%glm-copilot.config.modelIdOverrides.description%",
+          "markdownDescription": "%opencode-for-copilot.config.modelIdOverrides.description%",
           "additionalProperties": {
             "type": "string"
           },
@@ -287,15 +304,15 @@
             }
           }
         },
-        "glm-copilot.customModels": {
+        "opencode-for-copilot.customModels": {
           "type": "array",
           "default": [],
-          "markdownDescription": "%glm-copilot.config.customModels.description%",
+          "markdownDescription": "%opencode-for-copilot.config.customModels.description%",
           "items": {
             "anyOf": [
               {
                 "type": "string",
-                "description": "%glm-copilot.config.customModels.string.description%"
+                "description": "%opencode-for-copilot.config.customModels.string.description%"
               },
               {
                 "type": "object",
@@ -306,50 +323,50 @@
                 "properties": {
                   "id": {
                     "type": "string",
-                    "description": "%glm-copilot.config.customModels.id.description%"
+                    "description": "%opencode-for-copilot.config.customModels.id.description%"
                   },
                   "name": {
                     "type": "string",
-                    "description": "%glm-copilot.config.customModels.name.description%"
+                    "description": "%opencode-for-copilot.config.customModels.name.description%"
                   },
                   "maxInputTokens": {
                     "type": "number",
                     "minimum": 1,
-                    "description": "%glm-copilot.config.customModels.maxInputTokens.description%"
+                    "description": "%opencode-for-copilot.config.customModels.maxInputTokens.description%"
                   },
                   "maxOutputTokens": {
                     "type": "number",
                     "minimum": 1,
-                    "description": "%glm-copilot.config.customModels.maxOutputTokens.description%"
+                    "description": "%opencode-for-copilot.config.customModels.maxOutputTokens.description%"
                   },
                   "toolCalling": {
                     "type": "boolean",
-                    "description": "%glm-copilot.config.customModels.toolCalling.description%"
+                    "description": "%opencode-for-copilot.config.customModels.toolCalling.description%"
                   },
                   "thinking": {
                     "type": "boolean",
-                    "description": "%glm-copilot.config.customModels.thinking.description%"
+                    "description": "%opencode-for-copilot.config.customModels.thinking.description%"
                   }
                 }
               }
             ]
           }
         },
-        "glm-copilot.visionModel": {
+        "opencode-for-copilot.visionModel": {
           "type": "string",
           "default": "",
           "tags": [
             "advanced"
           ],
-          "markdownDescription": "%glm-copilot.config.visionModel.description%"
+          "markdownDescription": "%opencode-for-copilot.config.visionModel.description%"
         },
-        "glm-copilot.visionPrompt": {
+        "opencode-for-copilot.visionPrompt": {
           "type": "string",
           "editPresentation": "multilineText",
           "default": "Describe all image attachments in this message.\n\nIf there is one image, describe it directly.\nIf there are multiple images:\n1. Describe each image separately, preserving their order.\n2. Then provide a combined description explaining the overall context and relationships across the images.\n\nReturn one concise factual description suitable for inserting into a text-only chat prompt. Include visible text, objects, UI elements, people, and relevant context. Do not invent details.",
-          "markdownDescription": "%glm-copilot.config.visionPrompt.description%"
+          "markdownDescription": "%opencode-for-copilot.config.visionPrompt.description%"
         },
-        "glm-copilot.debugMode": {
+        "opencode-for-copilot.debugMode": {
           "type": "string",
           "default": "minimal",
           "enum": [
@@ -358,18 +375,18 @@
             "verbose"
           ],
           "enumItemLabels": [
-            "%glm-copilot.config.debugMode.minimal.label%",
-            "%glm-copilot.config.debugMode.metadata.label%",
-            "%glm-copilot.config.debugMode.verbose.label%"
+            "%opencode-for-copilot.config.debugMode.minimal.label%",
+            "%opencode-for-copilot.config.debugMode.metadata.label%",
+            "%opencode-for-copilot.config.debugMode.verbose.label%"
           ],
           "markdownEnumDescriptions": [
-            "%glm-copilot.config.debugMode.minimal.description%",
-            "%glm-copilot.config.debugMode.metadata.description%",
-            "%glm-copilot.config.debugMode.verbose.description%"
+            "%opencode-for-copilot.config.debugMode.minimal.description%",
+            "%opencode-for-copilot.config.debugMode.metadata.description%",
+            "%opencode-for-copilot.config.debugMode.verbose.description%"
           ],
-          "markdownDescription": "%glm-copilot.config.debugMode.description%"
+          "markdownDescription": "%opencode-for-copilot.config.debugMode.description%"
         },
-        "glm-copilot.ponytailMode": {
+        "opencode-for-copilot.ponytailMode": {
           "type": "string",
           "default": "full",
           "enum": [
@@ -379,25 +396,25 @@
             "ultra"
           ],
           "enumItemLabels": [
-            "%glm-copilot.config.ponytailMode.off.label%",
-            "%glm-copilot.config.ponytailMode.lite.label%",
-            "%glm-copilot.config.ponytailMode.full.label%",
-            "%glm-copilot.config.ponytailMode.ultra.label%"
+            "%opencode-for-copilot.config.ponytailMode.off.label%",
+            "%opencode-for-copilot.config.ponytailMode.lite.label%",
+            "%opencode-for-copilot.config.ponytailMode.full.label%",
+            "%opencode-for-copilot.config.ponytailMode.ultra.label%"
           ],
           "markdownEnumDescriptions": [
-            "%glm-copilot.config.ponytailMode.off.description%",
-            "%glm-copilot.config.ponytailMode.lite.description%",
-            "%glm-copilot.config.ponytailMode.full.description%",
-            "%glm-copilot.config.ponytailMode.ultra.description%"
+            "%opencode-for-copilot.config.ponytailMode.off.description%",
+            "%opencode-for-copilot.config.ponytailMode.lite.description%",
+            "%opencode-for-copilot.config.ponytailMode.full.description%",
+            "%opencode-for-copilot.config.ponytailMode.ultra.description%"
           ],
-          "markdownDescription": "%glm-copilot.config.ponytailMode.description%"
+          "markdownDescription": "%opencode-for-copilot.config.ponytailMode.description%"
         },
-        "glm-copilot.codeSimplifier": {
+        "opencode-for-copilot.codeSimplifier": {
           "type": "boolean",
           "default": true,
-          "markdownDescription": "%glm-copilot.config.codeSimplifier.description%"
+          "markdownDescription": "%opencode-for-copilot.config.codeSimplifier.description%"
         },
-        "glm-copilot.stripThinkTags": {
+        "opencode-for-copilot.stripThinkTags": {
           "type": "string",
           "default": "auto",
           "enum": [
@@ -406,28 +423,28 @@
             "never"
           ],
           "enumItemLabels": [
-            "%glm-copilot.config.stripThinkTags.auto.label%",
-            "%glm-copilot.config.stripThinkTags.always.label%",
-            "%glm-copilot.config.stripThinkTags.never.label%"
+            "%opencode-for-copilot.config.stripThinkTags.auto.label%",
+            "%opencode-for-copilot.config.stripThinkTags.always.label%",
+            "%opencode-for-copilot.config.stripThinkTags.never.label%"
           ],
           "markdownEnumDescriptions": [
-            "%glm-copilot.config.stripThinkTags.auto.description%",
-            "%glm-copilot.config.stripThinkTags.always.description%",
-            "%glm-copilot.config.stripThinkTags.never.description%"
+            "%opencode-for-copilot.config.stripThinkTags.auto.description%",
+            "%opencode-for-copilot.config.stripThinkTags.always.description%",
+            "%opencode-for-copilot.config.stripThinkTags.never.description%"
           ],
-          "markdownDescription": "%glm-copilot.config.stripThinkTags.description%"
+          "markdownDescription": "%opencode-for-copilot.config.stripThinkTags.description%"
         },
-        "glm-copilot.rules": {
+        "opencode-for-copilot.rules": {
           "type": "array",
           "default": [],
           "items": { "type": "string" },
-          "markdownDescription": "%glm-copilot.config.rules.description%"
+          "markdownDescription": "%opencode-for-copilot.config.rules.description%"
         },
-        "glm-copilot.allowExtraTools": {
+        "opencode-for-copilot.allowExtraTools": {
           "type": "boolean",
           "default": false,
           "tags": ["experimental"],
-          "markdownDescription": "%glm-copilot.config.allowExtraTools.description%"
+          "markdownDescription": "%opencode-for-copilot.config.allowExtraTools.description%"
         }
       }
     }

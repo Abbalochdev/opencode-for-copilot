@@ -11,8 +11,8 @@ import {
 type LanguageModelChatRequestMessagePart =
 	vscode.LanguageModelChatRequestMessage['content'][number];
 
-let visionProxyConfigurationUrl = 'command:glm-copilot.setVisionModel';
-let showLogsUrl = 'command:glm-copilot.showLogs';
+let visionProxyConfigurationUrl = 'command:opencode-for-copilot.setVisionModel';
+let showLogsUrl = 'command:opencode-for-copilot.showLogs';
 
 export function setVisionProxyConfigurationUrl(url: string): void {
 	visionProxyConfigurationUrl = url;

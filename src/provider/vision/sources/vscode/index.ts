@@ -10,7 +10,7 @@ import type {
 import { getVSCodeVisionTargetChatSessionType } from './model';
 
 const EXCLUDED_VISION_MODEL_IDS = new Set(['copilot-utility', 'copilot-utility-small']);
-const EXCLUDED_VISION_MODEL_VENDORS = new Set(['glm', 'claude-code', 'copilotcli']);
+const EXCLUDED_VISION_MODEL_VENDORS = new Set(['opencode', 'claude-code', 'copilotcli']);
 const EXCLUDED_VISION_TARGET_CHAT_SESSION_TYPES = new Set(['claude-code', 'copilotcli']);
 const VSCODE_VISION_MODEL_KEY_SEPARATOR = '/';
 
@@ -115,14 +115,14 @@ export class VSCodeLanguageModelVisionDescriber implements VisionDescriber {
 }
 
 export function getVisionPrompt(): string {
-	const config = vscode.workspace.getConfiguration('glm-copilot');
+	const config = vscode.workspace.getConfiguration('opencode-for-copilot');
 	return (
 		config.get<string>('visionPrompt', IMAGE_DESCRIPTION_PROMPT).trim() || IMAGE_DESCRIPTION_PROMPT
 	);
 }
 
 export function getConfiguredVisionModelKey(): string | undefined {
-	const config = vscode.workspace.getConfiguration('glm-copilot');
+	const config = vscode.workspace.getConfiguration('opencode-for-copilot');
 	const key = config.get<string>('visionModel', '');
 	return key.trim() || undefined;
 }
@@ -136,7 +136,7 @@ export async function saveVSCodeVisionModelKey(key: string): Promise<void> {
 	if (!normalizedKey) {
 		throw new Error(t('vision.panel.error.required', t('vision.panel.source.vscodeLm')));
 	}
-	const config = vscode.workspace.getConfiguration('glm-copilot');
+	const config = vscode.workspace.getConfiguration('opencode-for-copilot');
 	await config.update('visionModel', normalizedKey, vscode.ConfigurationTarget.Global);
 }
 

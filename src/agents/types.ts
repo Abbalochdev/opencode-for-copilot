@@ -1,4 +1,4 @@
-/** A model reference resolved from `glm-copilot.agentRoles` settings. */
+/** A model reference resolved from `opencode-for-copilot.agentRoles` settings. */
 export interface ModelRef {
 	vendor: string;
 	family: string;

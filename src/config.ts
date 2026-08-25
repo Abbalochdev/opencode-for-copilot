@@ -1,24 +1,25 @@
 import vscode from 'vscode';
-import { CONFIG_SECTION, MODELS } from './consts';
+import { CONFIG_SECTION, LEGACY_CONFIG_SECTION, MODELS } from './consts';
 import {
-	deriveEndpointPreset,
-	normalizeBaseUrl,
-	resolveApiKeyUrl,
-	resolveEndpointApiKeyUrl,
-	resolveEndpointBaseUrl,
-	resolveEndpointProtocol,
+    deriveEndpointPreset,
+    normalizeBaseUrl,
+    resolveEndpointApiKeyUrl,
+    resolveEndpointBaseUrl,
+    resolveEndpointProtocol,
+    resolvePlanDefaultEndpoint,
+    type OpencodePlan
 } from './endpoint';
 import {
-	getDynamicModels
+    getDynamicModels
 } from './provider/opencode-models';
 import type { PonytailMode } from './provider/ponytail';
 import type {
-	ApiMode,
-	ApiProtocol,
-	ApiRegion,
-	CustomModelConfig,
-	EndpointPreset,
-	ModelDefinition,
+    ApiMode,
+    ApiProtocol,
+    ApiRegion,
+    CustomModelConfig,
+    EndpointPreset,
+    ModelDefinition,
 } from './types';
 
 export type DebugMode = 'minimal' | 'metadata' | 'verbose';
@@ -70,9 +71,10 @@ export function getRegion(): ApiRegion {
 /**
  * Get the single-value endpoint preset.
  *
- * Falls back to deriving a preset from the legacy (region, apiMode,
- * apiProtocol) tuple when `endpoint` is not explicitly configured. This keeps
- * existing user settings working without a destructive migration.
+ * Resolution order:
+ *   1. Explicit `endpoint` setting (always wins)
+ *   2. Explicitly configured legacy (region, apiMode, apiProtocol) tuple
+ *   3. The active OpenCode plan's default endpoint (`opencode-go` / `opencode-zen`)
  */
 export function getEndpoint(): EndpointPreset {
 	const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
@@ -80,7 +82,92 @@ export function getEndpoint(): EndpointPreset {
 	if (explicit) {
 		return explicit;
 	}
-	return deriveEndpointFromLegacy();
+	if (hasExplicitLegacyEndpointConfig()) {
+		return deriveEndpointFromLegacy();
+	}
+	return resolvePlanDefaultEndpoint(getOpencodePlan());
+}
+
+/** Which OpenCode plan's key and model catalog to use — `opencodePlan` setting. */
+export function getOpencodePlan(): OpencodePlan {
+	const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
+	return config.get<string>('opencodePlan') === 'zen' ? 'zen' : 'go';
+}
+
+// ---- One-time legacy settings migration (glm-copilot -> opencode-for-copilot) ----
+
+const LEGACY_SETTING_KEYS = [
+	'opencodePlan',
+	'agentRoles',
+	'baseUrl',
+	'endpoint',
+	'maxTokens',
+	'showProviderPrefix',
+	'experimental.stabilizeToolList',
+	'modelIdOverrides',
+	'customModels',
+	'visionModel',
+	'visionPrompt',
+	'debugMode',
+	'ponytailMode',
+	'codeSimplifier',
+	'stripThinkTags',
+	// Legacy keys no longer contributed but still read for backward compatibility.
+	'apiKey',
+	'region',
+	'apiMode',
+	'apiProtocol',
+	'debug',
+] as const;
+
+const SETTINGS_MIGRATION_KEY = 'opencode-for-copilot.settingsMigratedFromLegacy.version';
+const SETTINGS_MIGRATION_VERSION = 1;
+
+/**
+ * One-time copy of user-set `glm-copilot.*` values into the new
+ * `opencode-for-copilot.*` section. The old section is shared with the
+ * upstream GLM extension (same origin); reading it live would couple the two
+ * extensions' configuration. After this runs, the legacy section is never
+ * read again — both extensions can coexist with independent settings.
+ */
+export async function migrateLegacySettings(context: vscode.ExtensionContext): Promise<void> {
+	if (context.globalState.get<number>(SETTINGS_MIGRATION_KEY, 0) >= SETTINGS_MIGRATION_VERSION) {
+		return;
+	}
+	for (const key of LEGACY_SETTING_KEYS) {
+		const next = vscode.workspace.getConfiguration(CONFIG_SECTION).inspect(key);
+		if (
+			next?.globalValue !== undefined ||
+			next?.workspaceValue !== undefined ||
+			next?.workspaceFolderValue !== undefined
+		) {
+			continue;
+		}
+		const legacy = vscode.workspace.getConfiguration(LEGACY_CONFIG_SECTION).inspect(key);
+		if (legacy?.globalValue !== undefined) {
+			await vscode.workspace
+				.getConfiguration(CONFIG_SECTION)
+				.update(key, legacy.globalValue, vscode.ConfigurationTarget.Global);
+		}
+		if (legacy?.workspaceValue !== undefined) {
+			await vscode.workspace
+				.getConfiguration(CONFIG_SECTION)
+				.update(key, legacy.workspaceValue, vscode.ConfigurationTarget.Workspace);
+		}
+	}
+	await context.globalState.update(SETTINGS_MIGRATION_KEY, SETTINGS_MIGRATION_VERSION);
+}
+
+function hasExplicitLegacyEndpointConfig(): boolean {
+	const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
+	return (['region', 'apiMode', 'apiProtocol'] as const).some((key) => {
+		const inspection = config.inspect<string>(key);
+		return (
+			inspection?.globalValue !== undefined ||
+			inspection?.workspaceValue !== undefined ||
+			inspection?.workspaceFolderValue !== undefined
+		);
+	});
 }
 
 /**
@@ -105,14 +192,9 @@ export function getApiProtocol(): ApiProtocol {
 }
 
 export function getApiKeyUrl(): string {
-	const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
-	const explicitEndpoint = normalizeEndpointPreset(config.get<string>('endpoint'));
-	if (explicitEndpoint) {
-		return resolveEndpointApiKeyUrl(explicitEndpoint);
-	}
-	// Legacy path: derive from the old tuple so old configs keep pointing at
-	// the right key-management page.
-	return resolveApiKeyUrl(getApiMode(), getRegion());
+	// Follows the same resolution as getEndpoint(): explicit preset, then
+	// explicitly-configured legacy tuple, then the active OpenCode plan.
+	return resolveEndpointApiKeyUrl(getEndpoint());
 }
 
 function deriveEndpointFromLegacy(): EndpointPreset {
@@ -226,7 +308,7 @@ export function listProviderModels(): ModelDefinition[] {
 export async function refreshDynamicModels(): Promise<void> {
 	const customModels = getCustomModels();
 	const fallback = dynamicModelsOverride ?? MODELS;
-	dynamicModelsOverride = await getDynamicModels(customModels, fallback);
+	dynamicModelsOverride = await getDynamicModels(customModels, fallback, getOpencodePlan());
 }
 
 export function findModelDefinition(modelId: string): ModelDefinition | undefined {

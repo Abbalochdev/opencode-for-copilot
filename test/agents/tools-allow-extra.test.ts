@@ -22,7 +22,7 @@ describe('selectPipelineTools (allowExtraTools)', () => {
 	});
 
 	it('returns only curated tools by default (whitelist enforced)', () => {
-		__setConfigurationValue('glm-copilot.allowExtraTools', false);
+		__setConfigurationValue('opencode-for-copilot.allowExtraTools', false);
 		const out = selectPipelineTools([
 			tool(KNOWN_PIPELINE),
 			tool('mcp_sqlite_query'),
@@ -32,7 +32,7 @@ describe('selectPipelineTools (allowExtraTools)', () => {
 	});
 
 	it('appends extra tools when allowExtraTools is on, curated first', () => {
-		__setConfigurationValue('glm-copilot.allowExtraTools', true);
+		__setConfigurationValue('opencode-for-copilot.allowExtraTools', true);
 		const out = selectPipelineTools([
 			tool('mcp_browser_navigate'),
 			tool(KNOWN_MUTATOR),
@@ -43,7 +43,7 @@ describe('selectPipelineTools (allowExtraTools)', () => {
 	});
 
 	it('still enforces the 128-tool hard cap after pass-through', () => {
-		__setConfigurationValue('glm-copilot.allowExtraTools', true);
+		__setConfigurationValue('opencode-for-copilot.allowExtraTools', true);
 		// Curated set has ~25 entries; padding with enough known-names to verify
 		// the slice applies AFTER merging curated + extras (not before).
 		const curatedNames = [
@@ -65,7 +65,7 @@ describe('selectPipelineTools (allowExtraTools)', () => {
 	});
 
 	it('keeps the curated whitelist behavior when allowExtraTools is on but only curated tools exist', () => {
-		__setConfigurationValue('glm-copilot.allowExtraTools', true);
+		__setConfigurationValue('opencode-for-copilot.allowExtraTools', true);
 		const out = selectPipelineTools([tool(KNOWN_PIPELINE), tool(KNOWN_MUTATOR)]);
 		expect(out.map((t) => t.name).sort()).toEqual([KNOWN_MUTATOR, KNOWN_PIPELINE]);
 	});
@@ -77,7 +77,7 @@ describe('selectReadOnlyTools (allowExtraTools)', () => {
 	});
 
 	it('returns only curated read-only tools by default', () => {
-		__setConfigurationValue('glm-copilot.allowExtraTools', false);
+		__setConfigurationValue('opencode-for-copilot.allowExtraTools', false);
 		const out = selectReadOnlyTools([
 			tool(KNOWN_READONLY),
 			tool('mcp_sqlite_query'),
@@ -87,7 +87,7 @@ describe('selectReadOnlyTools (allowExtraTools)', () => {
 	});
 
 	it('adds read-only extras (query/read/search) when allowExtraTools is on', () => {
-		__setConfigurationValue('glm-copilot.allowExtraTools', true);
+		__setConfigurationValue('opencode-for-copilot.allowExtraTools', true);
 		const out = selectReadOnlyTools([
 			tool(KNOWN_READONLY),
 			tool('mcp_sqlite_query'), // contains "query"
@@ -103,7 +103,7 @@ describe('selectReadOnlyTools (allowExtraTools)', () => {
 	});
 
 	it('does NOT auto-promote mutators into the read-only pool even with pass-through', () => {
-		__setConfigurationValue('glm-copilot.allowExtraTools', true);
+		__setConfigurationValue('opencode-for-copilot.allowExtraTools', true);
 		const out = selectReadOnlyTools([
 			tool('mcp_browser_click'), // not in read-only verbs
 			tool('mcp_db_write_row'),
@@ -112,7 +112,7 @@ describe('selectReadOnlyTools (allowExtraTools)', () => {
 	});
 
 	it('read-only name heuristic is case-insensitive', () => {
-		__setConfigurationValue('glm-copilot.allowExtraTools', true);
+		__setConfigurationValue('opencode-for-copilot.allowExtraTools', true);
 		const out = selectReadOnlyTools([tool('MCP_Graphics_FETCH')]);
 		expect(out.map((t) => t.name)).toEqual(['MCP_Graphics_FETCH']);
 	});

@@ -15,7 +15,7 @@ export class UsageCostStatus implements vscode.Disposable {
 		this.tracker = new UsageCostTracker(store);
 		this.item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 92);
 		this.item.name = 'GLM estimated cost';
-		this.item.command = 'glm-copilot.showLogs';
+		this.item.command = 'opencode-for-copilot.showLogs';
 		this.render();
 	}
 

@@ -275,9 +275,37 @@ This is **not** something this extension sanitizes, by design:
 
 If you hit this on a relay, the supported options are:
 
-- Switch `glm-copilot.baseUrl` back to the OpenCode or official GLM endpoint (leave empty and use `endpoint`).
+- Switch `opencode-for-copilot.baseUrl` back to the OpenCode or official GLM endpoint (leave empty and use `endpoint`).
 - Open a request dump with **OpenCode: Open Request Dumps Folder** and inspect the offending tool schema, then report the strict-validation bug to your relay.
 - The error is also written to the OpenCode output channel — you can copy the full server response from there.
+
+## Coexistence & Recent Fixes (v3.9.1 → v3.11.0)
+
+This fork originated from *GLM for VSCode Copilot* and reused its identifiers. Installing both side by side caused them to fight over the same global namespaces. Everything is now namespaced independently, so **both extensions can be installed at the same time**.
+
+| Surface | Before (collided with upstream) | Now |
+| --- | --- | --- |
+| Command IDs | `glm-copilot.setApiKey` … | `opencode-for-copilot.setGoApiKey` / `setZenApiKey` / `refreshModels` / … |
+| Model vendor | `glm` (model IDs `glm/glm-5` …) — same IDs as upstream, so picker entries crossed over between extensions | `opencode` (`opencode/glm-5`, `opencode/gpt-5.6-luna`, …) |
+| API keys | One shared key slot | Separate Go-subscription and Zen pay-as-you-go keys; requests pick the key by endpoint URL automatically |
+| Settings section | `glm-copilot.*` (shared — configuring one extension changed the other) | `opencode-for-copilot.*` (one-time migration of existing values; the old section is never read again) |
+| Output channel | `GLM` (both extensions logged into one channel) | `OpenCode` |
+
+Key features introduced along the way:
+
+- **Per-plan model catalog** — the `opencode-for-copilot.opencodePlan` setting (`go`, default, or `zen`) selects which plan's model list, default endpoint, and API key to use. The Go plan hides Zen-only models (Claude, free tier) that a Go subscription cannot call, so you no longer get `401 Insufficient balance` after picking them.
+- **Live model catalog** — the list is fetched from the official OpenCode endpoints and re-fetched when stale: opening the picker past the TTL refreshes in the background, failed fetches retry after 60 s instead of serving the static fallback for 5 minutes (covers starting VS Code before your VPN is up), and **OpenCode: Refresh Model List** forces an immediate re-fetch.
+- **Clearer errors** — a Zen-only-model billing failure explains that the *model choice* is the problem, not the API key.
+- **Agent swarm participant** moved to `opencode-for-copilot.pipeline` (re-type `@swarm` once after updating).
+
+### Stale model-picker entries ("ghost" models that no longer work)
+
+VS Code caches per-model state (pinned, recently used, selected) under `vendor/id`. If you used earlier builds of this extension (or sibling forks like `ltmoerdani.opencode-copilot-chat`), those vendors (`opencodego/…`, `glm/…`) may leave ghost entries pinned at the top of the picker. Uninstall the other fork(s), then clear the leftovers:
+
+```powershell
+# Close all VS Code windows first, then:
+node -e "const {DatabaseSync}=require('node:sqlite');const p=process.env.APPDATA+'/Code/User/globalStorage/state.vscdb';const db=new DatabaseSync(p);for(const k of ['chatModelPinned','chatModelRecentlyUsed']){const r=db.prepare('SELECT value FROM ItemTable WHERE key=?').get(k);const l=JSON.parse(r.value);const c=l.filter(id=>!id.startsWith('opencodego/')&&!id.startsWith('opencodezen/'));db.prepare('UPDATE ItemTable SET value=? WHERE key=?').run(JSON.stringify(c),k);console.log(k,c)}"
+```
 
 ## Compared to alternatives
 

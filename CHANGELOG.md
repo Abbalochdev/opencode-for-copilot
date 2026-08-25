@@ -1,5 +1,28 @@
 # Changelog
 
+
+## [3.11.0](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.10.1...v3.11.0) (2026-08-25)
+
+### Features
+
+* **coexistence:** fully independent settings from the upstream *GLM for VS Code Copilot* extension — all settings move to the new `opencode-for-copilot.*` section (the old `glm-copilot.*` section is shared with the upstream extension, so configuring one extension used to change the other's behaviour). Existing user-set values are migrated once on activation and the legacy section is never read again; both extensions can now be installed side by side with completely separate configuration. Also in this release: the log channel is renamed `GLM` → `OpenCode` (the two extensions' logs no longer interleave in one output channel), and the `@swarm` participant ID moves to `opencode-for-copilot.pipeline` (re-type `@swarm` once after updating).
+
+
+## [3.10.1](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.10.0...v3.10.1) (2026-08-25)
+
+### Fixes
+
+* **commands:** drop the ambiguous `Set API Key` command — with separate Go/Zen keys it was unclear which slot it wrote; error-notice URIs and the walkthrough button now open the key prompt for the active plan. `Get API Key` is retitled **Open API Key Page** (it opens the website, it does not read the stored key) and `Clear API Key` is retitled **Clear All API Keys** (it clears both slots).
+* **models:** the catalog now re-fetches when stale — opening the model picker past the 5-minute TTL triggers a background refresh (covers VPN/network changes mid-session without a window reload), a failed fetch retries after 60 s instead of serving the static fallback list for a full TTL (covers startup before the network is up, which made the list diverge from the website), and a new **OpenCode: Refresh Model List** command forces an immediate re-fetch.
+
+
+## [3.10.0](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.9.3...v3.10.0) (2026-08-25)
+
+### Features
+
+* **auth:** separate API keys per OpenCode plan — new `OpenCode: Set Go API Key` / `OpenCode: Set Zen API Key` commands store the Go-subscription and Zen pay-as-you-go keys in their own secret slots, and a new `glm-copilot.opencodePlan` setting (`go` | `zen`, default `go`) picks the active plan. The plan drives the model catalog (Go shows only Go-subscription models; Zen shows the full catalog including Claude and the free tier), the default endpoint when nothing else is configured (`opencode-go` / `opencode-zen` — explicit `endpoint` settings and explicitly-configured legacy region/apiMode tuples still win), and which slot `Set API Key` writes. Requests select the key by endpoint URL, so a Zen-only model automatically uses the Zen key. Existing stored keys keep working as the Go fallback; `Clear API Key` now removes all stored keys.
+
+
 ## [3.9.3]
 
 ### Features
@@ -19,6 +42,7 @@
 
 * **chore:** bump version to 3.9.3
 
+
 ## [3.9.2]
 
 ### Features
@@ -29,6 +53,7 @@
 ### Tests
 
 * **test:** add `test/provider/rules.test.ts` (8 cases — formatter + injector contract, no-op on empty/whitespace, immutability, ordering) and `test/agents/tools-allow-extra.test.ts` (8 cases — default whitelist enforcement, curated-first ordering under pass-through, 100-tool cap after pass-through, read-only name heuristic case-insensitivity). Extend `test/provider/system-instructions.test.ts` with 5 cases covering rules injection, utility-chat skip, and the simplifier→ponytail→rules stacking order.
+
 
 ## [3.9.1](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.9.0...v3.9.1) (2026-08-12)
 
@@ -44,6 +69,7 @@
 ### Chores
 
 * **chore:** bump version to 3.9.1
+
 
 ## [3.9.0](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.8.3...v3.9.0) (2026-08-09)
 

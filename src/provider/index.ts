@@ -2,19 +2,25 @@ import { createHash } from 'crypto';
 import vscode from 'vscode';
 import { AuthManager } from '../auth';
 import {
-	getBaseUrl,
-	getPonytailMode,
-	getStabilizeToolListEnabled,
-	listProviderModels,
-	refreshDynamicModels,
+    getBaseUrl,
+    getOpencodePlan,
+    getPonytailMode,
+    getStabilizeToolListEnabled,
+    listProviderModels,
+    refreshDynamicModels,
 } from '../config';
-import { API_KEY_SECRET, CONFIG_SECTION } from '../consts';
-import { isOpencodeBaseUrl, OPENCODE_GO_USAGE_CONSOLE_URL } from '../endpoint';
+import { API_KEY_GO_SECRET, API_KEY_SECRET, API_KEY_ZEN_SECRET, CONFIG_SECTION } from '../consts';
+import {
+    isOpencodeBaseUrl,
+    OPENCODE_GO_USAGE_CONSOLE_URL,
+    type OpencodePlan,
+} from '../endpoint';
 import { t } from '../i18n';
 import { logger } from '../logger';
 import { createCacheDiagnosticsRecorder, dumpProviderInput } from './debug';
-import { toChatInfo } from './models';
+import { filterModelsForPlan, toChatInfo } from './models';
 import { setModelsDevSnapshotStorage } from './models-dev';
+import { invalidateModelCache, isDynamicModelsStale } from './opencode-models';
 import { getPricingCurrencyForBaseUrl } from './pricing/currency';
 import { UsageCostStatus } from './pricing/status';
 import { clearClientCache, prepareChatRequest } from './request';
@@ -128,8 +134,7 @@ export class GLMChatProvider implements vscode.LanguageModelChatProvider {
 				if (
 					e.affectsConfiguration(`${CONFIG_SECTION}.apiKey`) ||
 					e.affectsConfiguration(`${CONFIG_SECTION}.baseUrl`) ||
-					e.affectsConfiguration(`${CONFIG_SECTION}.endpoint`) ||
-					e.affectsConfiguration(`${CONFIG_SECTION}.customModels`) ||
+					e.affectsConfiguration(`${CONFIG_SECTION}.endpoint`) ||						e.affectsConfiguration(`${CONFIG_SECTION}.opencodePlan`) ||					e.affectsConfiguration(`${CONFIG_SECTION}.customModels`) ||
 					e.affectsConfiguration(`${CONFIG_SECTION}.modelIdOverrides`)
 				) {
 					// Discard stale GLMClient instances whose baseUrl/apiKey/protocol may have changed.
@@ -145,7 +150,11 @@ export class GLMChatProvider implements vscode.LanguageModelChatProvider {
 			// When another window sets/clears the API key, refresh this window's
 			// model picker so the warning state stays in sync.
 			context.secrets.onDidChange((e) => {
-				if (e.key === API_KEY_SECRET) {
+				if (
+					e.key === API_KEY_SECRET ||
+					e.key === API_KEY_GO_SECRET ||
+					e.key === API_KEY_ZEN_SECRET
+				) {
 					this.refreshModelPicker();
 				}
 			}),
@@ -154,15 +163,22 @@ export class GLMChatProvider implements vscode.LanguageModelChatProvider {
 
 	// ---- Public commands ----
 
-	async configureApiKey(): Promise<void> {
-		const saved = await this.authManager.promptForApiKey();
+	async configureApiKey(plan: OpencodePlan = getOpencodePlan()): Promise<void> {
+		const saved = await this.authManager.promptForApiKey(plan);
 		if (saved) {
 			this.refreshModelPicker();
 		}
 	}
 
+	/** Manually re-fetch the model catalog from the OpenCode API. */
+	async refreshModels(): Promise<void> {
+		invalidateModelCache();
+		await refreshDynamicModels();
+		this.refreshModelPicker();
+	}
+
 	async clearApiKey(): Promise<void> {
-		await this.authManager.deleteApiKey();
+		await this.authManager.deleteAllApiKeys();
 		this.refreshModelPicker();
 		vscode.window.showInformationMessage(t('auth.removed'));
 	}
@@ -219,7 +235,7 @@ export class GLMChatProvider implements vscode.LanguageModelChatProvider {
 		// instead of leaving stale entries behind after deactivate. The returned
 		// model list itself is unused — we only call this for its side effect.
 		try {
-			await vscode.lm.selectChatModels({ vendor: 'glm' });
+			await vscode.lm.selectChatModels({ vendor: 'opencode' });
 		} catch (error) {
 			logger.warn('Failed to refresh GLM models during deactivate', error);
 		}
@@ -239,9 +255,19 @@ export class GLMChatProvider implements vscode.LanguageModelChatProvider {
 			return [];
 		}
 
-		const hasKey = await this.authManager.hasApiKey();
+		const plan = getOpencodePlan();
+		// Stale catalog → refresh in the background and re-notify, so VPN /
+		// network changes surface the next time the picker opens without a
+		// window reload. The change event re-queries us; by then the cache is
+		// fresh (or on the failed-fetch retry backoff), so this cannot loop.
+		if (isDynamicModelsStale()) {
+			void refreshDynamicModels().then(() => this.refreshModelPicker());
+		}
+		const hasKey = await this.authManager.hasPlanApiKey(plan);
 		const pricingCurrency = getPricingCurrencyForBaseUrl(getBaseUrl());
-		return listProviderModels().map((model) => toChatInfo(model, hasKey, pricingCurrency));
+		return filterModelsForPlan(listProviderModels(), plan).map((model) =>
+			toChatInfo(model, hasKey, pricingCurrency),
+		);
 	}
 
 	async provideLanguageModelChatResponse(
