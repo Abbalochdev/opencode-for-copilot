@@ -170,21 +170,21 @@ function buildConfig(
 function parseAgentRoleConfig(
 	raw: unknown,
 ): { research?: ModelRef[]; review?: ModelRef[]; implementFallback?: ModelRef[] } | undefined {
-if (typeof raw !== 'object' || raw === null) {
-return undefined;
-}
-const obj = raw as Record<string, unknown>;
-const research = parseModelRefs(obj.research);
-const review = parseModelRefs(obj.review);
-const implementFallback = parseModelRefs(obj.implementFallback);
-if (research.length === 0 && review.length === 0 && implementFallback.length === 0) {
-return undefined;
-}
-return {
-...(research.length > 0 ? { research } : {}),
-...(review.length > 0 ? { review } : {}),
-...(implementFallback.length > 0 ? { implementFallback } : {}),
-};
+	if (typeof raw !== 'object' || raw === null) {
+		return undefined;
+	}
+	const obj = raw as Record<string, unknown>;
+	const research = parseModelRefs(obj.research);
+	const review = parseModelRefs(obj.review);
+	const implementFallback = parseModelRefs(obj.implementFallback);
+	if (research.length === 0 && review.length === 0 && implementFallback.length === 0) {
+		return undefined;
+	}
+	return {
+		...(research.length > 0 ? { research } : {}),
+		...(review.length > 0 ? { review } : {}),
+		...(implementFallback.length > 0 ? { implementFallback } : {}),
+	};
 }
 
 function parseModelRefs(value: unknown): ModelRef[] {

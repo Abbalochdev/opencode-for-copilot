@@ -1,6 +1,16 @@
 # Changelog
 
 
+## [3.11.1](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.11.0...v3.11.1) (2026-08-25)
+
+### Features
+
+* **agent swarm hardening:** free-tier model audit — before each `@swarm` run (when `agentRoles.*` is unpinned) the swarm probes every OpenCode free model in parallel and routes research/review/implementer-fallback through the fastest responders, so a down model (outage, quota, regional routing) no longer silently degrades results. Probe timeout is configurable via `opencode-for-copilot.auditFreeModelProbeMs` (default 6000ms, min 500ms).
+* **agent swarm hardening:** `implementFallback` role — models tried in order after the chat-selected implementer is unavailable (provider outage, quota exhausted). Unpinned runs use the audited free models as a zero-config safety net.
+* **agent swarm hardening:** retry + model failover — every sub-agent `sendRequest` now retries retriable failures (429 / 5xx / network) with exponential backoff and fails over across models, instead of a single error killing a research area or the implementer.
+* **agent swarm hardening:** read-only tool-result cache (C4) and adaptive per-turn truncation cut duplicate token spend across parallel research agents; the implementation agent's test-verdict parser now correctly reads "6 passed, 4 failed" as a failure.
+
+
 ## [3.11.0](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.10.1...v3.11.0) (2026-08-25)
 
 ### Features

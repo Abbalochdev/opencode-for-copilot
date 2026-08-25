@@ -1,25 +1,25 @@
 import vscode from 'vscode';
 import { CONFIG_SECTION, LEGACY_CONFIG_SECTION, MODELS } from './consts';
 import {
-    deriveEndpointPreset,
-    normalizeBaseUrl,
-    resolveEndpointApiKeyUrl,
-    resolveEndpointBaseUrl,
-    resolveEndpointProtocol,
-    resolvePlanDefaultEndpoint,
-    type OpencodePlan
+	deriveEndpointPreset,
+	normalizeBaseUrl,
+	resolveEndpointApiKeyUrl,
+	resolveEndpointBaseUrl,
+	resolveEndpointProtocol,
+	resolvePlanDefaultEndpoint,
+	type OpencodePlan
 } from './endpoint';
 import {
-    getDynamicModels
+	getDynamicModels
 } from './provider/opencode-models';
 import type { PonytailMode } from './provider/ponytail';
 import type {
-    ApiMode,
-    ApiProtocol,
-    ApiRegion,
-    CustomModelConfig,
-    EndpointPreset,
-    ModelDefinition,
+	ApiMode,
+	ApiProtocol,
+	ApiRegion,
+	CustomModelConfig,
+	EndpointPreset,
+	ModelDefinition,
 } from './types';
 
 export type DebugMode = 'minimal' | 'metadata' | 'verbose';
