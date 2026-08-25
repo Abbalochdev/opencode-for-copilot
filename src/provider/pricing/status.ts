@@ -14,7 +14,7 @@ export class UsageCostStatus implements vscode.Disposable {
 	constructor(store: UsageCostStore) {
 		this.tracker = new UsageCostTracker(store);
 		this.item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 92);
-		this.item.name = 'GLM estimated cost';
+		this.item.name = 'OpenCode estimated cost';
 		this.item.command = 'opencode-for-copilot.showLogs';
 		this.render();
 	}
@@ -36,7 +36,7 @@ export class UsageCostStatus implements vscode.Disposable {
 		const today = this.tracker.dayTotal(currency);
 		const month = this.tracker.monthTotal(currency);
 		this.item.text =
-			'$(graph) GLM: ' + formatMoney(today, currency) + ' today \u00b7 ' + formatMoney(month, currency) + ' month';
+			'$(graph) OpenCode: ' + formatMoney(today, currency) + ' today \u00b7 ' + formatMoney(month, currency) + ' month';
 		this.item.tooltip = this.buildTooltip(currency, today, month);
 		this.item.show();
 	}
@@ -52,7 +52,7 @@ export class UsageCostStatus implements vscode.Disposable {
 
 	private buildTooltip(currency: PricingCurrency, today: number, month: number): string {
 		const lines: (string | undefined)[] = [
-			'GLM estimated cost',
+			'OpenCode estimated cost',
 			this.lastEstimate ? 'Last turn: ' + formatUsageCostEstimate(this.lastEstimate) : undefined,
 			'Today: ' + formatMoney(today, currency),
 			'Month: ' + formatMoney(month, currency),
@@ -73,7 +73,7 @@ export class UsageCostStatus implements vscode.Disposable {
 				lines.push('Tier: ' + estimate.pricing.tierLabel);
 			}
 		}
-		lines.push('Click to open GLM logs.');
+		lines.push('Click to open OpenCode logs.');
 		return lines.filter((line): line is string => typeof line === 'string').join('\n');
 	}
 
