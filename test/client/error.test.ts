@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { GLMRequestError, createHttpError, createUserFacingError } from '../../src/client/error';
+import { OPENCODE_GO_OPENAI_BASE_URL } from '../../src/endpoint';
 import type { GLMRequest } from '../../src/types';
 
 const GLM_ANTHROPIC_BASE_URL = 'https://open.bigmodel.cn/api/anthropic';
@@ -194,6 +195,39 @@ describe('createHttpError', () => {
 		expect(error.businessCode).toBeUndefined();
 		// 504 falls into the generic HTTP case.
 		expect(error.userSummary).toContain('504');
+	});
+
+	it('explains a 401 "insufficient balance" on an OpenCode URL as a Zen-only model problem', async () => {
+		// A Go subscriber picking a Zen-only model (Claude, free tier) gets a bare
+		// billing link. The message must explain the model choice is the problem.
+		const response = buildResponse(401, {
+			error: {
+				message: 'insufficient balance, please recharge: https://opencode.ai/billing',
+			},
+		});
+
+		const error = await createHttpError(response, {
+			baseUrl: OPENCODE_GO_OPENAI_BASE_URL,
+			request: buildRequest(),
+		});
+
+		expect(error.status).toBe(401);
+		expect(error.userSummary).toContain('insufficient balance');
+		expect(error.userSummary).toContain('not included in the OpenCode Go subscription');
+	});
+
+	it('does not apply the Zen-only copy to non-OpenCode 401s', async () => {
+		const response = buildResponse(401, {
+			error: { message: 'insufficient balance, please recharge' },
+		});
+
+		const error = await createHttpError(response, {
+			baseUrl: PROXY_BASE_URL,
+			request: buildRequest(),
+		});
+
+		expect(error.userSummary).toContain('insufficient balance');
+		expect(error.userSummary).not.toContain('not included in the OpenCode Go subscription');
 	});
 });
 
