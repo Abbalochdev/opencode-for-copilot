@@ -1,5 +1,5 @@
 /**
- * Shared types for the GLM Copilot extension.
+ * Shared types for the OpenCode for Copilot extension.
  */
 
 // ---- API request/response types ----
@@ -98,14 +98,10 @@ export interface StreamCallbacks {
 export type ApiProtocol = 'openai' | 'anthropic';
 
 /**
- * Single-value endpoint selector. Each value uniquely resolves to a base URL
- * + wire protocol.
+ * OpenCode endpoint preset — each value resolves to one base URL + wire protocol.
  *
- * The extension is OpenCode-only: the `opencode-go*` values target the Go
- * subscription (https://opencode.ai/docs/go) and the `opencode-zen*` values
- * the Zen pay-as-you-go gateway (https://opencode.ai/docs/zen). Both share
- * the API key from `https://opencode.ai/auth`; the URL path alone decides
- * which billing path the gateway charges.
+ * Go presets: https://opencode.ai/docs/go
+ * Zen presets: https://opencode.ai/docs/zen
  */
 export type EndpointPreset =
 	| 'opencode-go'
@@ -151,7 +147,7 @@ export interface ModelDefinition {
 	name: string;
 	family: string;
 	version: string;
-	detail?: string;
+	detail: string;
 	maxInputTokens: number;
 	maxOutputTokens: number;
 	capabilities: {

@@ -1,4 +1,4 @@
-import { isOfficialGLMBaseUrl, isOpencodeBaseUrl } from '../../endpoint';
+import { isOpencodeBaseUrl } from '../../endpoint';
 import { t } from '../../i18n';
 import { safeStringify } from '../../json';
 import {
@@ -205,7 +205,7 @@ function getHttpErrorMessage(params: {
 	toolCount?: number;
 }): string {
 	const { status, baseUrl, businessCode, serverMessage, toolCount } = params;
-	const isOfficialGlm = isOfficialGLMBaseUrl(baseUrl);
+	const isManagedOpencode = isOpencodeBaseUrl(baseUrl);
 
 	// OpenCode Zen-only model + Go-subscription key → 401 "Insufficient balance".
 	// The raw server message is just a billing link; explain that the model
@@ -224,7 +224,7 @@ function getHttpErrorMessage(params: {
 	// 1) 已知业务错误码 → 使用官方错误表对应的精确文案。GLM 的服务端消息通常
 	//    是 `[code][detail][request_id]` 包裹格式，detail 里包含动态参数
 	//    （如重置时间），比模板更准确，所以优先透出 detail。
-	if (businessCode && isOfficialGlm) {
+	if (businessCode && isManagedOpencode) {
 		const definition = GLM_BUSINESS_ERROR_CODES[businessCode];
 		if (definition) {
 			return formatGlmBusinessMessage(definition.messageKey, businessCode, serverMessage);
@@ -233,7 +233,7 @@ function getHttpErrorMessage(params: {
 
 	// 2) 官方端点 + 未知业务码 → 仍然剥离 GLM 包裹格式中的 request_id 噪音，
 	//    只透出 [code][detail] 部分给用户。
-	if (isOfficialGlm && serverMessage) {
+	if (isManagedOpencode && serverMessage) {
 		const detail = extractGlmMessageDetail(serverMessage);
 		if (detail) {
 			return businessCode ? `${detail} (code ${businessCode})` : `${detail} (HTTP ${status})`;
@@ -450,7 +450,7 @@ function getGlmBusinessCodeAction(
 	baseUrl: string,
 	actionUrls: ErrorActionUrls,
 ): readonly ErrorActionLink[] | undefined {
-	if (!businessCode || !isOfficialGLMBaseUrl(baseUrl)) {
+	if (!businessCode || !isOpencodeBaseUrl(baseUrl)) {
 		return undefined;
 	}
 	const definition = GLM_BUSINESS_ERROR_CODES[businessCode];
@@ -556,7 +556,7 @@ function escapeBoldText(value: string): string {
 }
 
 function identifyApiProvider(baseUrl: string): ApiProviderId | undefined {
-	return isOfficialGLMBaseUrl(baseUrl) ? 'glm' : undefined;
+	return isOpencodeBaseUrl(baseUrl) ? 'opencode' : undefined;
 }
 
 function getHttpErrorLinkStatusKey(status: number): HttpErrorLinkStatusKey | undefined {

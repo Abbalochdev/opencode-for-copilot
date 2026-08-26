@@ -1,17 +1,18 @@
 import vscode from 'vscode';
 import type { AuthManager } from '../../auth';
-import { getApiModelId, getOpencodePlan } from '../../config';
+import { getApiModelId, getBaseUrl, getBaseUrlOverride, getEndpoint } from '../../config';
 import {
-	OPENCODE_GO_OPENAI_BASE_URL,
-	OPENCODE_ZEN_OPENAI_BASE_URL,
+    OPENCODE_GO_OPENAI_BASE_URL,
+    OPENCODE_ZEN_OPENAI_BASE_URL,
+    resolveEndpointBaseUrl,
 } from '../../endpoint';
 import { t } from '../../i18n';
-import { DEFAULT_GLM_VISION_MODEL_ID } from './consts';
+import { DEFAULT_OPENCODE_VISION_MODEL_ID } from './consts';
 import {
-	logAutomaticGLMVisionFallback,
-	logAutomaticGLMVisionModelSelected,
-	logInvalidVisionProxyApiEndpointConfig,
-	logVisionApiEndpointSelected,
+    logAutomaticGLMVisionFallback,
+    logAutomaticGLMVisionModelSelected,
+    logInvalidVisionProxyApiEndpointConfig,
+    logVisionApiEndpointSelected,
 } from './log';
 import { isVisionProxyError, VisionProxyError } from './protocols/errors';
 import { createEndpointVisionDescriber } from './sources/endpoint';
@@ -84,8 +85,8 @@ export function createVisionService(
 				}
 			}
 
-			const config = createAutomaticGLMVisionConfig();
-			const apiKey = await authManager.getApiKey();
+			const config = createAutomaticOpenCodeVisionConfig();
+			const apiKey = await authManager.getApiKeyForEndpoint(config.url);
 			const primary = createEndpointVisionDescriber(config, apiKey);
 			logAutomaticGLMVisionModelSelected(primary.id, config.url);
 			return new AutomaticVisionDescriber(primary, () => vscodeLm.get());
@@ -128,19 +129,32 @@ class AutomaticVisionDescriber implements VisionDescriber {
 	}
 }
 
-function createAutomaticGLMVisionConfig(): VisionProxyConfig {
-	// The vision proxy always talks OpenAI-style `/chat/completions`, so pin
-	// the plan's OpenAI base URL regardless of the active protocol preset.
-	const visionBaseUrl =
-		getOpencodePlan() === 'zen' ? OPENCODE_ZEN_OPENAI_BASE_URL : OPENCODE_GO_OPENAI_BASE_URL;
+function createAutomaticOpenCodeVisionConfig(): VisionProxyConfig {
+	// Always use the OpenAI-compatible OpenCode base URL — even when main chat
+	// uses the Anthropic wire protocol.
+	const visionBaseUrl = resolveOpenCodeVisionBaseUrl();
 
 	return {
 		providerFamily: 'openai-compatible',
 		apiType: 'chat-completions',
 		url: `${visionBaseUrl}/chat/completions`,
-		modelId: getApiModelId(DEFAULT_GLM_VISION_MODEL_ID),
+		modelId: getApiModelId(DEFAULT_OPENCODE_VISION_MODEL_ID),
 		updatedAt: Date.now(),
 	};
+}
+
+function resolveOpenCodeVisionBaseUrl(): string {
+	if (getBaseUrlOverride()) {
+		return getBaseUrl();
+	}
+	const preset = getEndpoint();
+	if (preset === 'opencode-go-anthropic') {
+		return OPENCODE_GO_OPENAI_BASE_URL;
+	}
+	if (preset === 'opencode-zen-anthropic') {
+		return OPENCODE_ZEN_OPENAI_BASE_URL;
+	}
+	return resolveEndpointBaseUrl(preset);
 }
 
 function isCancelledVisionError(error: unknown): boolean {

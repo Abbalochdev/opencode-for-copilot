@@ -1,6 +1,13 @@
 # Changelog
 
 
+## [3.11.13](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.11.12...v3.11.13) (2026-08-26)
+
+### Other
+
+* **Rebrand to OpenCode + cleanup (PR #6):** remove redundant GLM branding and dead structure. `EXTERNAL_URLS` now points at `opencode.ai/auth`; settings UI rebranded from "GLM Copilot" to "OpenCode for Copilot"; walkthrough/command labels rebranded; unified `Set Go/Zen API Key` command (split Go/Zen commands dropped as redundant). Pricing drops the legacy GLM platform currency detection. Vision proxy rebranded and made multi-key aware. Runtime diagnostics now report the active OpenCode plan. Added `resolveRequestMaxTokens` to cap helper ("none-thinking") requests at 512 tokens. CLI/types doc comments de-GLM'd. Attribution: @wylasdasd.
+
+
 ## [3.11.12](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.11.1...v3.11.12) (2026-08-25)
 
 ### Fixes

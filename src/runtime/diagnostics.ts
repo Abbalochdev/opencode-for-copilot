@@ -6,6 +6,7 @@ import {
 	getCodeSimplifierEnabled,
 	getDebugMode,
 	getEndpoint,
+	getOpencodePlan,
 	getPonytailMode,
 } from '../config';
 import { CONFIG_SECTION } from '../consts';
@@ -60,6 +61,7 @@ export function buildRuntimeDiagnosticsReport(context: vscode.ExtensionContext):
 		'',
 		'## Configuration',
 		`- Endpoint preset: ${getEndpoint()}`,
+		`- OpenCode plan: ${getOpencodePlan()}`,
 		`- Base URL: ${getBaseUrl()}`,
 		`- API protocol: ${getApiProtocol()}`,
 		`- Debug mode: ${getDebugMode()}`,

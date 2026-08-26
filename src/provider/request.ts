@@ -2,15 +2,15 @@ import vscode from 'vscode';
 import { AuthManager } from '../auth';
 import { GLMClient } from '../client';
 import {
-    findModelDefinition,
-    getApiModelId,
-    getApiProtocol,
-    getBaseUrl,
-    getBaseUrlOverride,
-    getCodeSimplifierEnabled,
-    getMaxTokens,
-    getPonytailMode,
-    getRules,
+	findModelDefinition,
+	getApiModelId,
+	getApiProtocol,
+	getBaseUrl,
+	getBaseUrlOverride,
+	getCodeSimplifierEnabled,
+	getMaxTokens,
+	getPonytailMode,
+	getRules,
 } from '../config';
 import { isOfficialGLMBaseUrl, resolveEndpointBaseUrl, resolveEndpointProtocol } from '../endpoint';
 import { t } from '../i18n';
@@ -22,7 +22,7 @@ import { getConfiguredThinkingEffort, type ModelConfigurationOptions } from './m
 import { injectPonytailSystemMessage } from './ponytail';
 import { getPricingCurrencyForBaseUrl } from './pricing/currency';
 import type { ReplayMarkerMetadata } from './replay';
-import { shouldForceThinkingNone, type RequestKind } from './routing';
+import { resolveRequestMaxTokens, shouldForceThinkingNone, type RequestKind } from './routing';
 import { injectRulesSystemMessage } from './rules';
 import type { ConversationSegment } from './segment';
 import { REQUEST_KINDS_ELIGIBLE_FOR_TOOL_TRIMMING } from './tools/consts';
@@ -124,7 +124,7 @@ export async function prepareChatRequest({
 	}
 	const client = getCachedClient(baseUrl, apiKey, apiProtocol);
 	const isThinkingModel = modelDef?.capabilities.thinking ?? false;
-	const maxTokens = getMaxTokens();
+	const maxTokens = resolveRequestMaxTokens(requestKind, getMaxTokens());
 	const apiModelId = getApiModelId(modelInfo.id);
 
 	const visionResolution = await resolveImageMessages(messages, token, getVisionDescriber);
