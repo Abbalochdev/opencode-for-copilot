@@ -19,10 +19,10 @@ describe('runtime commands', () => {
 	});
 
 	it.each([
-		['go', OPENCODE_GO_API_KEY_URL],
-		['zen', OPENCODE_ZEN_API_KEY_URL],
-	])('opens the API key page for the %s plan', async (plan, expectedUrl) => {
-		__setConfigurationValue('opencode-for-copilot.opencodePlan', plan);
+		['opencode-go', OPENCODE_GO_API_KEY_URL],
+		['opencode-zen', OPENCODE_ZEN_API_KEY_URL],
+	])('opens the API key page for the %s endpoint', async (endpoint, expectedUrl) => {
+		__setConfigurationValue('opencode-for-copilot.endpoint', endpoint);
 		registerCommands({ subscriptions: [] } as unknown as vscode.ExtensionContext);
 
 		await vscode.commands.executeCommand('opencode-for-copilot.getApiKey');

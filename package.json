@@ -152,15 +152,6 @@
     "configuration": {
       "title": "%opencode-for-copilot.config.title%",
       "properties": {
-        "opencode-for-copilot.opencodePlan": {
-          "type": "string",
-          "enum": [
-            "go",
-            "zen"
-          ],
-          "default": "go",
-          "markdownDescription": "%opencode-for-copilot.config.opencodePlan.description%"
-        },
         "opencode-for-copilot.agentRoles": {
           "type": "object",
           "default": {},

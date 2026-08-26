@@ -9,7 +9,6 @@
   "opencode-for-copilot.command.openSettings": "OpenCode: 打开设置",
   "opencode-for-copilot.command.showLogs": "OpenCode: 显示日志",
   "opencode-for-copilot.command.showDiagnostics": "OpenCode: 显示运行时诊断",
-  "opencode-for-copilot.config.opencodePlan.description": "使用哪个 OpenCode 套餐：`go`（订阅，含 GLM、Kimi、MiniMax、Grok 4.5）或 `zen`（按量付费，额外提供 Claude 与免费模型）。决定模型列表、默认端点，以及“设置 API Key”写入哪个密钥。两个密钥分开存储——使用[设置 API Key](command:opencode-for-copilot.setApiKey)。",
   "opencode-for-copilot.config.showProviderPrefix.description": "在模型选择器中为模型名称添加提供商前缀（例如 `Kimi · Kimi K3`），窄面板中也能一眼辨认模型归属。",
   "opencode-for-copilot.command.openRequestDumpsFolder": "OpenCode: 打开请求 Dump 目录",
   "opencode-for-copilot.command.setPonytailMode": "OpenCode: 设置 Ponytail 模式",

@@ -4,9 +4,7 @@ import {
     normalizeBaseUrl,
     resolveEndpointApiKeyUrl,
     resolveEndpointBaseUrl,
-    resolveEndpointProtocol,
-    resolvePlanDefaultEndpoint,
-    type OpencodePlan
+    resolveEndpointProtocol
 } from './endpoint';
 import {
     getDynamicModels
@@ -31,7 +29,7 @@ const CUSTOM_MODEL_MAX_OUTPUT_TOKENS = 131_072;
  * Resolution order:
  *   1. `baseUrl` override (highest priority — covers advanced/proxy use cases)
  *   2. `endpoint` preset
- *   3. The active OpenCode plan's default endpoint (`opencode-go` / `opencode-zen`)
+ *   3. `opencode-go` when the endpoint preset is unset or invalid
  */
 export function getBaseUrl(): string {
 	const override = getBaseUrlOverride();
@@ -56,24 +54,17 @@ export function getBaseUrlOverride(): string | undefined {
  *
  * Resolution order:
  *   1. Explicit `endpoint` setting (always wins)
- *   2. The active OpenCode plan's default endpoint (`opencode-go` / `opencode-zen`)
+ *   2. `opencode-go` when the endpoint preset is unset or invalid
  */
 export function getEndpoint(): EndpointPreset {
 	const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
 	const explicit = normalizeEndpointPreset(config.get<string>('endpoint'));
-	return explicit ?? resolvePlanDefaultEndpoint(getOpencodePlan());
-}
-
-/** Which OpenCode plan's key and model catalog to use — `opencodePlan` setting. */
-export function getOpencodePlan(): OpencodePlan {
-	const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
-	return config.get<string>('opencodePlan') === 'zen' ? 'zen' : 'go';
+	return explicit ?? 'opencode-go';
 }
 
 // ---- One-time legacy settings migration (glm-copilot -> opencode-for-copilot) ----
 
 const LEGACY_SETTING_KEYS = [
-	'opencodePlan',
 	'agentRoles',
 	'baseUrl',
 	'endpoint',

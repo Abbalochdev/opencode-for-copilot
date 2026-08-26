@@ -23,7 +23,6 @@
   "opencode-for-copilot.walkthrough.advancedSettings.title": "Try advanced settings",
   "opencode-for-copilot.walkthrough.advancedSettings.description": "Customize providers and model names, configure the vision proxy, enable experimental settings, and more in the extension settings.\n[Open settings](command:opencode-for-copilot.openSettings)",
   "opencode-for-copilot.config.title": "OpenCode for Copilot",
-  "opencode-for-copilot.config.opencodePlan.description": "Which OpenCode plan to use: `go` (subscription; GLM, Kimi, MiniMax, Grok 4.5) or `zen` (pay-as-you-go; also serves Claude and free models). Determines the model list, default endpoint, and which secret the \"Set API Key\" command writes. The two keys are stored separately — use [Set API Key](command:opencode-for-copilot.setApiKey).",
   "opencode-for-copilot.config.baseUrl.description": "Optional API base URL override. When non-empty, this value has the highest priority and overrides the `endpoint` preset. Leave empty to use the selected OpenCode endpoint preset.",
   "opencode-for-copilot.config.endpoint.description": "OpenCode endpoint selector. Each option resolves to a base URL and wire protocol (OpenAI `/chat/completions` or Anthropic `/v1/messages`). Go serves the curated subscription catalogue; Zen serves pay-as-you-go models. A non-empty `baseUrl` overrides this preset.",
   "opencode-for-copilot.config.endpoint.opencodeGo.label": "OpenCode Go (OpenAI)",

@@ -15,8 +15,7 @@ import { MODELS } from '../src/consts';
 import {
     OPENCODE_GO_ANTHROPIC_BASE_URL,
     OPENCODE_GO_API_KEY_URL,
-    OPENCODE_GO_OPENAI_BASE_URL,
-    OPENCODE_ZEN_OPENAI_BASE_URL
+    OPENCODE_GO_OPENAI_BASE_URL
 } from '../src/endpoint';
 import { __clearConfigurationValues, __setConfigurationValue } from './support/vscode.mock';
 
@@ -70,18 +69,11 @@ describe('endpoint preset selection', () => {
 		__clearConfigurationValues();
 	});
 
-	it('defaults to opencode-go when nothing is configured (plan default)', () => {
+	it('defaults to opencode-go when nothing is configured', () => {
 		expect(getEndpoint()).toBe('opencode-go');
 		expect(getBaseUrl()).toBe(OPENCODE_GO_OPENAI_BASE_URL);
 		expect(getApiProtocol()).toBe('openai');
 		expect(getApiKeyUrl()).toBe(OPENCODE_GO_API_KEY_URL);
-	});
-
-	it('defaults to opencode-zen when opencodePlan is zen', () => {
-		__setConfigurationValue('opencode-for-copilot.opencodePlan', 'zen');
-
-		expect(getEndpoint()).toBe('opencode-zen');
-		expect(getBaseUrl()).toBe(OPENCODE_ZEN_OPENAI_BASE_URL);
 	});
 
 	it('respects an explicit endpoint preset', () => {
@@ -91,7 +83,7 @@ describe('endpoint preset selection', () => {
 		expect(getApiProtocol()).toBe('anthropic');
 	});
 
-	it('ignores unknown preset values and falls back to the plan default', () => {
+	it('ignores unknown preset values and falls back to opencode-go', () => {
 		// Presets removed with the Zhipu/Z.ai endpoint layer must not crash
 		// users who still carry them in settings.json.
 		__setConfigurationValue('opencode-for-copilot.endpoint', 'china-coding');
