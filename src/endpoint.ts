@@ -11,10 +11,12 @@ export const GLM_INTERNATIONAL_API_HOST = 'api.z.ai';
 //
 // OpenCode Go is a low-cost subscription that serves a curated set of open
 // coding models behind a single API key. The OpenAI-compatible endpoint is
-// reached at `…/v1/chat/completions` and the Anthropic-compatible endpoint at
-// `…/v1/messages`. Because the client appends `/chat/completions` (OpenAI) or
-// `/v1/messages` (Anthropic) to the base URL, the two presets use different
-// base URLs so the final request URLs line up exactly with the docs.
+// reached at `…/v1/chat/completions`, the Anthropic-compatible endpoint at
+// `…/v1/messages`, and a subset of models on the Responses API at
+// `…/v1/responses`. Because the client appends `/chat/completions` (OpenAI),
+// `/v1/messages` (Anthropic), or `/responses` (Responses) to the base URL,
+// the presets use different base URLs so the final request URLs line up exactly
+// with the docs.
 export const OPENCODE_GO_API_HOST = 'opencode.ai';
 export const OPENCODE_GO_OPENAI_BASE_URL = `https://${OPENCODE_GO_API_HOST}/zen/go/v1`;
 export const OPENCODE_GO_ANTHROPIC_BASE_URL = `https://${OPENCODE_GO_API_HOST}/zen/go`;
@@ -46,6 +48,8 @@ export function resolveEndpointBaseUrl(preset: EndpointPreset): string {
 			return OPENCODE_GO_OPENAI_BASE_URL;
 		case 'opencode-go-anthropic':
 			return OPENCODE_GO_ANTHROPIC_BASE_URL;
+		case 'opencode-go-responses':
+			return OPENCODE_GO_OPENAI_BASE_URL;
 		case 'opencode-zen':
 			return OPENCODE_ZEN_OPENAI_BASE_URL;
 		case 'opencode-zen-anthropic':
@@ -57,7 +61,9 @@ export function resolveEndpointBaseUrl(preset: EndpointPreset): string {
  * Resolve the "request an API key" landing page for a single preset value.
  */
 export function resolveEndpointApiKeyUrl(preset: EndpointPreset): string {
-	return preset === 'opencode-go' || preset === 'opencode-go-anthropic'
+	return preset === 'opencode-go'
+		|| preset === 'opencode-go-anthropic'
+		|| preset === 'opencode-go-responses'
 		? OPENCODE_GO_API_KEY_URL
 		: OPENCODE_ZEN_API_KEY_URL;
 }
@@ -66,9 +72,13 @@ export function resolveEndpointApiKeyUrl(preset: EndpointPreset): string {
  * The wire protocol implied by a preset value.
  */
 export function resolveEndpointProtocol(preset: EndpointPreset): ApiProtocol {
-	return preset === 'opencode-go-anthropic' || preset === 'opencode-zen-anthropic'
-		? 'anthropic'
-		: 'openai';
+	if (preset === 'opencode-go-anthropic' || preset === 'opencode-zen-anthropic') {
+		return 'anthropic';
+	}
+	if (preset === 'opencode-go-responses') {
+		return 'responses';
+	}
+	return 'openai';
 }
 
 /** The GLM/Z.ai platforms still recognized for manual `baseUrl` overrides. */

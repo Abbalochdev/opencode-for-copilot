@@ -13,6 +13,7 @@ import type {
 import { convertToAnthropicRequest, parseAnthropicStream } from './anthropic';
 import { createHttpError, formatRequestError, GLMRequestError, normalizeRequestError } from './error';
 import { analyzeContextOverflow } from './error/overflow-retry';
+import { convertToResponsesRequest, parseResponsesStream } from './responses';
 import { trackRateLimitHeaders, waitIfRateLimited } from './rate-limit';
 
 // Retry configuration for transient HTTP errors (429, 502, 503, 504).
@@ -67,8 +68,8 @@ function isOpencodeGateway(baseUrl: string): boolean {
  * Lightweight SSE-streaming GLM API client.
  * No external dependencies — uses Node's built-in fetch.
  *
- * Supports both OpenAI-compatible (`/chat/completions`) and
- * Anthropic-compatible (`/v1/messages`) protocols.
+ * Supports OpenAI-compatible (`/chat/completions`), Anthropic-compatible
+ * (`/v1/messages`), and OpenAI Responses (`/responses`) protocols.
  */
 export class GLMClient {
 	constructor(
@@ -95,10 +96,15 @@ export class GLMClient {
 		callbacks: StreamCallbacks,
 		cancellationToken?: CancellationToken,
 	): Promise<void> {
-		const dispatch = (req: GLMRequest) =>
-			this.protocol === 'anthropic'
-				? this.streamAnthropicCompletion(req, callbacks, cancellationToken)
-				: this.streamOpenAIChatCompletion(req, callbacks, cancellationToken);
+		const dispatch = (req: GLMRequest) => {
+			if (this.protocol === 'anthropic') {
+				return this.streamAnthropicCompletion(req, callbacks, cancellationToken);
+			}
+			if (this.protocol === 'responses') {
+				return this.streamResponsesCompletion(req, callbacks, cancellationToken);
+			}
+			return this.streamOpenAIChatCompletion(req, callbacks, cancellationToken);
+		};
 
 		// Phase 1: retry with backoff for transient rate-limit / availability errors.
 		let lastError: unknown;
@@ -389,6 +395,68 @@ export class GLMClient {
 			cancelListener?.dispose();
 			// Abort the controller on every exit path so the signal is torn down
 			// and doesn't hold references to listeners/connections.
+			controller.abort();
+		}
+	}
+
+	/**
+	 * Stream using OpenAI Responses `/responses` endpoint.
+	 */
+	private async streamResponsesCompletion(
+		request: GLMRequest,
+		callbacks: StreamCallbacks,
+		cancellationToken?: CancellationToken,
+	): Promise<void> {
+		const controller = new AbortController();
+		const cancelListener = cancellationToken?.onCancellationRequested(() => {
+			controller.abort();
+		});
+		if (cancellationToken?.isCancellationRequested) {
+			cancelListener?.dispose();
+			controller.abort();
+			return;
+		}
+
+		try {
+			const responsesRequest = convertToResponsesRequest(request);
+
+			await waitIfRateLimited(this.baseUrl);
+			const response = await fetch(`${this.baseUrl}/responses`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${this.apiKey}`,
+					...(isOpencodeGateway(this.baseUrl) ? getOpenCodeGatewayHeaders() : {}),
+				},
+				body: safeStringify(responsesRequest),
+				signal: controller.signal,
+			});
+
+			if (!response.ok) {
+				throw await createHttpError(response, {
+					baseUrl: this.baseUrl,
+					request,
+				});
+			}
+
+			trackRateLimitHeaders(this.baseUrl, response.headers);
+
+			if (!response.body) {
+				throw new Error('No response body received');
+			}
+
+			const reader = response.body.getReader();
+			try {
+				await parseResponsesStream(reader, callbacks);
+			} finally {
+				await reader.cancel().catch((err) => {
+					if (!isAbortError(err)) {
+						logger.warn('Error cancelling Responses stream reader:', err);
+					}
+				});
+			}
+		} finally {
+			cancelListener?.dispose();
 			controller.abort();
 		}
 	}

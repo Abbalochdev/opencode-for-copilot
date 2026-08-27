@@ -95,7 +95,7 @@ export interface StreamCallbacks {
 
 // ---- Configuration types ----
 
-export type ApiProtocol = 'openai' | 'anthropic';
+export type ApiProtocol = 'openai' | 'anthropic' | 'responses';
 
 /**
  * OpenCode endpoint preset — each value resolves to one base URL + wire protocol.
@@ -106,6 +106,7 @@ export type ApiProtocol = 'openai' | 'anthropic';
 export type EndpointPreset =
 	| 'opencode-go'
 	| 'opencode-go-anthropic'
+	| 'opencode-go-responses'
 	| 'opencode-zen'
 	| 'opencode-zen-anthropic';
 
