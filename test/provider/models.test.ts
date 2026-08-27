@@ -49,8 +49,8 @@ describe('offline fallback baseline', () => {
 		expect(presets.some((p) => p.startsWith('opencode-zen'))).toBe(true);
 	});
 
-	it('serves the whole baseline regardless of the plan toggle', () => {
-		__setConfigurationValue('opencode-for-copilot.opencodePlan', 'go');
+	it('serves the whole baseline regardless of endpoint preset', () => {
+		__setConfigurationValue('opencode-for-copilot.endpoint', 'opencode-go');
 		const infos = listProviderModels().map((m) => toChatInfo(m, true));
 		expect(infos.every((m) => m.isUserSelectable)).toBe(true);
 	});

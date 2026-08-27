@@ -130,7 +130,8 @@ export class GLMChatProvider implements vscode.LanguageModelChatProvider {
 				if (
 					e.affectsConfiguration(`${CONFIG_SECTION}.apiKey`) ||
 					e.affectsConfiguration(`${CONFIG_SECTION}.baseUrl`) ||
-					e.affectsConfiguration(`${CONFIG_SECTION}.endpoint`) ||						e.affectsConfiguration(`${CONFIG_SECTION}.opencodePlan`) ||					e.affectsConfiguration(`${CONFIG_SECTION}.customModels`) ||
+					e.affectsConfiguration(`${CONFIG_SECTION}.endpoint`) ||
+					e.affectsConfiguration(`${CONFIG_SECTION}.customModels`) ||
 					e.affectsConfiguration(`${CONFIG_SECTION}.modelIdOverrides`)
 				) {
 					// Discard stale GLMClient instances whose baseUrl/apiKey/protocol may have changed.

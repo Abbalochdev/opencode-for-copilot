@@ -1,9 +1,9 @@
 {
   "name": "opencode-for-copilot",
-  "displayName": "OpenCode for Copilot",
+  "displayName": "%opencode-for-copilot.displayName%",
   "description": "Use OpenCode Go & Zen coding models (GLM, Kimi, DeepSeek, Claude, Grok, Qwen, free models) in the Copilot Chat model picker. Vision, thinking mode, agent tools — zero config, BYOK.",
   "icon": "resources/icon.png",
-  "version": "3.11.13",
+  "version": "3.11.14",
   "packageManager": "pnpm@11.7.0",
   "publisher": "abbalochdev",
   "license": "MIT",
@@ -152,15 +152,6 @@
     "configuration": {
       "title": "%opencode-for-copilot.config.title%",
       "properties": {
-        "opencode-for-copilot.opencodePlan": {
-          "type": "string",
-          "enum": [
-            "go",
-            "zen"
-          ],
-          "default": "go",
-          "markdownDescription": "%opencode-for-copilot.config.opencodePlan.description%"
-        },
         "opencode-for-copilot.agentRoles": {
           "type": "object",
           "default": {},
