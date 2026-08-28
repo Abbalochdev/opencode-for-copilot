@@ -1,5 +1,4 @@
 {
-  "opencode-for-copilot.displayName": "OpenCode for Copilot",
   "opencode-for-copilot.command.setApiKey": "OpenCode: Set Go/Zen API Key",
   "opencode-for-copilot.command.getApiKey": "OpenCode: Open API Key Page",
   "opencode-for-copilot.command.queryUsage": "OpenCode: Query Usage",

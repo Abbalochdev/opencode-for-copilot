@@ -1,5 +1,4 @@
 {
-  "opencode-for-copilot.displayName": "OpenCode for Copilot",
   "opencode-for-copilot.command.setApiKey": "OpenCode: 设置 Go/Zen API Key",
   "opencode-for-copilot.command.getApiKey": "OpenCode: 打开 API Key 页面",
   "opencode-for-copilot.command.queryUsage": "OpenCode: 查询用量",

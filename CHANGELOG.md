@@ -1,6 +1,13 @@
 # Changelog
 
 
+## [3.11.16](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.11.15...v3.11.16) (2026-08-29)
+
+### Fixes
+
+* **display name:** the extension title rendered literally as `%opencode-for-copilot.displayName%` in surfaces that read the raw manifest (the packaged VSIX, the Marketplace listing, pre-resolution views) — `vsce` does not substitute NLS placeholders into `package.json`, so the `%key%` leaked. The brand string is identical across all locales, so the NLS indirection bought nothing; `displayName` is now a hard-coded string and the dead `opencode-for-copilot.displayName` key is removed from `package.nls.json` / `package.nls.zh-cn.json`.
+
+
 ## [3.11.15](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.11.14...v3.11.15) (2026-08-28)
 
 ### Features
