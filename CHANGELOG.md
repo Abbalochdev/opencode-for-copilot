@@ -1,6 +1,25 @@
 # Changelog
 
 
+## [3.11.15](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.11.14...v3.11.15) (2026-08-28)
+
+### Features
+
+* **client:** add OpenAI Responses `/responses` protocol to `GLMClient` — OpenCode Go models `gpt-5.6-luna`, `grok-4.6`, and `muse-spark-1.2-contributor` are served over `/responses` instead of `/chat/completions`. New `src/client/responses/` module (`convert.ts`, `stream.ts`, `index.ts`) translates the internal `GLMRequest` to/from the Responses API (system prompt → `instructions`, tool calls → `function_call` items, thinking → `reasoning.effort`) and parses the SSE stream; protocol resolution now dispatches `responses` alongside the existing OpenAI and Anthropic paths. Added `test/client/responses.test.ts` (240 lines).
+
+### Fixes
+
+* **vision:** automatic vision requests still called the removed `authManager.getApiKeyForEndpoint()` after auth was unified to a single Go/Zen key, throwing `getApiKeyForEndpoint is not a function` and failing every image request; now uses `authManager.getApiKey()`.
+
+
+## [3.11.14](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.11.13...v3.11.14) (2026-08-27)
+
+### Fixes
+
+* **settings:** drop the redundant `opencode-for-copilot.opencodePlan` setting — Go and Zen now authenticate with one key, so the plan selector no longer chose anything the `endpoint` preset didn't already decide. The default endpoint now resolves to `opencode-go` when the `endpoint` preset is unset or invalid; `resolvePlanDefaultEndpoint` / `OpencodePlan` are removed from `src/config.ts` and `src/endpoint.ts`, and the setting row plus NLS strings are dropped from the README (en/zh-CN) and `package.nls*.json`.
+* **display name:** the extension `displayName` now resolves through NLS (`%opencode-for-copilot.displayName%`) instead of a hard-coded string, so it localizes correctly (the previous literal still rendered "GLM Copilot" in some surfaces).
+
+
 ## [3.11.13](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.11.12...v3.11.13) (2026-08-26)
 
 ### Other
