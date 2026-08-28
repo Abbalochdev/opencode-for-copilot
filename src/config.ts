@@ -408,7 +408,7 @@ function normalizeApiProtocol(
 	value: unknown,
 	fallback: ApiProtocol | undefined,
 ): ApiProtocol | undefined {
-	return value === 'openai' || value === 'anthropic' ? value : fallback;
+	return value === 'openai' || value === 'anthropic' || value === 'responses' ? value : fallback;
 }
 
 function normalizeCustomModel(entry: unknown): ModelDefinition | undefined {

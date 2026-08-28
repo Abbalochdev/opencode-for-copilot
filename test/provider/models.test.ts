@@ -100,7 +100,7 @@ describe('dual catalog pipeline (real captured IDs)', () => {
 			}
 			// Catalog-only newcomers surface as selectable picker entries.
 			const luna = models.find((m) => m.id === 'gpt-5.6-luna');
-			expect(luna?.endpointPreset).toBe('opencode-go');
+			expect(luna?.endpointPreset).toBe('opencode-go-responses');
 			expect(luna?.name).toContain('Luna');
 			// Zen-only newcomer: known IDs keep their overlay pin (Claude is
 			// Anthropic-style), unknown IDs get a plain zen pin.

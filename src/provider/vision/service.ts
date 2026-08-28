@@ -86,7 +86,7 @@ export function createVisionService(
 			}
 
 			const config = createAutomaticOpenCodeVisionConfig();
-			const apiKey = await authManager.getApiKeyForEndpoint(config.url);
+			const apiKey = await authManager.getApiKey();
 			const primary = createEndpointVisionDescriber(config, apiKey);
 			logAutomaticGLMVisionModelSelected(primary.id, config.url);
 			return new AutomaticVisionDescriber(primary, () => vscodeLm.get());

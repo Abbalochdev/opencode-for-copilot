@@ -95,6 +95,7 @@ describe('endpoint preset resolver', () => {
 	it('resolves every preset to its official base URL', () => {
 		expect(resolveEndpointBaseUrl('opencode-go')).toBe(OPENCODE_GO_OPENAI_BASE_URL);
 		expect(resolveEndpointBaseUrl('opencode-go-anthropic')).toBe(OPENCODE_GO_ANTHROPIC_BASE_URL);
+		expect(resolveEndpointBaseUrl('opencode-go-responses')).toBe(OPENCODE_GO_OPENAI_BASE_URL);
 		expect(resolveEndpointBaseUrl('opencode-zen')).toBe(OPENCODE_ZEN_OPENAI_BASE_URL);
 		expect(resolveEndpointBaseUrl('opencode-zen-anthropic')).toBe(OPENCODE_ZEN_ANTHROPIC_BASE_URL);
 	});
@@ -109,6 +110,7 @@ describe('endpoint preset resolver', () => {
 	it('maps each preset to its implied wire protocol', () => {
 		expect(resolveEndpointProtocol('opencode-go')).toBe('openai');
 		expect(resolveEndpointProtocol('opencode-go-anthropic')).toBe('anthropic');
+		expect(resolveEndpointProtocol('opencode-go-responses')).toBe('responses');
 		expect(resolveEndpointProtocol('opencode-zen')).toBe('openai');
 		expect(resolveEndpointProtocol('opencode-zen-anthropic')).toBe('anthropic');
 	});

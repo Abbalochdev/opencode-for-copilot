@@ -49,7 +49,8 @@ let cacheTimestamp = 0;
 //   1. Family rules (`resolveEndpointPresetForId`) → wire-protocol routing.
 //      Validated against https://opencode.ai/docs/go and /docs/zen: Claude
 //      and Qwen always speak Anthropic; MiniMax speaks Anthropic on the Go
-//      plan only; every other family speaks OpenAI-compatible.
+//      plan only; Luna/Grok/Muse Spark speak Responses; every other family
+//      speaks OpenAI-compatible.
 //   2. models.dev enrichment (`models-dev.ts`) → context windows, pricing,
 //      capabilities — fetched live together with the catalogs.
 //   3. FALLBACK_MODELS → four hand-tuned baselines covering every plan ×
@@ -57,12 +58,27 @@ let cacheTimestamp = 0;
 //      extension works before the first fetch or if both `/models`
 //      endpoints ever change shape.
 
+// OpenCode Go models served only on the Responses API (`/v1/responses`).
+// https://opencode.ai/docs/go#endpoints
+const RESPONSES_MODEL_IDS = new Set([
+	'gpt-5.6-luna',
+	'grok-4.6',
+	'muse-spark-1.2-contributor',
+]);
+
+function speaksResponses(id: string): boolean {
+	return RESPONSES_MODEL_IDS.has(id);
+}
+
 /**
  * Resolve which endpoint preset (plan + wire protocol) a catalog model routes
  * to. `origin` is the catalog the id was discovered in.
  */
 export function resolveEndpointPresetForId(id: string, origin: 'go' | 'zen'): EndpointPreset {
 	const planPrefix = origin === 'go' ? 'opencode-go' : 'opencode-zen';
+	if (origin === 'go' && speaksResponses(id)) {
+		return 'opencode-go-responses';
+	}
 	const speaksAnthropic =
 		id.startsWith('claude') ||
 		id.startsWith('qwen') ||
