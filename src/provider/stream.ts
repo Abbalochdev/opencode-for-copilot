@@ -4,19 +4,19 @@ import { getStripThinkTagsMode } from '../config';
 import { logger } from '../logger';
 import type { GLMToolCall, GLMUsage } from '../types';
 import {
-    observeCancellationToken,
-    type CacheDiagnosticsRun,
-    type ReplayMarkerReportTrigger,
+	observeCancellationToken,
+	type CacheDiagnosticsRun,
+	type ReplayMarkerReportTrigger,
 } from './debug';
 import {
-    estimateUsageCost,
-    formatUsageCostEstimate,
-    type UsageCostEstimate,
+	estimateUsageCost,
+	formatUsageCostEstimate,
+	type UsageCostEstimate,
 } from './pricing/usage';
 import {
-    createReplayMarkerPart,
-    hasReplayMarkerMetadata,
-    type ReplayMarkerMetadata,
+	createReplayMarkerPart,
+	hasReplayMarkerMetadata,
+	type ReplayMarkerMetadata,
 } from './replay';
 import type { PreparedChatRequest } from './request';
 import { formatRequestLogLine, type RequestKind } from './routing';
@@ -82,6 +82,10 @@ export function streamChatCompletion({
 				},
 
 				onThinking: (text: string) => {
+					// Thinking is model output too — a thinking-only response (e.g. Qwen
+					// via the Anthropic gateway sometimes streams reasoning then stops)
+					// must not trip the empty-response guard below.
+					state.hasModelOutput = true;
 					reportInitialResponseNoticeOnce(progress, state, initialResponseNotice);
 					handleThinking(text, state, progress);
 				},

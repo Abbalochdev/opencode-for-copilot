@@ -261,8 +261,12 @@ function processAnthropicEvent(
 					id: block.id || `toolu_${idx}_${Date.now()}`,
 					name: block.name ?? '',
 					input: initialInput,
-				});
-			}
+				});				} else {
+					// Unknown block type (e.g. Claude's `redacted_thinking`, or a
+					// gateway-specific type). Nothing to display, but log it — silently
+					// dropping blocks here otherwise fabricates "empty response" errors
+					// for streams that actually carried content.
+					logger.warn('Unrecognised Anthropic content block type:', block.type as string);			}
 			break;
 		}
 
