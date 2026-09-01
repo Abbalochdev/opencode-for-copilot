@@ -106,4 +106,26 @@ describe('request preparation', () => {
 		expect(prepared.request.messages[0]?.content).toContain('lazy senior developer');
 		expect(prepared.visionMarkerTextChars).toBeGreaterThan(0);
 	});
-});
+
+	it('omits clear_thinking for thinking models (OpenCode rejects it as an extra input)', async () => {
+		const prepared = await prepareChatRequest({
+			authManager: {
+				getApiKey: async () => 'test-key',
+			} as unknown as AuthManager,
+			globalStorageUri: vscode.Uri.file('/tmp/glm-request-test'),
+			modelInfo: { id: 'glm-5.2' } as vscode.LanguageModelChatInformation,
+			segment,
+			messages: [userMessage([new vscode.LanguageModelTextPart('hello')])],
+			options: {
+				modelConfiguration: { reasoningEffort: 'max' },
+			} as vscode.ProvideLanguageModelChatResponseOptions,
+			token,
+			cacheDiagnostics: createCacheDiagnosticsRecorder(),
+			getVisionDescriber: async () => undefined,
+			requestKind: 'main-agent',
+		});
+
+		expect(prepared.isThinkingModel).toBe(true);
+		expect(prepared.request.thinking).toStrictEqual({ type: 'enabled' });
+		expect(prepared.request.reasoning_effort).toBe('max');
+	});});

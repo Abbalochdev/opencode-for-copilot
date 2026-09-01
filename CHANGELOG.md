@@ -1,6 +1,13 @@
 # Changelog
 
 
+## [3.11.17](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.11.16...v3.11.17) (2026-09-01)
+
+### Fixes
+
+* **request:** drop the `clear_thinking: false` field from the `thinking` request object — the OpenCode gateway's upstream validator rejects it as an extra input (`Extra inputs are not permitted … ThinkingConfigEnabled.clear_thinking`), so every thinking-capable model on OpenCode Go/Zen (e.g. `glm-5.2`, `glm-5.3`) failed with HTTP 400 the moment thinking was enabled. The field is removed from the request shape and the `GLMRequest` type; regression test added asserting the `glm-5.2` thinking payload is exactly `{ type: 'enabled' }` plus `reasoning_effort`.
+
+
 ## [3.11.16](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.11.15...v3.11.16) (2026-08-29)
 
 ### Fixes

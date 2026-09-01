@@ -51,7 +51,9 @@ export interface GLMRequest {
 	max_tokens?: number;
 	tools?: GLMTool[];
 	tool_choice?: 'none' | 'auto' | 'required';
-	thinking?: { type: 'enabled' | 'disabled'; clear_thinking?: boolean };
+	// No `clear_thinking`: the OpenCode gateway's pydantic validator rejects it
+	// as an "Extra inputs are not permitted" 400 (seen on opencode-go glm-5.2).
+	thinking?: { type: 'enabled' | 'disabled' };
 	reasoning_effort?: 'high' | 'max';
 	tool_stream?: boolean;
 }

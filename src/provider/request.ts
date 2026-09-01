@@ -182,7 +182,6 @@ export async function prepareChatRequest({
 			? {
 					thinking: {
 						type: thinkingEffort === 'none' ? ('disabled' as const) : ('enabled' as const),
-						...(thinkingEffort === 'none' ? {} : { clear_thinking: false }),
 					},
 					...(thinkingEffort !== 'none' && supportsReasoningEffort
 						? { reasoning_effort: thinkingEffort }
