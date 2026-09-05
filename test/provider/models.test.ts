@@ -324,7 +324,8 @@ describe('mergeWithModelsDev', () => {
 			limit: { context: 1_000_000, output: 384_000 },
 		});
 		expect(merged.detail).toBe('Fast and economical coding model');
-		expect(merged.maxInputTokens).toBe(1_000_000);
+		// 1M upstream spec clamped to the OpenCode Go plan cap.
+		expect(merged.maxInputTokens).toBe(400_000);
 		expect(merged.maxOutputTokens).toBe(384_000);
 	});
 
@@ -334,5 +335,23 @@ describe('mergeWithModelsDev', () => {
 			description: 'Fallback description text that would wrap into a paragraph in the picker',
 		});
 		expect(merged.detail).toBe('');
+	});
+
+	it('caps the input window at the OpenCode Go plan limit (~403K overflow observed on glm-5.3-flash)', () => {
+		const merged = mergeWithModelsDev(base, {
+			id: 'zhipuai/glm-5.3-flash',
+			limit: { context: 1_000_000, output: 131_072 },
+		});
+		expect(merged.maxInputTokens).toBe(400_000);
+		// Output budget is untouched by the cap.
+		expect(merged.maxOutputTokens).toBe(131_072);
+	});
+
+	it('leaves smaller context windows below the plan cap unchanged', () => {
+		const merged = mergeWithModelsDev(base, {
+			id: 'zhipuai/glm-5.1',
+			limit: { context: 200_000, output: 131_072 },
+		});
+		expect(merged.maxInputTokens).toBe(200_000);
 	});
 });

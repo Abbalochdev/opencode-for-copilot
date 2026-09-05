@@ -1,13 +1,22 @@
 # Changelog
 
 
+## [3.11.18](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.11.17...v3.11.18) (2026-09-01)
+
+### Fixes
+
+* **models:** cap the advertised input context at 400K tokens for OpenCode models — models.dev lists the upstream model spec (e.g. `glm-5.3-flash`: 1M), but the OpenCode Go gateway rejects requests from ~403K input onward, so Copilot Chat (which compacts against the advertised `maxInputTokens`) let conversations grow past the real limit and then auto-compacted mid-session (~400K input → summary → ~32K). The advertised window is now clamped to the plan's effective limit, making Copilot compact earlier with a graceful summary instead of an overflow.
+* **models:** learn each model's real context window from the gateway — overflow errors already carry the authoritative window (e.g. "maximum context length is 260144 tokens"); the extension now records it per model (persisted to global state, keeps the smallest observation, survives restarts) and advertises the learned limit in the model picker immediately, so any model whose effective window differs from its upstream spec self-corrects after a single rejection and Copilot compacts *before* the wall instead of after a hard API error.
+* **empty-response guard:** thinking-only responses no longer report as "Model returned an empty response" — the guard only counted text and tool calls, so a response that streamed reasoning but no answer text (observed on `qwen3.8-max` via the Anthropic protocol) was discarded as empty even though output tokens were billed. `onThinking` now counts as model output.
+* **anthropic stream:** unknown content-block types are logged instead of silently dropped — the parser only recognised `text`/`thinking`/`tool_use`, so gateway-specific or newer block types (e.g. `redacted_thinking`) vanished without a trace and could fabricate the same empty-response error; they now emit a warning line to the log.
+
+
 ## [3.11.17](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.11.16...v3.11.17) (2026-09-01)
 
 ### Fixes
 
 * **request:** drop the `clear_thinking: false` field from the `thinking` request object — the OpenCode gateway's upstream validator rejects it as an extra input (`Extra inputs are not permitted … ThinkingConfigEnabled.clear_thinking`), so every thinking-capable model on OpenCode Go/Zen (e.g. `glm-5.2`, `glm-5.3`) failed with HTTP 400 the moment thinking was enabled. The field is removed from the request shape and the `GLMRequest` type; regression test added asserting the `glm-5.2` thinking payload is exactly `{ type: 'enabled' }` plus `reasoning_effort`.
-* **empty-response guard:** thinking-only responses no longer report as "Model returned an empty response" — the guard only counted text and tool calls, so a response that streamed reasoning but no answer text (observed on `qwen3.8-max` via the Anthropic protocol) was discarded as empty even though output tokens were billed. `onThinking` now counts as model output.
-* **anthropic stream:** unknown content-block types are logged instead of silently dropped — the parser only recognised `text`/`thinking`/`tool_use`, so gateway-specific or newer block types (e.g. `redacted_thinking`) vanished without a trace and could fabricate the same empty-response error; they now emit a warning line to the log.
+
 
 
 ## [3.11.16](https://github.com/abbalochdev/opencode-for-copilot/compare/v3.11.15...v3.11.16) (2026-08-29)

@@ -250,6 +250,17 @@ export function invalidateModelsDevCache(): void {
 // ---- Merge logic ----
 
 /**
+ * Plan-level context cap enforced by the OpenCode Go gateway.
+ *
+ * models.dev lists the upstream model spec (glm-5.3-flash: 1M), but the
+ * gateway rejects requests well below that (~403K input observed) — Copilot
+ * Chat then auto-compacts the conversation mid-session. Advertising the
+ * smaller effective window makes Copilot compact earlier, with a graceful
+ * summary instead of an overflow.
+ */
+const OPENCODE_GO_PLAN_CONTEXT_CAP = 400_000;
+
+/**
  * Merge models.dev metadata into a model definition.
  *
  * The local definition wins for: endpointPreset, requiresThinkingParam,
@@ -278,9 +289,12 @@ export function mergeWithModelsDev(
 	// Only the curated overlay blurb (base.detail) is shown; models without one
 	// simply render with their proper title and no subtitle.
 
-	// Context and output limits
+	// Context and output limits. The Go-plan gateway enforces a context cap
+	// below the upstream model spec (see OPENCODE_GO_PLAN_CONTEXT_CAP), so the
+	// advertised input window is clamped to keep Copilot's compaction math
+	// aligned with what the gateway actually accepts.
 	if (devModel.limit?.context) {
-		merged.maxInputTokens = devModel.limit.context;
+		merged.maxInputTokens = Math.min(devModel.limit.context, OPENCODE_GO_PLAN_CONTEXT_CAP);
 	}
 	if (devModel.limit?.output) {
 		merged.maxOutputTokens = devModel.limit.output;

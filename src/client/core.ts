@@ -2,19 +2,20 @@ import { randomUUID } from 'crypto';
 import type { CancellationToken } from 'vscode';
 import { safeStringify } from '../json';
 import { logger } from '../logger';
+import { recordObservedContextWindow } from '../provider/context-windows';
 import type {
-    ApiProtocol,
-    GLMRequest,
-    GLMStreamChunk,
-    GLMToolCall,
-    GLMUsage,
-    StreamCallbacks,
+	ApiProtocol,
+	GLMRequest,
+	GLMStreamChunk,
+	GLMToolCall,
+	GLMUsage,
+	StreamCallbacks,
 } from '../types';
 import { convertToAnthropicRequest, parseAnthropicStream } from './anthropic';
 import { createHttpError, formatRequestError, GLMRequestError, normalizeRequestError } from './error';
 import { analyzeContextOverflow } from './error/overflow-retry';
-import { convertToResponsesRequest, parseResponsesStream } from './responses';
 import { trackRateLimitHeaders, waitIfRateLimited } from './rate-limit';
+import { convertToResponsesRequest, parseResponsesStream } from './responses';
 
 // Retry configuration for transient HTTP errors (429, 502, 503, 504).
 const MAX_RETRY_ATTEMPTS = 3;
@@ -166,6 +167,10 @@ export class GLMClient {
 				request.max_tokens ?? 0,
 			);
 			if (overflow) {
+				// The gateway just told us its real effective window — record it so
+				// the model picker advertises the learned limit and Copilot Chat
+				// compacts before this wall instead of after a hard API error.
+				recordObservedContextWindow(request.model, overflow.contextWindow);
 				logger.warn(
 					`[overflow-retry] context ${overflow.contextWindow} tokens, requested `
 					+ `${overflow.requestedTokens}; retrying with max_tokens ${overflow.maxTokens} `

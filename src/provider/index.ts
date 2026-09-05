@@ -14,6 +14,7 @@ import {
 } from '../endpoint';
 import { t } from '../i18n';
 import { logger } from '../logger';
+import { setContextWindowStore, setOnContextWindowLearned } from './context-windows';
 import { createCacheDiagnosticsRecorder, dumpProviderInput } from './debug';
 import { toChatInfo } from './models';
 import { setModelsDevSnapshotStorage } from './models-dev';
@@ -117,6 +118,14 @@ export class GLMChatProvider implements vscode.LanguageModelChatProvider {
 			get: (key) => context.globalState.get(key),
 			update: (key, value) => context.globalState.update(key, value),
 		});
+		// Persist learned gateway context windows (from overflow errors) so a
+		// model's real effective window survives restarts. When a new window is
+		// learned, re-notify so the picker shows the corrected limit right away.
+		setContextWindowStore({
+			get: (key) => context.globalState.get(key),
+			update: (key, value) => context.globalState.update(key, value),
+		});
+		setOnContextWindowLearned(() => this.refreshModelPicker());
 
 		// Fetch live model list from OpenCode API on startup.
 		// Fire-and-forget: static MODELS array is used until this completes.

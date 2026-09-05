@@ -1,6 +1,7 @@
 import vscode from 'vscode';
 import { t } from '../i18n';
 import type { ModelDefinition, PricingCurrency } from '../types';
+import { effectiveContextWindow } from './context-windows';
 import { toModelCostInfo, type ModelCostInformation } from './pricing/costs';
 
 /**
@@ -44,6 +45,10 @@ export function toChatInfo(
 	const modelTooltip = resolveModelText(m, 'tooltip');
 	const apiKeyMissing = !hasApiKey;
 	const deprecated = m.deprecated === true;
+	// A model's learned gateway window (from a prior overflow error) wins over
+	// the catalog spec — Copilot Chat compacts against this number, so it must
+	// reflect what the gateway actually accepts.
+	const maxInputTokens = effectiveContextWindow(m.id, m.maxInputTokens) ?? m.maxInputTokens;
 	let detail = modelDetail;
 	let tooltip = modelTooltip;
 	if (apiKeyMissing) {
@@ -67,7 +72,7 @@ export function toChatInfo(
 		detail,
 		tooltip,
 		statusIcon: apiKeyMissing || deprecated ? new vscode.ThemeIcon('warning') : undefined,
-		maxInputTokens: m.maxInputTokens,
+		maxInputTokens,
 		maxOutputTokens: m.maxOutputTokens,
 		isBYOK: true,
 		isUserSelectable: isUserSelectableModel(m.id) && !deprecated,
